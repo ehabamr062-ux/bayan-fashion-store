@@ -1942,10 +1942,119 @@
                             </small>
                         </div>
 
+                        <!-- التحكم الكامل في نصوص الواجهة الرئيسية (الهيرو) وبطاقات الثقة -->
+                        <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 10px;">
+                            <div style="font-weight: 900; color: #0f172a; font-size: 0.92rem;">✨ التحكم في نصوص الواجهة الرئيسية (الهيرو) ومميزات المتجر</div>
+                            <div class="form-group">
+                                <label style="font-size: 0.82rem;">شارة أعلى الهيرو:</label>
+                                <input type="text" id="setHeroBadge" class="form-control" placeholder="مثال: تشكيلة الموسم متوفرة الآن بأعلى جودة">
+                            </div>
+                            <div class="form-group">
+                                <label style="font-size: 0.82rem;">العنوان الرئيسي للهيرو:</label>
+                                <input type="text" id="setHeroTitle" class="form-control" placeholder="مثال: إطلالتك بأعلى خامة... والمعاينة قبل الدفع!">
+                            </div>
+                            <div class="form-group">
+                                <label style="font-size: 0.82rem;">الوصف الفرعي للهيرو:</label>
+                                <textarea id="setHeroSubtitle" class="form-control" rows="2" placeholder="مثال: تسوق أحدث الموديلات المختارة بعناية..."></textarea>
+                            </div>
+                            <label style="display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 0.84rem; color: #0f172a; cursor: pointer;">
+                                <input type="checkbox" id="setShowTrustBadges" checked style="width: 17px; height: 17px;">
+                                <span>إظهار بطاقات المميزات الـ 4 في الهيرو (الدفع / المعاينة / الشحن / الاستبدال)</span>
+                            </label>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label style="font-size: 0.78rem;">بطاقة 1 (عنوان / وصف):</label>
+                                    <input type="text" id="setTrust1Title" class="form-control" placeholder="الدفع عند الاستلام" style="margin-bottom: 4px;">
+                                    <input type="text" id="setTrust1Desc" class="form-control" placeholder="كاش أو فودافون كاش أو إنستا باي">
+                                </div>
+                                <div class="form-group">
+                                    <label style="font-size: 0.78rem;">بطاقة 2 (عنوان / وصف):</label>
+                                    <input type="text" id="setTrust2Title" class="form-control" placeholder="معاينة قبل الدفع" style="margin-bottom: 4px;">
+                                    <input type="text" id="setTrust2Desc" class="form-control" placeholder="افتح الشحنة وتأكد من الخامة والمقاس">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label style="font-size: 0.78rem;">بطاقة 3 (عنوان / وصف):</label>
+                                    <input type="text" id="setTrust3Title" class="form-control" placeholder="شحن سريع لمصر" style="margin-bottom: 4px;">
+                                    <input type="text" id="setTrust3Desc" class="form-control" placeholder="القاهرة 24-48 ساعة والمحافظات 2-4 أيام">
+                                </div>
+                                <div class="form-group">
+                                    <label style="font-size: 0.78rem;">بطاقة 4 (عنوان / وصف):</label>
+                                    <input type="text" id="setTrust4Title" class="form-control" placeholder="استبدال 14 يوم" style="margin-bottom: 4px;">
+                                    <input type="text" id="setTrust4Desc" class="form-control" placeholder="تبديل مقاس سهل وسريع بدون تعقيد">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- روابط السوشيال ميديا -->
+                        <div style="background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 10px;">
+                            <div style="font-weight: 900; color: #166534; font-size: 0.92rem;">🌐 روابط صفحات التواصل الاجتماعي (تظهر في الفوتر عند إضافتها)</div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label style="font-size: 0.8rem;">رابط صفحة فيسبوك (Facebook):</label>
+                                    <input type="url" id="setFacebookUrl" class="form-control" placeholder="https://facebook.com/..." dir="ltr">
+                                </div>
+                                <div class="form-group">
+                                    <label style="font-size: 0.8rem;">رابط إنستجرام (Instagram):</label>
+                                    <input type="url" id="setInstagramUrl" class="form-control" placeholder="https://instagram.com/..." dir="ltr">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label style="font-size: 0.8rem;">رابط تيك توك (TikTok):</label>
+                                    <input type="url" id="setTiktokUrl" class="form-control" placeholder="https://tiktok.com/@..." dir="ltr">
+                                </div>
+                                <div class="form-group">
+                                    <label style="font-size: 0.8rem;">رابط قناة واتساب (WhatsApp Channel):</label>
+                                    <input type="url" id="setWhatsappChannelUrl" class="form-control" placeholder="https://whatsapp.com/channel/..." dir="ltr">
+                                </div>
+                            </div>
+                        </div>
+
                         <button type="submit" class="btn-primary-action" style="align-self: flex-start; margin-top: 8px;">
                             <span>💾 حفظ البيانات العامة</span>
                         </button>
                     </form>
+                </div>
+
+                <!-- كارت إدارة آراء العملاء (نصوص وصور منفصلة) -->
+                <div style="background: white; border-radius: var(--radius-md); border: 2px solid #bbf7d0; padding: 26px; box-shadow: var(--shadow-card); position: relative;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 12px;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span style="font-size: 1.6rem;">⭐</span>
+                            <div>
+                                <h2 style="font-size: 1.25rem; font-weight: 950; color: #166534;">إدارة آراء العملاء (نصوص + صور منفصلة)</h2>
+                                <small style="color: var(--text-muted); font-weight: 700;">أضف آراء نصية أو صور محادثات/تقييمات في براويز مرقّمة لتظهر في المتجر فوراً</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-row" style="align-items: flex-start;">
+                        <!-- إضافة رأي نصي -->
+                        <form onsubmit="saveAdminTextTestimonial(event)" style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 10px; flex: 1;">
+                            <div style="font-weight: 900; color: #0f172a;">💬 إضافة رأي نصي</div>
+                            <input type="text" id="inpTestiName" class="form-control" placeholder="اسم العميل (مثال: أ. محمد أحمد)" required>
+                            <textarea id="inpTestiText" class="form-control" rows="3" placeholder="نص رأي العميل..." required></textarea>
+                            <select id="inpTestiRating" class="form-control">
+                                <option value="5">★★★★★ ممتاز (5/5)</option>
+                                <option value="4">★★★★☆ جيد جداً (4/5)</option>
+                                <option value="3">★★★☆☆ جيد (3/5)</option>
+                            </select>
+                            <button type="submit" class="btn-primary-action" style="background: #16a34a; border-color: #16a34a; justify-content: center;">➕ حفظ الرأي النصي</button>
+                        </form>
+
+                        <!-- إضافة رأي بصورة -->
+                        <form onsubmit="saveAdminImageTestimonial(event)" style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 10px; flex: 1;">
+                            <div style="font-weight: 900; color: #0f172a;">🖼️ إضافة رأي بصورة (برواز مرقّم)</div>
+                            <input type="url" id="inpTestiImgUrl" class="form-control" placeholder="رابط الصورة (أو ارفع ملف بالأسفل)" dir="ltr">
+                            <input type="file" id="inpTestiImgFile" accept="image/*" class="form-control">
+                            <input type="text" id="inpTestiCaption" class="form-control" placeholder="عنوان / تعليق اختياري تحت البرواز">
+                            <button type="submit" class="btn-primary-action" style="background: #0284c7; border-color: #0284c7; justify-content: center;">➕ حفظ صورة الرأي</button>
+                        </form>
+                    </div>
+
+                    <div id="adminTestimonialsList" style="margin-top: 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px;"></div>
                 </div>
 
                 <!-- 2. كارت إدارة أسعار وسياسة الشحن والتوصيل للمحافظات -->
@@ -6223,6 +6332,23 @@
                         if (data.adminHeaderTitle && document.getElementById('setAdminHeaderTitle')) document.getElementById('setAdminHeaderTitle').value = data.adminHeaderTitle;
                         if (data.adminHeaderSubtitle && document.getElementById('setAdminHeaderSubtitle')) document.getElementById('setAdminHeaderSubtitle').value = data.adminHeaderSubtitle;
                         if (data.adminHeaderEmblem && document.getElementById('setAdminHeaderEmblem')) document.getElementById('setAdminHeaderEmblem').value = data.adminHeaderEmblem;
+                        if (data.heroBadge !== undefined && document.getElementById('setHeroBadge')) document.getElementById('setHeroBadge').value = data.heroBadge;
+                        if (data.heroTitle !== undefined && document.getElementById('setHeroTitle')) document.getElementById('setHeroTitle').value = data.heroTitle;
+                        if (data.heroSubtitle !== undefined && document.getElementById('setHeroSubtitle')) document.getElementById('setHeroSubtitle').value = data.heroSubtitle;
+                        if (data.showTrustBadges !== undefined && document.getElementById('setShowTrustBadges')) document.getElementById('setShowTrustBadges').checked = data.showTrustBadges !== false;
+                        if (Array.isArray(data.trustBadges)) {
+                            data.trustBadges.forEach((tb, idx) => {
+                                const tEl = document.getElementById(`setTrust${idx + 1}Title`);
+                                const dEl = document.getElementById(`setTrust${idx + 1}Desc`);
+                                if (tEl && tb.title !== undefined) tEl.value = tb.title;
+                                if (dEl && tb.desc !== undefined) dEl.value = tb.desc;
+                            });
+                        }
+                        if (data.facebookUrl !== undefined && document.getElementById('setFacebookUrl')) document.getElementById('setFacebookUrl').value = data.facebookUrl;
+                        if (data.instagramUrl !== undefined && document.getElementById('setInstagramUrl')) document.getElementById('setInstagramUrl').value = data.instagramUrl;
+                        if (data.tiktokUrl !== undefined && document.getElementById('setTiktokUrl')) document.getElementById('setTiktokUrl').value = data.tiktokUrl;
+                        if (data.whatsappChannelUrl !== undefined && document.getElementById('setWhatsappChannelUrl')) document.getElementById('setWhatsappChannelUrl').value = data.whatsappChannelUrl;
+                        if (typeof loadAdminTestimonials === 'function') loadAdminTestimonials();
                         if (data.storeLogo !== undefined) {
                             currentUploadedStoreLogo = data.storeLogo || '';
                             if (document.getElementById('setStoreLogoUrl') && data.storeLogo && !data.storeLogo.startsWith('data:image')) {
@@ -6306,7 +6432,19 @@
                 storeLogo,
                 adminHeaderTitle,
                 adminHeaderSubtitle,
-                adminHeaderEmblem
+                adminHeaderEmblem,
+                heroBadge: document.getElementById('setHeroBadge')?.value.trim() || '',
+                heroTitle: document.getElementById('setHeroTitle')?.value.trim() || '',
+                heroSubtitle: document.getElementById('setHeroSubtitle')?.value.trim() || '',
+                showTrustBadges: document.getElementById('setShowTrustBadges')?.checked !== false,
+                trustBadges: [1, 2, 3, 4].map(i => ({
+                    title: document.getElementById(`setTrust${i}Title`)?.value.trim() || '',
+                    desc: document.getElementById(`setTrust${i}Desc`)?.value.trim() || ''
+                })),
+                facebookUrl: document.getElementById('setFacebookUrl')?.value.trim() || '',
+                instagramUrl: document.getElementById('setInstagramUrl')?.value.trim() || '',
+                tiktokUrl: document.getElementById('setTiktokUrl')?.value.trim() || '',
+                whatsappChannelUrl: document.getElementById('setWhatsappChannelUrl')?.value.trim() || ''
             };
 
             applyAdminHeaderBranding(cfg);
@@ -7440,6 +7578,98 @@ ${itemsSummary}
             if (!db) return;
 
             db.collection('coupons').doc(docId).delete().catch(e => alert("خطأ في الحذف: " + e.message));
+        }
+
+        // ==============================================================================
+        // ⭐ إدارة آراء العملاء (نصوص + صور منفصلة)
+        // ==============================================================================
+        function loadAdminTestimonials() {
+            const db = (typeof getBayanDb === 'function') ? getBayanDb() : null;
+            const wrap = document.getElementById('adminTestimonialsList');
+            if (!db || !wrap) return;
+            db.collection('testimonials').onSnapshot(snap => {
+                const items = [];
+                snap.forEach(doc => items.push({ id: doc.id, ...(doc.data() || {}) }));
+                items.sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
+                if (!items.length) {
+                    wrap.innerHTML = '<div style="color:#64748b;font-size:0.85rem;grid-column:1/-1;">لا توجد آراء عملاء مضافة بعد.</div>';
+                    return;
+                }
+                wrap.innerHTML = items.map((t, i) => `
+                    <div style="border:1.5px solid #e2e8f0;border-radius:12px;padding:10px;background:#fff;display:flex;flex-direction:column;gap:6px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                            <span style="font-size:0.75rem;font-weight:900;background:${t.type === 'image' ? '#e0f2fe;color:#0369a1' : '#dcfce7;color:#166534'};padding:2px 8px;border-radius:999px;">
+                                ${t.type === 'image' ? '🖼️ صورة #' + (i + 1) : '💬 نص #' + (i + 1)}
+                            </span>
+                            <button type="button" onclick="deleteAdminTestimonial('${t.id}')" style="background:#fee2e2;color:#dc2626;border:none;border-radius:8px;padding:3px 8px;font-weight:800;cursor:pointer;font-size:0.75rem;">حذف</button>
+                        </div>
+                        ${t.type === 'image'
+                            ? `<img src="${t.imageUrl || ''}" style="width:100%;height:120px;object-fit:cover;border-radius:8px;border:1px solid #e2e8f0;">
+                               <div style="font-size:0.78rem;color:#334155;font-weight:700;">${t.caption || ''}</div>`
+                            : `<div style="font-weight:900;font-size:0.84rem;color:#0f172a;">${t.name || 'عميل'}</div>
+                               <div style="font-size:0.8rem;color:#475569;">${t.text || ''}</div>`}
+                    </div>`).join('');
+            }, console.warn);
+        }
+
+        function saveAdminTextTestimonial(e) {
+            e.preventDefault();
+            const db = (typeof getBayanDb === 'function') ? getBayanDb() : null;
+            if (!db) return alert('⚠️ جاري الاتصال بالسحابة');
+            const name = document.getElementById('inpTestiName').value.trim();
+            const text = document.getElementById('inpTestiText').value.trim();
+            const rating = Number(document.getElementById('inpTestiRating').value || 5);
+            if (!name || !text) return;
+            db.collection('testimonials').add({
+                type: 'text',
+                name,
+                text,
+                rating,
+                createdAt: Date.now()
+            }).then(() => {
+                document.getElementById('inpTestiName').value = '';
+                document.getElementById('inpTestiText').value = '';
+                showFastSaveToast('⭐ تم حفظ الرأي النصي بنجاح!');
+            }).catch(err => alert('خطأ في الحفظ: ' + err.message));
+        }
+
+        function saveAdminImageTestimonial(e) {
+            e.preventDefault();
+            const db = (typeof getBayanDb === 'function') ? getBayanDb() : null;
+            if (!db) return alert('⚠️ جاري الاتصال بالسحابة');
+            const urlInput = document.getElementById('inpTestiImgUrl').value.trim();
+            const fileInput = document.getElementById('inpTestiImgFile');
+            const caption = document.getElementById('inpTestiCaption').value.trim();
+
+            const saveDoc = (imageUrl) => {
+                if (!imageUrl) return alert('يرجى إدخال رابط الصورة أو اختيار ملف صورة');
+                db.collection('testimonials').add({
+                    type: 'image',
+                    imageUrl,
+                    caption,
+                    createdAt: Date.now()
+                }).then(() => {
+                    document.getElementById('inpTestiImgUrl').value = '';
+                    if (fileInput) fileInput.value = '';
+                    document.getElementById('inpTestiCaption').value = '';
+                    showFastSaveToast('🖼️ تم حفظ صورة رأي العميل بنجاح!');
+                }).catch(err => alert('خطأ في الحفظ: ' + err.message));
+            };
+
+            if (fileInput && fileInput.files && fileInput.files[0]) {
+                const reader = new FileReader();
+                reader.onload = (ev) => saveDoc(ev.target.result);
+                reader.readAsDataURL(fileInput.files[0]);
+            } else {
+                saveDoc(urlInput);
+            }
+        }
+
+        function deleteAdminTestimonial(docId) {
+            if (!confirm('هل تريد حذف هذا الرأي؟')) return;
+            const db = (typeof getBayanDb === 'function') ? getBayanDb() : null;
+            if (!db) return;
+            db.collection('testimonials').doc(docId).delete().catch(e => alert('خطأ في الحذف: ' + e.message));
         }
 
         // بدء التشغيل

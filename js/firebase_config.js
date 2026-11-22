@@ -52,7 +52,7 @@ function getActiveShopId() {
     return shopId;
 }
 
-const TENANT_SCOPED_COLLECTIONS = new Set(['products', 'orders', 'coupons', 'settings']);
+const TENANT_SCOPED_COLLECTIONS = new Set(['products', 'orders', 'coupons', 'settings', 'testimonials']);
 let rawBayanDb = null;
 let bayanDb = null;
 let isFirebaseInitialized = false;

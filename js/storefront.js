@@ -43,10 +43,24 @@
       whatsappNumber: '',
       vodafoneCashNumber: '',
       instapayAddress: '',
-      freeShippingThreshold: 1500
+      freeShippingThreshold: 1500,
+      heroBadge: '',
+      heroTitle: '',
+      heroSubtitle: '',
+      showTrustBadges: true,
+      trustBadges: [],
+      facebookUrl: '',
+      instagramUrl: '',
+      tiktokUrl: '',
+      whatsappChannelUrl: ''
     },
     shippingRates: [...DEFAULT_SHIPPING_RATES],
     products: [],
+    _searchIndex: new Map(),
+    _searchTimer: null,
+    testimonials: [],
+    activeTestimonialsTab: 'text',
+    customerProfile: null,
     productsLoaded: false,
     coupons: [],
     cart: [],
@@ -335,6 +349,37 @@
       if (footerLogoWrap) footerLogoWrap.innerHTML = `<span id="footer-brand-initial">${escapeHTML(initial)}</span>`;
     }
 
+    // Dynamic Hero & Trust Badges from Admin
+    if (s.heroBadge) setText('hero-badge-text', s.heroBadge);
+    if (s.heroTitle) setText('hero-title', s.heroTitle);
+    if (s.heroSubtitle) setText('hero-subtitle', s.heroSubtitle);
+    const trustGrid = document.getElementById('hero-trust-grid');
+    if (trustGrid) {
+      trustGrid.classList.toggle('hidden', s.showTrustBadges === false);
+      if (Array.isArray(s.trustBadges)) {
+        s.trustBadges.forEach((tb, idx) => {
+          if (tb && tb.title) setText(`trust-${idx + 1}-title`, tb.title);
+          if (tb && tb.desc) setText(`trust-${idx + 1}-desc`, tb.desc);
+        });
+      }
+    }
+
+    // Dynamic Social Links in Footer
+    const socialWrap = document.getElementById('footer-social-links');
+    if (socialWrap) {
+      const socials = [
+        { url: s.facebookUrl, icon: 'fa-brands fa-facebook-f', label: 'فيسبوك', cls: 'bg-blue-600 text-white' },
+        { url: s.instagramUrl, icon: 'fa-brands fa-instagram', label: 'إنستجرام', cls: 'bg-pink-600 text-white' },
+        { url: s.tiktokUrl, icon: 'fa-brands fa-tiktok', label: 'تيك توك', cls: 'bg-slate-900 text-white' },
+        { url: s.whatsappChannelUrl, icon: 'fa-brands fa-whatsapp', label: 'قناة واتساب', cls: 'bg-emerald-600 text-white' }
+      ].filter(x => x.url && /^https?:\/\//i.test(x.url));
+      socialWrap.innerHTML = socials.map(x =>
+        `<a href="${escapeHTML(x.url)}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold shadow-xs hover:opacity-90 transition ${x.cls}">
+          <i class="${x.icon}"></i><span>${x.label}</span>
+        </a>`
+      ).join('');
+    }
+
     // Contact rows (only show when configured in Firestore settings)
     const waClean = String(s.whatsappNumber || '').replace(/\D/g, '');
     const waBtn = document.getElementById('floating-whatsapp-btn');
@@ -396,7 +441,16 @@
             whatsappNumber: d.whatsappNumber || d.whatsapp || d.phone || '',
             vodafoneCashNumber: d.vodafoneCashNumber || d.vodafoneCash || '',
             instapayAddress: d.instapayAddress || d.instapay || '',
-            freeShippingThreshold: Number(d.freeShippingThreshold ?? state.settings.freeShippingThreshold)
+            freeShippingThreshold: Number(d.freeShippingThreshold ?? state.settings.freeShippingThreshold),
+            heroBadge: d.heroBadge || '',
+            heroTitle: d.heroTitle || '',
+            heroSubtitle: d.heroSubtitle || '',
+            showTrustBadges: d.showTrustBadges !== false,
+            trustBadges: Array.isArray(d.trustBadges) ? d.trustBadges : [],
+            facebookUrl: d.facebookUrl || '',
+            instagramUrl: d.instagramUrl || '',
+            tiktokUrl: d.tiktokUrl || '',
+            whatsappChannelUrl: d.whatsappChannelUrl || ''
           };
           applyBranding();
         }
@@ -476,6 +530,8 @@
               code: String(c.code).trim().toUpperCase(),
               type: c.type || 'percent',
               value: Number(c.value || c.discount || 0),
+              minOrder: Number(c.minOrder || 0),
+              expireAt: c.expireAt || null,
               active: c.active !== false
             });
           }
@@ -483,6 +539,18 @@
         state.coupons = list;
       },
       (err) => console.warn('Coupons listener warning:', err)
+    );
+
+    // 5) Testimonials (Separate Text & Framed Images)
+    db.collection('testimonials').onSnapshot(
+      (snap) => {
+        const list = [];
+        snap.forEach(doc => list.push({ id: doc.id, ...(doc.data() || {}) }));
+        list.sort((a, b) => Number(a.createdAt || 0) - Number(b.createdAt || 0));
+        state.testimonials = list;
+        renderTestimonials();
+      },
+      (err) => console.warn('Testimonials listener warning:', err)
     );
   }
 
@@ -530,7 +598,82 @@
     const m = document.getElementById('mobile-search');
     if (d && d.value !== val) d.value = val;
     if (m && m.value !== val) m.value = val;
-    renderProductsGrid();
+    clearTimeout(state._searchTimer);
+    state._searchTimer = setTimeout(() => renderProductsGrid(), 120);
+  }
+
+  function switchTestimonialsTab(tab) {
+    state.activeTestimonialsTab = tab;
+    const tBtn = document.getElementById('testi-tab-text');
+    const iBtn = document.getElementById('testi-tab-images');
+    if (tBtn) tBtn.className = `px-4 py-2 rounded-xl text-xs sm:text-sm transition ${tab === 'text' ? 'font-extrabold bg-emerald-600 text-white' : 'font-bold text-slate-600 hover:text-slate-900'}`;
+    if (iBtn) iBtn.className = `px-4 py-2 rounded-xl text-xs sm:text-sm transition ${tab === 'image' ? 'font-extrabold bg-emerald-600 text-white' : 'font-bold text-slate-600 hover:text-slate-900'}`;
+    renderTestimonials();
+  }
+
+  function renderTestimonials() {
+    const grid = document.getElementById('testimonials-grid');
+    if (!grid) return;
+    const texts = state.testimonials.filter(t => t.type !== 'image');
+    const images = state.testimonials.filter(t => t.type === 'image');
+    const tc = document.getElementById('testi-text-count');
+    const ic = document.getElementById('testi-img-count');
+    if (tc) tc.textContent = texts.length;
+    if (ic) ic.textContent = images.length;
+
+    const list = state.activeTestimonialsTab === 'image' ? images : texts;
+    if (!list.length) {
+      grid.innerHTML = `<div class="col-span-full text-center py-8 text-xs sm:text-sm text-slate-400 font-bold">${state.activeTestimonialsTab === 'image' ? 'لا توجد صور آراء عملاء مضافة حالياً' : 'لا توجد آراء نصية مضافة حالياً'}</div>`;
+      return;
+    }
+
+    if (state.activeTestimonialsTab === 'image') {
+      grid.innerHTML = list.map((item, idx) => `
+        <div class="relative rounded-2xl border-2 border-emerald-200 bg-emerald-50/40 p-2.5 shadow-xs flex flex-col gap-2">
+          <span class="absolute top-4 right-4 z-10 px-2.5 py-0.5 rounded-full bg-emerald-600 text-white text-xs font-black shadow">#${idx + 1}</span>
+          <div class="aspect-[4/3] rounded-xl overflow-hidden bg-white border border-slate-200">
+            <img src="${escapeHTML(item.imageUrl || '')}" onerror="handleImgError(this, 'رأي عميل #${idx + 1}')" class="w-full h-full object-cover" loading="lazy" />
+          </div>
+          ${item.caption ? `<div class="text-xs font-bold text-slate-700 text-center px-1">${escapeHTML(item.caption)}</div>` : ''}
+        </div>`).join('');
+    } else {
+      grid.innerHTML = list.map((item, idx) => `
+        <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 flex flex-col gap-2">
+          <div class="flex items-center justify-between">
+            <span class="px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-800 text-xs font-black">#${idx + 1}</span>
+            <span class="text-amber-400 text-xs">${'★'.repeat(Number(item.rating || 5))}${'☆'.repeat(5 - Number(item.rating || 5))}</span>
+          </div>
+          <p class="text-xs sm:text-sm text-slate-700 leading-relaxed flex-1">"${escapeHTML(item.text || '')}"</p>
+          <div class="text-xs font-extrabold text-slate-900 pt-2 border-t border-slate-200/80">— ${escapeHTML(item.name || 'عميل')}</div>
+        </div>`).join('');
+    }
+  }
+
+  function loadCustomerProfile() {
+    try {
+      const raw = localStorage.getItem('bayan_customer_profile_' + state.shopId);
+      if (raw) state.customerProfile = JSON.parse(raw);
+    } catch (_) { }
+  }
+
+  function saveCustomerProfile(profile) {
+    state.customerProfile = profile;
+    try {
+      localStorage.setItem('bayan_customer_profile_' + state.shopId, JSON.stringify(profile));
+      if (typeof BayanIDB !== 'undefined') BayanIDB.setSetting('customer_profile', profile);
+    } catch (_) { }
+  }
+
+  function autofillCustomerForm(prefix) {
+    const p = state.customerProfile;
+    if (!p) return;
+    const setVal = (id, v) => { const el = document.getElementById(id); if (el && v && !el.value) el.value = v; };
+    setVal(`${prefix}-name`, p.name);
+    setVal(`${prefix}-phone`, p.phone1);
+    setVal(`${prefix}-alt-phone`, p.phone2);
+    setVal(`${prefix}-address`, p.address);
+    const govEl = document.getElementById(`${prefix}-gov`);
+    if (govEl && p.govId && state.shippingRates.some(r => r.id === p.govId)) govEl.value = p.govId;
   }
 
   function handleSort(val) {
@@ -709,7 +852,9 @@
     document.getElementById('qo-payment').value = 'الدفع عند الاستلام';
     renderPaymentHint('qo-payment', 'qo-payment-hint');
 
+    // Populate Governorates & Auto-fill saved customer data
     populateGovSelect('qo-gov');
+    autofillCustomerForm('qo');
 
     document.getElementById('pd-topbar-title').textContent = prod.name;
     document.getElementById('pd-category').textContent = prod.category;
@@ -1081,6 +1226,7 @@
     if (btn) btn.disabled = true;
 
     try {
+      saveCustomerProfile({ name, phone1, phone2, address, govId: document.getElementById('qo-gov').value });
       await saveOrderToFirestore(order);
       closeProductDetail();
       document.getElementById('pd-quick-order-form').reset();
@@ -1377,6 +1523,7 @@
     document.getElementById('cc-payment').value = 'الدفع عند الاستلام';
     renderPaymentHint('cc-payment', 'cc-payment-hint');
     populateGovSelect('cc-gov');
+    autofillCustomerForm('cc');
     recalcCartCheckoutSummary();
     document.getElementById('cart-checkout-modal').classList.remove('hidden');
   }
@@ -1504,6 +1651,7 @@
     if (btn) btn.disabled = true;
 
     try {
+      saveCustomerProfile({ name, phone1, phone2, address, govId: document.getElementById('qo-gov').value });
       await saveOrderToFirestore(order);
       state.cart = [];
       await saveCart();
@@ -1701,6 +1849,7 @@
    * ========================================================================= */
   async function initStorefront() {
     state.shopId = typeof getActiveShopId === 'function' ? getActiveShopId() : 'SHOP_DEMO';
+    loadCustomerProfile();
     applyBranding();
     await loadLocalState();
     updateBadges();
@@ -1709,6 +1858,7 @@
 
   // Expose handlers for inline HTML attributes
   Object.assign(window, {
+    switchTestimonialsTab,
     handleImgError,
     resolveConfirm,
     copyText,
