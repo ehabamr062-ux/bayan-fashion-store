@@ -675,6 +675,11 @@
     if (cb) cb.textContent = cartCount;
     const pdCartBadge = document.getElementById('pd-cart-badge');
     if (pdCartBadge) pdCartBadge.textContent = cartCount;
+    const mobCartBadge = document.getElementById('mobile-nav-cart-badge');
+    if (mobCartBadge) {
+      mobCartBadge.textContent = cartCount;
+      mobCartBadge.classList.toggle('hidden', cartCount === 0);
+    }
 
     const wishCount = state.wishlist.length;
     const wb = document.getElementById('wishlist-badge');

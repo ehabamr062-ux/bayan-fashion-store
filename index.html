@@ -330,7 +330,7 @@
     </main>
 
     <!-- Footer -->
-    <footer class="bg-slate-950 text-slate-300 mt-10 border-t border-slate-800">
+    <footer class="bg-slate-950 text-slate-300 mt-10 border-t border-slate-800 pb-20 md:pb-0">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 py-10 grid grid-cols-1 md:grid-cols-3 gap-8">
         <div>
           <div class="flex items-center gap-2.5 mb-3">
@@ -354,11 +354,11 @@
         </div>
 
         <div>
-          <h4 class="text-white font-extrabold mb-3 text-sm">خدمة العملاء والتواصل</h4>
+          <h4 class="text-white font-extrabold mb-3 text-sm">طرق الدفع والخدمات</h4>
           <div class="space-y-2 text-xs sm:text-sm">
-            <div id="footer-whatsapp-row" class="hidden flex items-center gap-2">
-              <i class="fa-brands fa-whatsapp text-emerald-400 text-base"></i>
-              <span id="footer-whatsapp" dir="ltr" class="font-bold"></span>
+            <div class="flex items-center gap-2 text-slate-300">
+              <i class="fa-solid fa-hand-holding-dollar text-emerald-400 text-base"></i>
+              <span>الدفع نقداً عند الاستلام مع إمكانية المعاينة</span>
             </div>
             <div id="footer-vodafone-row" class="hidden flex items-center gap-2">
               <i class="fa-solid fa-mobile-screen-button text-rose-400 text-base"></i>
@@ -372,12 +372,37 @@
         </div>
       </div>
       <div class="border-t border-slate-800/80 py-4 text-center text-xs text-slate-500">
-        جميع الحقوق محفوظة © <span id="footer-year">2026</span> <span id="footer-copy-name">المتجر</span> — مدعوم بنظام بَيَان POS
+        جميع الحقوق محفوظة © <span id="footer-year">2026</span> <span id="footer-copy-name">المتجر</span>
       </div>
     </footer>
 
+    <!-- Mobile Bottom Navigation Bar (4 Tabs - Mobile Only) -->
+    <nav id="mobile-bottom-nav" class="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-[0_-4px_20px_rgba(15,23,42,0.08)]" style="padding-bottom: env(safe-area-inset-bottom, 0px);">
+      <div class="grid grid-cols-4 h-16">
+        <button type="button" onclick="resetStoreFilters(); window.scrollTo({ top: 0, behavior: 'smooth' });" class="flex flex-col items-center justify-center gap-1 text-slate-700 hover:text-brand active:text-brand transition">
+          <i class="fa-solid fa-house text-lg"></i>
+          <span class="text-[11px] font-extrabold">الرئيسية</span>
+        </button>
+        <button type="button" onclick="document.getElementById('catalog-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });" class="flex flex-col items-center justify-center gap-1 text-slate-700 hover:text-brand active:text-brand transition">
+          <i class="fa-solid fa-layer-group text-lg"></i>
+          <span class="text-[11px] font-extrabold">الأقسام</span>
+        </button>
+        <button type="button" onclick="openCartDrawer()" class="relative flex flex-col items-center justify-center gap-1 text-slate-700 hover:text-brand active:text-brand transition">
+          <div class="relative">
+            <i class="fa-solid fa-bag-shopping text-lg"></i>
+            <span id="mobile-nav-cart-badge" class="hidden absolute -top-1.5 -left-2.5 min-w-[18px] h-[18px] px-1 rounded-full bg-brand text-white text-[10px] font-black flex items-center justify-center">0</span>
+          </div>
+          <span class="text-[11px] font-extrabold">السلة</span>
+        </button>
+        <button type="button" onclick="openTrackOrderModal()" class="flex flex-col items-center justify-center gap-1 text-slate-700 hover:text-brand active:text-brand transition">
+          <i class="fa-solid fa-sliders text-lg"></i>
+          <span class="text-[11px] font-extrabold">طلباتي</span>
+        </button>
+      </div>
+    </nav>
+
     <!-- Floating WhatsApp Button -->
-    <a id="floating-whatsapp-btn" href="#" target="_blank" rel="noopener noreferrer" class="hidden fixed bottom-5 left-5 z-30 w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white shadow-xl flex items-center justify-center text-2xl transition hover:scale-110" title="تواصل معنا واتساب">
+    <a id="floating-whatsapp-btn" href="#" target="_blank" rel="noopener noreferrer" class="hidden fixed bottom-20 md:bottom-5 left-4 md:left-5 z-30 w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white shadow-xl flex items-center justify-center text-2xl transition hover:scale-110" title="تواصل معنا واتساب">
       <i class="fa-brands fa-whatsapp"></i>
     </a>
   </div>
