@@ -267,6 +267,9 @@
       description: data.description || '',
       price: Number(data.price || 0),
       oldPrice: Number(data.oldPrice || 0),
+      flashSale: Boolean(data.flashSale) && !data.flashFrozen,
+      flashPrice: Number(data.flashPrice || 0),
+      flashExpire: data.flashExpire || null,
       stock: Number.isFinite(stock) ? stock : 0,
       inStock: data.inStock !== undefined ? Boolean(data.inStock) : stock > 0,
       active: data.active !== false,
@@ -1055,6 +1058,26 @@
     }
   }
 
+  function getEffectivePrice(prod) {
+    if (prod && prod.flashSale && prod.flashPrice > 0) {
+      const exp = prod.flashExpire ? new Date(prod.flashExpire).getTime() : 0;
+      if (!exp || exp > Date.now()) return prod.flashPrice;
+    }
+    return Number(prod?.price || 0);
+  }
+
+  function validateCoupon(code, subtotal) {
+    const found = state.coupons.find(c => c.code.toUpperCase() === code && c.active);
+    if (!found) return { ok: false, msg: 'كود الخصم غير صحيح أو غير مفعّل' };
+    if (found.expireAt && new Date(found.expireAt).getTime() < Date.now()) {
+      return { ok: false, msg: 'عذراً، انتهت صلاحية كود الخصم' };
+    }
+    if (found.minOrder > 0 && subtotal < found.minOrder) {
+      return { ok: false, msg: `الحد الأدنى لتطبيق هذا الكوبون هو ${formatEGP(found.minOrder)}` };
+    }
+    return { ok: true, coupon: found };
+  }
+
   function applyQuickOrderCoupon() {
     const code = document.getElementById('qo-coupon-input').value.trim().toUpperCase();
     const msg = document.getElementById('qo-coupon-msg');
@@ -1068,15 +1091,16 @@
       return;
     }
 
-    const found = state.coupons.find(c => c.code.toUpperCase() === code && c.active);
-    if (!found) {
+    const subtotal = getEffectivePrice(state.currentProduct) * state.pdSelectedTier;
+    const res = validateCoupon(code, subtotal);
+    if (!res.ok) {
       state.pdAppliedCoupon = null;
       msg.className = 'text-xs font-bold mt-1 text-rose-600';
-      msg.textContent = 'كود الخصم غير صحيح أو منتهي الصلاحية';
+      msg.textContent = res.msg;
     } else {
-      state.pdAppliedCoupon = found;
+      state.pdAppliedCoupon = res.coupon;
       msg.className = 'text-xs font-bold mt-1 text-emerald-600';
-      msg.textContent = `تم تطبيق الكوبون (${found.code}) بخصم ${found.type === 'percent' ? found.value + '%' : formatEGP(found.value)}`;
+      msg.textContent = `تم تطبيق الكوبون (${res.coupon.code}) بخصم ${res.coupon.type === 'percent' ? res.coupon.value + '%' : formatEGP(res.coupon.value)}`;
     }
     recalcQuickOrderSummary();
   }
@@ -1543,15 +1567,16 @@
       recalcCartCheckoutSummary();
       return;
     }
-    const found = state.coupons.find(c => c.code.toUpperCase() === code && c.active);
-    if (!found) {
+    const subtotal = state.cart.reduce((s, i) => s + i.unitPrice * i.qty, 0);
+    const res = validateCoupon(code, subtotal);
+    if (!res.ok) {
       state.ccAppliedCoupon = null;
       msg.className = 'text-[11px] font-bold mt-1 text-rose-600';
-      msg.textContent = 'كود الخصم غير صالح';
+      msg.textContent = res.msg;
     } else {
-      state.ccAppliedCoupon = found;
+      state.ccAppliedCoupon = res.coupon;
       msg.className = 'text-[11px] font-bold mt-1 text-emerald-600';
-      msg.textContent = `تم تطبيق (${found.code})`;
+      msg.textContent = `تم تطبيق (${res.coupon.code})`;
     }
     recalcCartCheckoutSummary();
   }
