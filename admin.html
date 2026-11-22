@@ -4357,7 +4357,9 @@
                 costPrice: costPrice,
                 badge: badge,
                 inStock: (inStock && stockQty > 0),
+                stock: stockQty,
                 stockQty: stockQty,
+                active: !isFrozen,
                 isFrozen: isFrozen,
                 status: isFrozen ? 'frozen' : 'active',
                 flashSale: flashSale,
@@ -4397,7 +4399,7 @@
 
             // المزامنة السحابية في الخلفية
             if (docId) {
-                db.collection('products').doc(docId).update(prodData).catch(err => {
+                db.collection('products').doc(docId).set(prodData, { merge: true }).catch(err => {
                     console.error("Cloud update error:", err);
                     alert("⚠️ تعذر المزامنة السحابية: " + err.message);
                 });
@@ -6320,7 +6322,7 @@
                 db.collection('settings').doc('general').set({
                     ...cfg,
                     updatedAt: new Date().toISOString()
-                }).then(() => {
+                }, { merge: true }).then(() => {
                     alert("✅ تم حفظ وتحديث إعدادات المتجر والشعار سحابياً بنجاح!");
                     showFastSaveToast("🎨 تم تحديث شعار المتجر والإعدادات!");
                 }).catch(err => {
@@ -6354,7 +6356,7 @@
 
             const db = (typeof getBayanDb === 'function') ? getBayanDb() : null;
             if (db) {
-                db.collection('settings').doc('shipping').set(shippingData)
+                db.collection('settings').doc('shipping').set(shippingData, { merge: true })
                     .then(() => {
                         alert("✅ تم حفظ وتحديث أسعار وسياسة الشحن والتوصيل سحابياً بنجاح! ستسمع في المتجر فوراً.");
                     })

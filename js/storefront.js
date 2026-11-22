@@ -242,14 +242,14 @@
   }
 
   function normalizeProduct(docId, data) {
-    const stock = Number(data.stock ?? data.qty ?? 0);
+    const stock = Number(data.stock ?? data.stockQty ?? data.qty ?? 0);
     return {
       id: docId,
       pos_id: data.pos_id ?? data.posId ?? '',
       code: data.code ?? '',
       barcode: data.barcode ?? '',
       name: data.name || 'منتج بدون اسم',
-      category: data.category || 'عام',
+      category: data.categoryName || data.category || 'عام',
       description: data.description || '',
       price: Number(data.price || 0),
       oldPrice: Number(data.oldPrice || 0),
@@ -389,10 +389,10 @@
           state.settings = {
             ...state.settings,
             storeName: d.storeName || d.shopName || d.name || state.settings.storeName,
-            tagline: d.tagline || d.subtitle || state.settings.tagline,
+            tagline: d.storeSubName || d.tagline || d.subtitle || state.settings.tagline,
             announcement: d.announcement || d.announcementBar || state.settings.announcement,
             accentColor: d.accentColor || d.primaryColor || state.settings.accentColor,
-            logoUrl: d.logoUrl || d.logo || '',
+            logoUrl: d.storeLogo || d.logoUrl || d.logo || '',
             whatsappNumber: d.whatsappNumber || d.whatsapp || d.phone || '',
             vodafoneCashNumber: d.vodafoneCashNumber || d.vodafoneCash || '',
             instapayAddress: d.instapayAddress || d.instapay || '',
@@ -424,6 +424,16 @@
                 fee: Number(fee || 60)
               }));
             }
+          } else if (d.cairoGiza !== undefined || d.alex !== undefined || d.delta !== undefined) {
+            state.shippingRates = [
+              { id: 'cairo', name: 'القاهرة', fee: Number(d.cairoGiza ?? 55) },
+              { id: 'giza', name: 'الجيزة', fee: Number(d.cairoGiza ?? 55) },
+              { id: 'alex', name: 'الإسكندرية', fee: Number(d.alex ?? 65) },
+              { id: 'delta', name: 'محافظات الدلتا (المنصورة، طنطا، الزقازيق...)', fee: Number(d.delta ?? 70) },
+              { id: 'canal', name: 'مدن القناة (الإسماعيلية، بورسعيد، السويس)', fee: Number(d.canal ?? 75) },
+              { id: 'upper', name: 'محافظات الصعيد (المنيا، أسيوط، سوهاج، قنا، أسوان)', fee: Number(d.upperEgypt ?? 85) },
+              { id: 'redsea', name: 'البحر الأحمر وشرم الشيخ ومطروح', fee: Number(d.remote ?? 95) }
+            ];
           }
           if (d.freeShippingThreshold !== undefined) {
             state.settings.freeShippingThreshold = Number(d.freeShippingThreshold);
