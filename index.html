@@ -167,17 +167,17 @@
       </div>
     </div>
 
-    <!-- Main Sticky Header -->
+    <!-- Main Sticky Header (Mobile-First Balanced Layout) -->
     <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
-      <div class="max-w-7xl mx-auto px-3 sm:px-6 h-16 sm:h-[72px] flex items-center justify-between gap-3">
+      <div class="max-w-7xl mx-auto px-3 sm:px-6 h-16 sm:h-[72px] flex items-center justify-between gap-2 sm:gap-3">
         <!-- Brand Logo -->
-        <button onclick="resetStoreFilters()" class="flex items-center gap-2.5 text-right group shrink-0">
-          <div id="header-brand-logo-wrap" class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-slate-950 text-white flex items-center justify-center font-black text-xl tracking-tighter shadow-sm group-hover:scale-105 transition overflow-hidden">
+        <button onclick="resetStoreFilters()" class="flex items-center gap-2 sm:gap-2.5 text-right group min-w-0 flex-1 md:flex-initial">
+          <div id="header-brand-logo-wrap" class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-slate-950 text-white flex items-center justify-center font-black text-lg sm:text-xl tracking-tighter shadow-sm group-hover:scale-105 transition overflow-hidden shrink-0">
             <span id="header-brand-initial">م</span>
           </div>
-          <div class="leading-tight">
-            <div id="header-brand-name" class="text-lg sm:text-xl font-black tracking-tight text-slate-950">المتجر</div>
-            <div id="header-brand-tagline" class="text-[10px] sm:text-[11px] font-semibold text-slate-500 hidden xs:block">أزياء عصرية وشحن لجميع المحافظات</div>
+          <div class="leading-tight min-w-0">
+            <div id="header-brand-name" class="text-base sm:text-xl font-black tracking-tight text-slate-950 truncate">المتجر</div>
+            <div id="header-brand-tagline" class="text-[10px] sm:text-[11px] font-semibold text-slate-500 truncate hidden sm:block">أزياء عصرية وشحن لجميع المحافظات</div>
           </div>
         </button>
 
@@ -190,23 +190,23 @@
           </button>
         </div>
 
-        <!-- Action Icons -->
-        <div class="flex items-center gap-1.5 sm:gap-2">
+        <!-- Action Icons (Uniform Height & Spacing on Mobile) -->
+        <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <!-- Track Order -->
-          <button onclick="openTrackOrderModal()" class="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-2 rounded-xl text-slate-700 hover:bg-slate-100 transition text-xs sm:text-sm font-bold" title="تتبع طلبك">
+          <button onclick="openTrackOrderModal()" class="w-10 h-10 lg:w-auto lg:px-3.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center gap-1.5 transition text-xs sm:text-sm font-bold shrink-0" title="تتبع طلبك">
             <i class="fa-solid fa-box-open text-brand text-base"></i>
             <span class="hidden lg:inline">تتبع طلبك</span>
           </button>
 
           <!-- Wishlist -->
-          <button onclick="openWishlistModal()" class="relative p-2.5 rounded-xl text-slate-700 hover:bg-slate-100 transition" title="المفضلة">
-            <i class="fa-regular fa-heart text-lg"></i>
-            <span id="wishlist-badge" class="hidden absolute top-1 left-1 min-w-[18px] h-[18px] px-1 rounded-full bg-slate-900 text-white text-[10px] font-bold flex items-center justify-center">0</span>
+          <button onclick="openWishlistModal()" class="relative w-10 h-10 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-brand flex items-center justify-center transition shrink-0" title="المفضلة">
+            <i class="fa-regular fa-heart text-base sm:text-lg"></i>
+            <span id="wishlist-badge" class="hidden absolute -top-1 -left-1 min-w-[18px] h-[18px] px-1 rounded-full bg-brand text-white text-[10px] font-black flex items-center justify-center shadow-xs">0</span>
           </button>
 
           <!-- Cart -->
-          <button onclick="openCartDrawer()" class="relative flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl bg-slate-950 text-white hover:bg-slate-800 transition shadow-sm">
-            <i class="fa-solid fa-bag-shopping text-base"></i>
+          <button onclick="openCartDrawer()" class="relative h-10 flex items-center justify-center gap-1.5 px-3 sm:px-4 rounded-xl bg-slate-950 text-white hover:bg-slate-800 transition shadow-sm shrink-0" title="السلة">
+            <i class="fa-solid fa-bag-shopping text-sm sm:text-base"></i>
             <span class="hidden sm:inline text-xs sm:text-sm font-bold">السلة</span>
             <span id="cart-badge" class="min-w-[20px] h-[20px] px-1 rounded-full bg-brand text-white text-[11px] font-extrabold flex items-center justify-center">0</span>
           </button>
@@ -228,7 +228,7 @@
     <!-- Hero Banner -->
     <section class="relative overflow-hidden bg-slate-950 text-white">
       <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(225,29,72,0.35),transparent_55%),radial-gradient(circle_at_bottom_right,rgba(56,189,248,0.18),transparent_50%)]"></div>
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12 relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+      <div class="max-w-7xl mx-auto px-3 sm:px-6 py-6 sm:py-12 relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-center">
         <div class="lg:col-span-7 space-y-4">
           <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/15 text-xs font-bold text-amber-300">
             <i class="fa-solid fa-bolt"></i>
@@ -322,7 +322,7 @@
       </div>
 
       <!-- Product Grid -->
-      <div id="products-grid" class="hidden grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5">
+      <div id="products-grid" class="hidden grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-5">
         <!-- Product cards injected by JS -->
       </div>
 
