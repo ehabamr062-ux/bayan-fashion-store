@@ -595,12 +595,30 @@
     renderProductsGrid();
   }
 
+  function toggleSearchClearBtns(hasText) {
+    const dc = document.getElementById('desktop-search-clear');
+    const mc = document.getElementById('mobile-search-clear');
+    if (dc) dc.classList.toggle('hidden', !hasText);
+    if (mc) mc.classList.toggle('hidden', !hasText);
+  }
+
+  function clearSearchInput() {
+    const d = document.getElementById('desktop-search');
+    const m = document.getElementById('mobile-search');
+    if (d) d.value = '';
+    if (m) m.value = '';
+    state.searchQuery = '';
+    toggleSearchClearBtns(false);
+    renderProductsGrid();
+  }
+
   function handleSearch(val) {
     state.searchQuery = val.trim().toLowerCase();
     const d = document.getElementById('desktop-search');
     const m = document.getElementById('mobile-search');
     if (d && d.value !== val) d.value = val;
     if (m && m.value !== val) m.value = val;
+    toggleSearchClearBtns(val.length > 0);
     clearTimeout(state._searchTimer);
     state._searchTimer = setTimeout(() => renderProductsGrid(), 120);
   }
@@ -1883,6 +1901,7 @@
 
   // Expose handlers for inline HTML attributes
   Object.assign(window, {
+    clearSearchInput,
     switchTestimonialsTab,
     handleImgError,
     resolveConfirm,

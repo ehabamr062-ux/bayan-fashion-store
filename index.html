@@ -183,8 +183,11 @@
 
         <!-- Desktop Search -->
         <div class="hidden md:flex flex-1 max-w-md relative">
-          <input id="desktop-search" type="text" oninput="handleSearch(this.value)" placeholder="ابحث عن منتج، قسم، موديل..." class="w-full bg-slate-100 hover:bg-slate-200/70 focus:bg-white border border-transparent focus:border-slate-300 rounded-2xl py-2.5 pr-11 pl-4 text-sm outline-none transition" />
+          <input id="desktop-search" type="text" oninput="handleSearch(this.value)" placeholder="ابحث عن منتج، قسم، موديل..." class="w-full bg-slate-100 hover:bg-slate-200/70 focus:bg-white border border-transparent focus:border-slate-300 rounded-2xl py-2.5 pr-11 pl-10 text-sm outline-none transition" />
           <i class="fa-solid fa-magnifying-glass text-slate-400 absolute right-4 top-1/2 -translate-y-1/2"></i>
+          <button id="desktop-search-clear" type="button" onclick="clearSearchInput()" class="hidden absolute left-2.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-rose-100 hover:bg-rose-500 text-rose-600 hover:text-white flex items-center justify-center transition shadow-xs" title="مسح البحث">
+            <i class="fa-solid fa-xmark text-xs"></i>
+          </button>
         </div>
 
         <!-- Action Icons -->
@@ -213,8 +216,11 @@
       <!-- Mobile Search Bar -->
       <div class="md:hidden px-3 pb-3">
         <div class="relative">
-          <input id="mobile-search" type="text" oninput="handleSearch(this.value)" placeholder="ابحث في المتجر..." class="w-full bg-slate-100 focus:bg-white border border-slate-200 rounded-xl py-2 pr-10 pl-3 text-sm outline-none" />
+          <input id="mobile-search" type="text" oninput="handleSearch(this.value)" placeholder="ابحث في المتجر..." class="w-full bg-slate-100 focus:bg-white border border-slate-200 rounded-xl py-2 pr-10 pl-10 text-sm outline-none" />
           <i class="fa-solid fa-magnifying-glass text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 text-sm"></i>
+          <button id="mobile-search-clear" type="button" onclick="clearSearchInput()" class="hidden absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-rose-100 hover:bg-rose-500 text-rose-600 hover:text-white flex items-center justify-center transition shadow-xs" title="مسح البحث">
+            <i class="fa-solid fa-xmark text-xs"></i>
+          </button>
         </div>
       </div>
     </header>
