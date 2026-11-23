@@ -1534,7 +1534,7 @@
     footerEl.classList.remove('hidden');
     listEl.innerHTML = state.cart.map(item => `
       <div class="flex gap-3 p-3 rounded-2xl bg-slate-50 border border-slate-200">
-        <img src="${escapeHTML(item.image)}" onerror="handleImgError(this, '${escapeHTML(item.name)}')" class="w-18 h-18 rounded-xl object-cover shrink-0 bg-white border border-slate-200" />
+        <img src="${escapeHTML(item.image)}" onerror="handleImgError(this, '${escapeHTML(item.name)}')" class="w-16 h-16 rounded-xl object-cover shrink-0 bg-white border border-slate-200" />
         <div class="flex-1 min-w-0">
           <div class="text-xs sm:text-sm font-extrabold text-slate-900 truncate">${escapeHTML(item.name)}</div>
           <div class="text-[11px] text-slate-500 font-semibold mt-0.5">
