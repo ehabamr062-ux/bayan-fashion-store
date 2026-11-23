@@ -1,0 +1,12 @@
+# Online Fashion Store
+
+> متجر إلكتروني للأزياء والموديلات العصرية مع شحن سريع لجميع محافظات مصر، معاينة قبل الاستلام، والدفع عند الاستلام.
+
+## Key Pages
+- [Storefront](https://ehabamr062-ux.github.io/bayan-fashion-store/): Browse products, categories, offers, and place direct COD orders.
+
+## Features
+- Cash on Delivery (COD) with inspection before payment
+- Fast shipping across all Egyptian governorates
+- 14-day easy size exchange policy
+- Direct order tracking by order number or phone
