@@ -1212,6 +1212,33 @@
                 font-size: 16px !important; /* يمنع التكبير التلقائي في أندرويد */
             }
         }
+        /* تجميل الجداول بفواصل أعمدة واضحة وإصلاح تداخل الإعدادات وأيقونة العين */
+        table th, table td {
+            border-left: 1px solid #e2e8f0 !important;
+            vertical-align: middle;
+        }
+        table th:last-child, table td:last-child {
+            border-left: none !important;
+        }
+        #tab-settings .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 12px;
+        }
+        #tab-settings .form-group {
+            min-width: 0;
+        }
+        #tab-settings input, #tab-settings textarea, #tab-settings select {
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+        #adminTestimonialsList {
+            overflow: hidden;
+        }
+        #adminTestimonialsList > div {
+            min-width: 0;
+            word-break: break-word;
+        }
     </style>
 </head>
 <body>
@@ -1298,8 +1325,8 @@
         <!-- ==================== التبويب الرئيسي: الشاشة الرئيسية (الداشبورد) ==================== -->
         <section id="tabPanelHome" class="tab-panel active">
             
-            <!-- 1. بانر الترحيب الملكي الذكي بالتاجر -->
-            <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 55%, #0f172a 100%); border-radius: 20px; padding: 28px 24px; color: white; margin-bottom: 24px; border: 1.5px solid rgba(255,255,255,0.1); box-shadow: 0 10px 30px rgba(15,23,42,0.15); position: relative; overflow: hidden;">
+            <!-- 1. بانر الترحيب الذكي بالتاجر (تصميم أخضر مريح) -->
+            <div style="background: linear-gradient(135deg, #065f46 0%, #059669 55%, #047857 100%); border-radius: 20px; padding: 24px 22px; color: white; margin-bottom: 20px; border: 1.5px solid rgba(255,255,255,0.2); box-shadow: 0 10px 28px rgba(5,150,105,0.22); position: relative; overflow: hidden;">
                 <!-- لمعة جمالية بالخلفية -->
                 <div style="position: absolute; top: -50px; left: -50px; width: 200px; height: 200px; background: radial-gradient(circle, rgba(2,132,199,0.25) 0%, transparent 70%); border-radius: 50%; pointer-events: none;"></div>
                 <div style="position: absolute; bottom: -60px; right: -60px; width: 220px; height: 220px; background: radial-gradient(circle, rgba(217,119,6,0.2) 0%, transparent 70%); border-radius: 50%; pointer-events: none;"></div>
@@ -2614,7 +2641,10 @@
                 </div>
 
                 <div class="form-group">
-                    <label>الحد الأدنى لقيمة الطلب لتفعيل الكوبون (ج.م):</label>
+                    <label style="display: flex; align-items: center; gap: 6px;">
+                        <span>الحد الأدنى لقيمة الطلب لتفعيل الكوبون (ج.م):</span>
+                        <button type="button" onclick="alert('💡 شرح الحد الأدنى لقيمة الطلب:\n\nهو أقل مبلغ لازم العميل يشتري بيه عشان الكوبون يرضى يتطبق.\n\n• مثال: لو كتبت 500 ج.م، يبقى لازم فاتورة العميل تكون 500 ج.م أو أكتر عشان الكوبون يشتغل.\n• لو كتبت 0، يبقى الكوبون هيشتغل على أي مبلغ بدون حد أدنى.')" title="اضغط للشرح" style="width: 22px; height: 22px; border-radius: 50%; border: none; background: #e0f2fe; color: #0284c7; font-weight: 900; font-size: 0.78rem; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;">؟</button>
+                    </label>
                     <input type="number" id="inpCouponMinOrder" class="form-control" placeholder="0 يعني بدون حد أدنى" value="0">
                 </div>
 
@@ -5504,7 +5534,34 @@
                         .signatures-box { display: flex; justify-content: space-between; margin-top: 35px; padding-top: 15px; border-top: 1px dashed #94a3b8; }
                         .sig-field { width: 30%; text-align: center; }
                         .sig-line { margin-top: 40px; border-bottom: 1px solid #0f172a; }
-                    </style>
+                        /* تجميل الجداول بفواصل أعمدة واضحة وإصلاح تداخل الإعدادات وأيقونة العين */
+        table th, table td {
+            border-left: 1px solid #e2e8f0 !important;
+            vertical-align: middle;
+        }
+        table th:last-child, table td:last-child {
+            border-left: none !important;
+        }
+        #tab-settings .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 12px;
+        }
+        #tab-settings .form-group {
+            min-width: 0;
+        }
+        #tab-settings input, #tab-settings textarea, #tab-settings select {
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+        #adminTestimonialsList {
+            overflow: hidden;
+        }
+        #adminTestimonialsList > div {
+            min-width: 0;
+            word-break: break-word;
+        }
+    </style>
                 </head>
                 <body>
                     <div class="header-box">
@@ -5643,7 +5700,34 @@
                         }
                         .barcode-text { font-family: monospace; font-size: 8px; font-weight: 900; letter-spacing: 2px; }
                         .price-tag { font-size: 11px; font-weight: 950; border-top: 0.8px solid #000; padding-top: 1.5px; }
-                    </style>
+                        /* تجميل الجداول بفواصل أعمدة واضحة وإصلاح تداخل الإعدادات وأيقونة العين */
+        table th, table td {
+            border-left: 1px solid #e2e8f0 !important;
+            vertical-align: middle;
+        }
+        table th:last-child, table td:last-child {
+            border-left: none !important;
+        }
+        #tab-settings .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 12px;
+        }
+        #tab-settings .form-group {
+            min-width: 0;
+        }
+        #tab-settings input, #tab-settings textarea, #tab-settings select {
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+        #adminTestimonialsList {
+            overflow: hidden;
+        }
+        #adminTestimonialsList > div {
+            min-width: 0;
+            word-break: break-word;
+        }
+    </style>
                 </head>
                 <body>
                     <div class="store-brand">👑 ${storeName}</div>
@@ -5805,7 +5889,34 @@
                             border-top: 1px dotted #94a3b8;
                             padding-top: 2px;
                         }
-                    </style>
+                        /* تجميل الجداول بفواصل أعمدة واضحة وإصلاح تداخل الإعدادات وأيقونة العين */
+        table th, table td {
+            border-left: 1px solid #e2e8f0 !important;
+            vertical-align: middle;
+        }
+        table th:last-child, table td:last-child {
+            border-left: none !important;
+        }
+        #tab-settings .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 12px;
+        }
+        #tab-settings .form-group {
+            min-width: 0;
+        }
+        #tab-settings input, #tab-settings textarea, #tab-settings select {
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+        #adminTestimonialsList {
+            overflow: hidden;
+        }
+        #adminTestimonialsList > div {
+            min-width: 0;
+            word-break: break-word;
+        }
+    </style>
                 </head>
                 <body>
                     <div style="width: 100%;">
@@ -6816,7 +6927,34 @@
                                 display: none !important;
                             }
                         }
-                    </style>
+                        /* تجميل الجداول بفواصل أعمدة واضحة وإصلاح تداخل الإعدادات وأيقونة العين */
+        table th, table td {
+            border-left: 1px solid #e2e8f0 !important;
+            vertical-align: middle;
+        }
+        table th:last-child, table td:last-child {
+            border-left: none !important;
+        }
+        #tab-settings .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 12px;
+        }
+        #tab-settings .form-group {
+            min-width: 0;
+        }
+        #tab-settings input, #tab-settings textarea, #tab-settings select {
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+        #adminTestimonialsList {
+            overflow: hidden;
+        }
+        #adminTestimonialsList > div {
+            min-width: 0;
+            word-break: break-word;
+        }
+    </style>
                 </head>
                 <body>
                     <div class="invoice-wrapper">
@@ -7045,7 +7183,34 @@
                                 #000 8px, #000 11px
                             );
                         }
-                    </style>
+                        /* تجميل الجداول بفواصل أعمدة واضحة وإصلاح تداخل الإعدادات وأيقونة العين */
+        table th, table td {
+            border-left: 1px solid #e2e8f0 !important;
+            vertical-align: middle;
+        }
+        table th:last-child, table td:last-child {
+            border-left: none !important;
+        }
+        #tab-settings .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 12px;
+        }
+        #tab-settings .form-group {
+            min-width: 0;
+        }
+        #tab-settings input, #tab-settings textarea, #tab-settings select {
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+        #adminTestimonialsList {
+            overflow: hidden;
+        }
+        #adminTestimonialsList > div {
+            min-width: 0;
+            word-break: break-word;
+        }
+    </style>
                 </head>
                 <body>
                     <div class="text-center">
