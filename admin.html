@@ -4507,9 +4507,11 @@
             }
 
             // تحديث العدادات والشاشة فوراً
-            updateDashboardStats();
-            filterAdminProducts();
-            showFastSaveToast(docId ? "⚡ تم حفظ التعديلات فوراً!" : "⚡ تم إضافة ونشر الموديل بنجاح!");
+            if (typeof updateDashboardStats === 'function') updateDashboardStats();
+            else if (typeof updateHomeDashboard === 'function') updateHomeDashboard();
+            else if (typeof renderAdminDashboard === 'function') renderAdminDashboard();
+            if (typeof filterAdminProducts === 'function') filterAdminProducts();
+            if (typeof showFastSaveToast === 'function') showFastSaveToast(docId ? "⚡ تم حفظ التعديلات فوراً!" : "⚡ تم إضافة ونشر الموديل بنجاح!");
 
             // المزامنة السحابية في الخلفية
             if (docId) {
