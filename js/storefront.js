@@ -1021,11 +1021,32 @@
   function selectPdColor(name) {
     state.pdSelectedColor = name;
     renderPdVariants();
+    renderPdOfferTiers();
+    recalcQuickOrderSummary();
   }
 
   function selectPdSize(sz) {
     state.pdSelectedSize = sz;
     renderPdVariants();
+    renderPdOfferTiers();
+    recalcQuickOrderSummary();
+  }
+
+  function getAvailableStockForSelection(prod, color, size) {
+    if (!prod) return 0;
+    const totalSt = Math.max(0, Number(prod.stock ?? 0));
+    const vs = prod.variantsStock;
+    if (vs && typeof vs === 'object' && Object.keys(vs).length > 0) {
+      const exactKey = `${size || 'موحد'}|${color || 'قياسي'}`;
+      if (vs[exactKey] !== undefined) return Math.max(0, Number(vs[exactKey]) || 0);
+      if (size) {
+        const sizeKeys = Object.keys(vs).filter(k => k.split('|')[0] === size);
+        if (sizeKeys.length) {
+          return sizeKeys.reduce((s, k) => s + Math.max(0, Number(vs[k]) || 0), 0);
+        }
+      }
+    }
+    return totalSt;
   }
 
   function toggleSizeGuide() {
@@ -1046,6 +1067,10 @@
   function renderPdOfferTiers() {
     const prod = state.currentProduct;
     if (!prod) return;
+    const avail = getAvailableStockForSelection(prod, state.pdSelectedColor, state.pdSelectedSize);
+    if (state.pdSelectedTier > avail && avail > 0) {
+      state.pdSelectedTier = 1;
+    }
     const tiers = getOfferTiers(prod);
     const wrap = document.getElementById('pd-offer-tiers');
 
@@ -1053,10 +1078,11 @@
       const rawTotal = prod.price * t.qty;
       const disc = Math.round(rawTotal * (t.discPct / 100));
       const net = rawTotal - disc;
-      const active = state.pdSelectedTier === t.qty;
+      const disabled = t.qty > avail;
+      const active = !disabled && state.pdSelectedTier === t.qty;
 
       return `
-        <div onclick="selectPdTier(${t.qty})" class="tier-card ${active ? 'active' : 'border-slate-200 bg-white hover:border-slate-300'} border-2 rounded-2xl p-3 cursor-pointer transition flex items-center justify-between gap-2">
+        <div onclick="${disabled ? `showToast('⚠️ المتاح بالمخزون (${avail}) قطعة فقط', 'error')` : `selectPdTier(${t.qty})`}" class="tier-card ${disabled ? 'opacity-50 bg-slate-100 border-slate-200 cursor-not-allowed' : (active ? 'active' : 'border-slate-200 bg-white hover:border-slate-300 cursor-pointer')} border-2 rounded-2xl p-3 transition flex items-center justify-between gap-2">
           <div class="flex items-center gap-2.5">
             <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center ${active ? 'border-brand' : 'border-slate-300'}">
               ${active ? '<div class="w-2.5 h-2.5 rounded-full bg-brand"></div>' : ''}
@@ -1214,6 +1240,30 @@
     const db = typeof getBayanDb === 'function' ? getBayanDb() : null;
     if (!db) throw new Error('تعذر الاتصال بقاعدة البيانات السحابية');
     await db.collection('orders').doc(orderPayload.id).set(orderPayload);
+    // خصم الرصيد فوراً في Firestore حتى يتطابق المتجر مع لوحة التحكم
+    if (Array.isArray(orderPayload.items)) {
+      for (const it of orderPayload.items) {
+        const p = state.products.find(x => x.id === it.productId);
+        if (!p) continue;
+        const reqQty = Math.max(1, Number(it.qty) || 1);
+        const newStock = Math.max(0, Number(p.stock || 0) - reqQty);
+        const updateObj = {
+          stock: newStock,
+          stockQty: newStock,
+          inStock: newStock > 0,
+          updatedAt: new Date().toISOString()
+        };
+        if (p.variantsStock && typeof p.variantsStock === 'object') {
+          const vCopy = { ...p.variantsStock };
+          const exactKey = `${it.size || 'موحد'}|${it.color || 'قياسي'}`;
+          if (vCopy[exactKey] !== undefined) {
+            vCopy[exactKey] = Math.max(0, (Number(vCopy[exactKey]) || 0) - reqQty);
+            updateObj.variantsStock = vCopy;
+          }
+        }
+        db.collection('products').doc(p.id).set(updateObj, { merge: true }).catch(() => {});
+      }
+    }
     try {
       if (typeof BayanIDB !== 'undefined' && typeof BayanIDB.setOrder === 'function') {
         await BayanIDB.setOrder(orderPayload);
@@ -1480,11 +1530,25 @@
   }
 
   async function addItemToCart(prod, color, size, qty) {
+    const avail = getAvailableStockForSelection(prod, color, size);
+    if (avail <= 0) {
+      showToast('عذراً، هذا المقاس/اللون غير متوفر حالياً بالمخزون', 'error');
+      return;
+    }
     const key = `${prod.id}__${color}__${size}`;
     const existing = state.cart.find(c => c.key === key);
     if (existing) {
-      existing.qty += qty;
+      if (existing.qty + qty > avail) {
+        existing.qty = avail;
+        showToast(`⚠️ أقصى كمية متاحة بالمخزون من هذا الصنف هي (${avail}) قطعة فقط`, 'error');
+      } else {
+        existing.qty += qty;
+      }
     } else {
+      const cappedQty = Math.min(qty, avail);
+      if (qty > avail) {
+        showToast(`⚠️ أقصى كمية متاحة بالمخزون هي (${avail}) قطعة فقط`, 'error');
+      }
       state.cart.push({
         key,
         productId: prod.id,
@@ -1495,7 +1559,7 @@
         image: (prod.images && prod.images[0]) || '',
         color: color || '',
         size: size || '',
-        qty,
+        qty: cappedQty,
         unitPrice: prod.price
       });
     }
@@ -1574,6 +1638,17 @@
   async function updateCartQty(key, delta) {
     const item = state.cart.find(c => c.key === key);
     if (!item) return;
+    if (delta > 0) {
+      const prod = state.products.find(p => p.id === item.productId);
+      const avail = prod ? getAvailableStockForSelection(prod, item.color, item.size) : item.qty;
+      if (item.qty + delta > avail) {
+        item.qty = Math.max(1, avail);
+        showToast(`⚠️ أقصى كمية متاحة بالمخزون من هذا الصنف هي (${avail}) قطعة فقط!`, 'error');
+        await saveCart();
+        renderCartDrawer();
+        return;
+      }
+    }
     item.qty += delta;
     if (item.qty <= 0) {
       state.cart = state.cart.filter(c => c.key !== key);
