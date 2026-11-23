@@ -1228,9 +1228,33 @@
         #tab-settings .form-group {
             min-width: 0;
         }
+        #tab-settings > div {
+            display: grid !important;
+            grid-template-columns: 1fr !important;
+            gap: 18px !important;
+            max-width: 980px;
+            margin: 0 auto;
+        }
         #tab-settings input, #tab-settings textarea, #tab-settings select {
+            width: 100%;
             max-width: 100%;
             box-sizing: border-box;
+        }
+        #tab-settings div[style*="position: relative"] > button[onclick*="togglePinVisibility"] {
+            left: 10px !important;
+            right: auto !important;
+            top: 50% !important;
+            transform: translateY(-50%) !important;
+            z-index: 3;
+        }
+        #tab-settings input[id*="Pin"] {
+            padding-left: 38px !important;
+        }
+        .admin-chip-btn[data-order-chip="all"] {
+            background: linear-gradient(135deg, #f97316, #ea580c) !important;
+            color: #ffffff !important;
+            border-color: #ea580c !important;
+            font-weight: 900 !important;
         }
         #adminTestimonialsList {
             overflow: hidden;
@@ -2109,38 +2133,16 @@
                             </small>
                         </div>
 
-                        <!-- حقول أسعار المحافظات -->
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label style="font-size: 0.82rem;">🏛️ القاهرة والجيزة (ج.م):</label>
-                                <input type="number" id="setShipCairoGiza" class="form-control" value="40" required min="0">
+                        <!-- مناطق الشحن المخصصة (يضيفها التاجر بنفسه بالمنطقة/الحي والسعر) -->
+                        <div style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 12px; padding: 14px;">
+                            <div style="font-weight: 900; color: #0f172a; font-size: 0.9rem; margin-bottom: 6px;">📍 مناطق الشحن والتوصيل الخاصة بك (المحافظة / المنطقة / الحي):</div>
+                            <small style="display: block; color: #64748b; font-size: 0.78rem; margin-bottom: 10px;">أضف فقط المناطق والأحياء التي توصل لها (مثال: القليوبية - بنها، القاهرة - مدينة نصر) ليظهر للعميل في المتجر مناطقك فقط.</small>
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px;">
+                                <input type="text" id="inpNewShippingZoneName" class="form-control" placeholder="اسم المنطقة / الحي (مثال: القليوبية - بنها)" style="flex: 2; min-width: 180px;">
+                                <input type="number" id="inpNewShippingZoneFee" class="form-control" placeholder="سعر الشحن (ج.م)" min="0" style="flex: 1; min-width: 110px;">
+                                <button type="button" onclick="addCustomShippingZone()" class="btn-primary-action" style="background: #0284c7; border-color: #0284c7;">➕ إضافة منطقة</button>
                             </div>
-                            <div class="form-group">
-                                <label style="font-size: 0.82rem;">🌊 الإسكندرية والبحيرة (ج.م):</label>
-                                <input type="number" id="setShipAlex" class="form-control" value="50" required min="0">
-                            </div>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label style="font-size: 0.82rem;">🌾 الدلتا والوجه البحري (المنصورة، طنطا، الشرقية...):</label>
-                                <input type="number" id="setShipDelta" class="form-control" value="50" required min="0">
-                            </div>
-                            <div class="form-group">
-                                <label style="font-size: 0.82rem;">⚓ مدن القناة (بورسعيد، الإسماعيلية، السويس):</label>
-                                <input type="number" id="setShipCanal" class="form-control" value="55" required min="0">
-                            </div>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label style="font-size: 0.82rem;">☀️ محافظات الصعيد (أسيوط، سوهاج، قنا، الأقصر...):</label>
-                                <input type="number" id="setShipUpperEgypt" class="form-control" value="65" required min="0">
-                            </div>
-                            <div class="form-group">
-                                <label style="font-size: 0.82rem;">🏜️ المحافظات الحدودية (مطروح، سيناء، البحر الأحمر...):</label>
-                                <input type="number" id="setShipRemote" class="form-control" value="80" required min="0">
-                            </div>
+                            <div id="customShippingZonesList" style="display: flex; flex-direction: column; gap: 6px;"></div>
                         </div>
 
                         <div class="form-row">
@@ -5550,9 +5552,33 @@
         #tab-settings .form-group {
             min-width: 0;
         }
+        #tab-settings > div {
+            display: grid !important;
+            grid-template-columns: 1fr !important;
+            gap: 18px !important;
+            max-width: 980px;
+            margin: 0 auto;
+        }
         #tab-settings input, #tab-settings textarea, #tab-settings select {
+            width: 100%;
             max-width: 100%;
             box-sizing: border-box;
+        }
+        #tab-settings div[style*="position: relative"] > button[onclick*="togglePinVisibility"] {
+            left: 10px !important;
+            right: auto !important;
+            top: 50% !important;
+            transform: translateY(-50%) !important;
+            z-index: 3;
+        }
+        #tab-settings input[id*="Pin"] {
+            padding-left: 38px !important;
+        }
+        .admin-chip-btn[data-order-chip="all"] {
+            background: linear-gradient(135deg, #f97316, #ea580c) !important;
+            color: #ffffff !important;
+            border-color: #ea580c !important;
+            font-weight: 900 !important;
         }
         #adminTestimonialsList {
             overflow: hidden;
@@ -5716,9 +5742,33 @@
         #tab-settings .form-group {
             min-width: 0;
         }
+        #tab-settings > div {
+            display: grid !important;
+            grid-template-columns: 1fr !important;
+            gap: 18px !important;
+            max-width: 980px;
+            margin: 0 auto;
+        }
         #tab-settings input, #tab-settings textarea, #tab-settings select {
+            width: 100%;
             max-width: 100%;
             box-sizing: border-box;
+        }
+        #tab-settings div[style*="position: relative"] > button[onclick*="togglePinVisibility"] {
+            left: 10px !important;
+            right: auto !important;
+            top: 50% !important;
+            transform: translateY(-50%) !important;
+            z-index: 3;
+        }
+        #tab-settings input[id*="Pin"] {
+            padding-left: 38px !important;
+        }
+        .admin-chip-btn[data-order-chip="all"] {
+            background: linear-gradient(135deg, #f97316, #ea580c) !important;
+            color: #ffffff !important;
+            border-color: #ea580c !important;
+            font-weight: 900 !important;
         }
         #adminTestimonialsList {
             overflow: hidden;
@@ -5905,9 +5955,33 @@
         #tab-settings .form-group {
             min-width: 0;
         }
+        #tab-settings > div {
+            display: grid !important;
+            grid-template-columns: 1fr !important;
+            gap: 18px !important;
+            max-width: 980px;
+            margin: 0 auto;
+        }
         #tab-settings input, #tab-settings textarea, #tab-settings select {
+            width: 100%;
             max-width: 100%;
             box-sizing: border-box;
+        }
+        #tab-settings div[style*="position: relative"] > button[onclick*="togglePinVisibility"] {
+            left: 10px !important;
+            right: auto !important;
+            top: 50% !important;
+            transform: translateY(-50%) !important;
+            z-index: 3;
+        }
+        #tab-settings input[id*="Pin"] {
+            padding-left: 38px !important;
+        }
+        .admin-chip-btn[data-order-chip="all"] {
+            background: linear-gradient(135deg, #f97316, #ea580c) !important;
+            color: #ffffff !important;
+            border-color: #ea580c !important;
+            font-weight: 900 !important;
         }
         #adminTestimonialsList {
             overflow: hidden;
@@ -6489,7 +6563,7 @@
                 db.collection('settings').doc('shipping').get().then(doc => {
                     if (doc.exists) {
                         const s = doc.data();
-                        if (s.cairoGiza !== undefined && document.getElementById('setShipCairoGiza')) document.getElementById('setShipCairoGiza').value = s.cairoGiza;
+                        if (Array.isArray(s.rates)) { customShippingZones = s.rates; renderCustomShippingZones(); }
                         if (s.alex !== undefined && document.getElementById('setShipAlex')) document.getElementById('setShipAlex').value = s.alex;
                         if (s.delta !== undefined && document.getElementById('setShipDelta')) document.getElementById('setShipDelta').value = s.delta;
                         if (s.canal !== undefined && document.getElementById('setShipCanal')) document.getElementById('setShipCanal').value = s.canal;
@@ -6594,15 +6668,46 @@
             }
         }
 
+        let customShippingZones = [];
+
+        function renderCustomShippingZones() {
+            const wrap = document.getElementById('customShippingZonesList');
+            if (!wrap) return;
+            if (!customShippingZones.length) {
+                wrap.innerHTML = '<div style="font-size:0.8rem;color:#64748b;">لم تُضف مناطق مخصصة بعد — سيتم استخدام سعر التوصيل الافتراضي.</div>';
+                return;
+            }
+            wrap.innerHTML = customShippingZones.map((z, idx) => `
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:white;border:1px solid #e2e8f0;border-radius:10px;padding:8px 12px;">
+                    <span style="font-weight:800;color:#0f172a;font-size:0.86rem;">📍 ${z.name}</span>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <span style="font-weight:900;color:#059669;font-size:0.84rem;">${z.fee} ج.م</span>
+                        <button type="button" onclick="removeCustomShippingZone(${idx})" style="background:#fee2e2;color:#dc2626;border:none;border-radius:6px;padding:3px 8px;font-weight:800;cursor:pointer;font-size:0.75rem;">حذف</button>
+                    </div>
+                </div>`).join('');
+        }
+
+        function addCustomShippingZone() {
+            const nameEl = document.getElementById('inpNewShippingZoneName');
+            const feeEl = document.getElementById('inpNewShippingZoneFee');
+            const name = (nameEl?.value || '').trim();
+            const fee = Number(feeEl?.value || 0);
+            if (!name) return alert('اكتب اسم المنطقة أو الحي أولاً');
+            customShippingZones.push({ id: 'zone_' + Date.now(), name, fee: isNaN(fee) ? 0 : fee });
+            if (nameEl) nameEl.value = '';
+            if (feeEl) feeEl.value = '';
+            renderCustomShippingZones();
+        }
+
+        function removeCustomShippingZone(idx) {
+            customShippingZones.splice(idx, 1);
+            renderCustomShippingZones();
+        }
+
         function saveShippingSettings(e) {
             e.preventDefault();
             const shippingData = {
-                cairoGiza: Number(document.getElementById('setShipCairoGiza').value) || 40,
-                alex: Number(document.getElementById('setShipAlex').value) || 50,
-                delta: Number(document.getElementById('setShipDelta').value) || 50,
-                canal: Number(document.getElementById('setShipCanal').value) || 55,
-                upperEgypt: Number(document.getElementById('setShipUpperEgypt').value) || 65,
-                remote: Number(document.getElementById('setShipRemote').value) || 80,
+                rates: customShippingZones,
                 defaultFee: Number(document.getElementById('setShipDefault').value) || 50,
                 freeShippingThreshold: Number(document.getElementById('setFreeShippingThreshold').value) || 0,
                 estimatedTime: document.getElementById('setDeliveryEstimatedTime').value.trim() || 'خلال 24 إلى 48 ساعة',
@@ -6943,9 +7048,33 @@
         #tab-settings .form-group {
             min-width: 0;
         }
+        #tab-settings > div {
+            display: grid !important;
+            grid-template-columns: 1fr !important;
+            gap: 18px !important;
+            max-width: 980px;
+            margin: 0 auto;
+        }
         #tab-settings input, #tab-settings textarea, #tab-settings select {
+            width: 100%;
             max-width: 100%;
             box-sizing: border-box;
+        }
+        #tab-settings div[style*="position: relative"] > button[onclick*="togglePinVisibility"] {
+            left: 10px !important;
+            right: auto !important;
+            top: 50% !important;
+            transform: translateY(-50%) !important;
+            z-index: 3;
+        }
+        #tab-settings input[id*="Pin"] {
+            padding-left: 38px !important;
+        }
+        .admin-chip-btn[data-order-chip="all"] {
+            background: linear-gradient(135deg, #f97316, #ea580c) !important;
+            color: #ffffff !important;
+            border-color: #ea580c !important;
+            font-weight: 900 !important;
         }
         #adminTestimonialsList {
             overflow: hidden;
@@ -7199,9 +7328,33 @@
         #tab-settings .form-group {
             min-width: 0;
         }
+        #tab-settings > div {
+            display: grid !important;
+            grid-template-columns: 1fr !important;
+            gap: 18px !important;
+            max-width: 980px;
+            margin: 0 auto;
+        }
         #tab-settings input, #tab-settings textarea, #tab-settings select {
+            width: 100%;
             max-width: 100%;
             box-sizing: border-box;
+        }
+        #tab-settings div[style*="position: relative"] > button[onclick*="togglePinVisibility"] {
+            left: 10px !important;
+            right: auto !important;
+            top: 50% !important;
+            transform: translateY(-50%) !important;
+            z-index: 3;
+        }
+        #tab-settings input[id*="Pin"] {
+            padding-left: 38px !important;
+        }
+        .admin-chip-btn[data-order-chip="all"] {
+            background: linear-gradient(135deg, #f97316, #ea580c) !important;
+            color: #ffffff !important;
+            border-color: #ea580c !important;
+            font-weight: 900 !important;
         }
         #adminTestimonialsList {
             overflow: hidden;
