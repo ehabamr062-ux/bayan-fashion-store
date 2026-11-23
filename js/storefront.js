@@ -95,8 +95,21 @@
     return `${n.toLocaleString('en-US')} ج.م`;
   }
 
-  function generateOrderId() {
-    return `ORD-${Date.now().toString().slice(-6)}`;
+  async function generateNextOrderId() {
+    try {
+      const db = typeof getBayanDb === 'function' ? getBayanDb() : null;
+      if (db) {
+        const snap = await db.collection('orders').get();
+        let maxNum = snap.size;
+        snap.forEach(doc => {
+          const d = doc.data() || {};
+          const n = parseInt(d.orderNumber || d.id || doc.id, 10);
+          if (!isNaN(n) && n > maxNum) maxNum = n;
+        });
+        return String(maxNum + 1);
+      }
+    } catch (_) { }
+    return '1';
   }
 
   function handleImgError(img, label = '') {
@@ -1240,12 +1253,13 @@
     }
 
     const calc = getQuickOrderCalculation();
-    const orderId = generateOrderId();
+    const orderId = await generateNextOrderId();
     const nowIso = new Date().toISOString();
 
     const order = {
       shop_id: state.shopId,
       id: orderId,
+      orderNumber: Number(orderId) || 1,
       customerName: name,
       phone1,
       phone2,
@@ -1669,12 +1683,13 @@
     }
 
     const calc = getCartCheckoutCalculation();
-    const orderId = generateOrderId();
+    const orderId = await generateNextOrderId();
     const nowIso = new Date().toISOString();
 
     const order = {
       shop_id: state.shopId,
       id: orderId,
+      orderNumber: Number(orderId) || 1,
       customerName: name,
       phone1,
       phone2,
@@ -1776,7 +1791,8 @@
       if (!db) throw new Error('offline');
 
       const foundMap = new Map();
-      const qUpper = q.toUpperCase();
+      const qClean = q.replace(/^#/, '').trim();
+      const qUpper = qClean.toUpperCase();
 
       // Direct doc lookup by Order ID
       const byIdDoc = await db.collection('orders').doc(qUpper).get();

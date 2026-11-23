@@ -5069,6 +5069,16 @@
                         ...doc.data()
                     });
                 });
+                adminOrdersList.sort((a, b) => {
+                    const ta = new Date(a.date || a.createdAt || 0).getTime() || 0;
+                    const tb = new Date(b.date || b.createdAt || 0).getTime() || 0;
+                    return ta - tb;
+                });
+                adminOrdersList.forEach((o, idx) => {
+                    if (!/^\d+$/.test(String(o.id || ''))) {
+                        o.id = String(o.orderNumber || (idx + 1));
+                    }
+                });
 
                 isInitialOrdersLoad = false;
 
