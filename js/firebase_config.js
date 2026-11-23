@@ -3,13 +3,13 @@
 // ==============================================================================
 
 const BAYAN_FIREBASE_CONFIG = {
-    apiKey: "AIzaSyD32yfJnw5Ubjctt-1PgB_Z5uQ9xuv2MUU",
-    authDomain: "bayan-store-fa278.firebaseapp.com",
-    projectId: "bayan-store-fa278",
-    storageBucket: "bayan-store-fa278.firebasestorage.app",
-    messagingSenderId: "1053152056697",
-    appId: "1:1053152056697:web:19bbbaab6d5dd7c1fe8ba8",
-    measurementId: "G-4GHTQSY4XW"
+    apiKey: "AIzaSyDpj0lpvZ5zObBrsgCqX6Si8Gd5IHLA-Og",
+    authDomain: "bayan-fashion-live.firebaseapp.com",
+    projectId: "bayan-fashion-live",
+    storageBucket: "bayan-fashion-live.firebasestorage.app",
+    messagingSenderId: "459605231616",
+    appId: "1:459605231616:web:6e720d9e1e969a3e7bf0e5",
+    measurementId: "G-J9SH3PXS2S"
 };
 
 // ==============================================================================
