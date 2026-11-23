@@ -2262,7 +2262,7 @@
                 <button type="button" class="btn-modal-close" onclick="closeProductModal()">✕</button>
             </div>
 
-            <form id="productForm" class="modal-form" onsubmit="saveProductItem(event)">
+            <form id="productForm" class="modal-form" onsubmit="saveProductItem(event)" novalidate>
                 <input type="hidden" id="editProductId">
 
                 <div class="form-row">
@@ -2574,7 +2574,7 @@
                     <button type="button" class="btn-primary-action" id="btnSaveAndAddAnother" onclick="saveProductItem(event, true)" style="background: #0284c7; border-color: #0284c7;" title="يحفظ هذا الموديل ويفرغ النموذج لتبدأ بإدخال الموديل التالي فوراً (Ctrl + Shift + Enter)">
                         <span>⚡ حفظ ومتابعة إضافة التالي (Ctrl+Shift+Enter)</span>
                     </button>
-                    <button type="submit" class="btn-primary-action" title="حفظ وإغلاق (Ctrl + Enter)">
+                    <button type="submit" onclick="saveProductItem(event, false)" class="btn-primary-action" title="حفظ وإغلاق (Ctrl + Enter)">
                         <span id="btnSubmitProdText">حفظ ونشر على المتجر 🚀</span>
                     </button>
                 </div>
@@ -4338,8 +4338,13 @@
         }
 
         // حفظ الصنف في فايربيس مع ميزة الحفظ المتفائل اللحظي 0ms والإدخال السريع
+        let _isSavingProductLock = false;
         function saveProductItem(e, keepOpen = false) {
             if (e && e.preventDefault) e.preventDefault();
+            if (_isSavingProductLock) return;
+            _isSavingProductLock = true;
+            setTimeout(() => { _isSavingProductLock = false; }, 600);
+            try {
             const db = getBayanDb();
             if (!db) {
                 alert("⚠️ جاري الاتصال بالسحابة، يرجى المحاولة بعد قليل");
@@ -4539,6 +4544,10 @@
                 }, 80);
             } else {
                 closeProductModal();
+            }
+            } catch (saveErr) {
+                console.error("saveProductItem error:", saveErr);
+                alert("❌ حدث خطأ أثناء حفظ الموديل: " + (saveErr && saveErr.message ? saveErr.message : saveErr));
             }
         }
 
