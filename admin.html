@@ -1581,6 +1581,37 @@
                 </div>
             </div>
 
+            <!-- 4.5 إحصائيات الأكثر مبيعاً (أكثر الأصناف والمناطق طلباً) -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px; margin-bottom: 24px;">
+                <!-- أكثر الأصناف طلباً -->
+                <div style="background: white; border-radius: var(--radius-md); border: 1.5px solid #e2e8f0; padding: 20px; box-shadow: var(--shadow-card);">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 10px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 1.35rem;">🏆</span>
+                            <h3 style="font-size: 1.05rem; font-weight: 950; color: #0f172a; margin: 0;">أكثر الأصناف والموديلات طلباً</h3>
+                        </div>
+                        <span style="background: #fef3c7; color: #b45309; padding: 3px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 900;">Top 5 🔥</span>
+                    </div>
+                    <div id="homeTopProductsContainer" style="display: flex; flex-direction: column; gap: 10px;">
+                        <div style="color: #64748b; font-size: 0.85rem; text-align: center; padding: 18px 0;">لا توجد بيانات مبيعات كافية بعد</div>
+                    </div>
+                </div>
+
+                <!-- أكثر المناطق والمحافظات طلباً -->
+                <div style="background: white; border-radius: var(--radius-md); border: 1.5px solid #e2e8f0; padding: 20px; box-shadow: var(--shadow-card);">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 10px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 1.35rem;">📍</span>
+                            <h3 style="font-size: 1.05rem; font-weight: 950; color: #0f172a; margin: 0;">أكثر المناطق والمحافظات طلباً</h3>
+                        </div>
+                        <span style="background: #dcfce7; color: #166534; padding: 3px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 900;">توزيع جغرافي 🌍</span>
+                    </div>
+                    <div id="homeTopRegionsContainer" style="display: flex; flex-direction: column; gap: 10px;">
+                        <div style="color: #64748b; font-size: 0.85rem; text-align: center; padding: 18px 0;">لا توجد بيانات مناطق كافية بعد</div>
+                    </div>
+                </div>
+            </div>
+
             <!-- 5. جدول أحدث الطلبات الواردة (Recent Orders Feed) -->
             <div style="background: white; border-radius: var(--radius-md); border: 1.5px solid var(--border-color); padding: 22px; box-shadow: var(--shadow-card);">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 12px; flex-wrap: wrap; gap: 10px;">
@@ -3094,8 +3125,82 @@
             const elActiveCoupons = document.getElementById('homeStatActiveCoupons');
             if (elActiveCoupons) elActiveCoupons.textContent = `${activeCouponsCount} كود خصم`;
 
-            // رسم جدول أحدث الطلبات الحية
+            // رسم جدول أحدث الطلبات الحية + إحصائيات الأكثر مبيعاً والمناطق
+            renderHomeBestSellersStats();
             renderHomeRecentOrders();
+        }
+
+        function renderHomeBestSellersStats() {
+            const prodBox = document.getElementById('homeTopProductsContainer');
+            const regBox = document.getElementById('homeTopRegionsContainer');
+            if (!prodBox || !regBox) return;
+
+            const validOrders = (adminOrdersList || []).filter(o => o && o.status !== 'cancelled');
+            if (!validOrders.length) {
+                prodBox.innerHTML = '<div style="color:#64748b;font-size:0.84rem;text-align:center;padding:18px 0;">لا توجد طلبات مسجلة بعد لعرض الأكثر مبيعاً</div>';
+                regBox.innerHTML = '<div style="color:#64748b;font-size:0.84rem;text-align:center;padding:18px 0;">لا توجد طلبات مسجلة بعد لعرض أكثر المناطق طلباً</div>';
+                return;
+            }
+
+            const prodMap = new Map();
+            const regMap = new Map();
+
+            validOrders.forEach(o => {
+                const city = String(o.city || 'غير محدد').trim() || 'غير محدد';
+                const ordTotal = Number(o.grandTotal) || 0;
+                const rPrev = regMap.get(city) || { name: city, count: 0, rev: 0 };
+                rPrev.count += 1;
+                rPrev.rev += ordTotal;
+                regMap.set(city, rPrev);
+
+                (o.items || []).forEach(it => {
+                    const pName = String(it.name || 'صنف').trim();
+                    const q = Number(it.qty) || 1;
+                    const lineRev = (Number(it.price || it.unitPrice) || 0) * q;
+                    const pPrev = prodMap.get(pName) || { name: pName, qty: 0, rev: 0 };
+                    pPrev.qty += q;
+                    pPrev.rev += lineRev;
+                    prodMap.set(pName, pPrev);
+                });
+            });
+
+            const topProds = Array.from(prodMap.values()).sort((a, b) => b.qty - a.qty).slice(0, 5);
+            const maxProdQty = topProds[0]?.qty || 1;
+            prodBox.innerHTML = topProds.map((p, i) => {
+                const pct = Math.max(12, Math.round((p.qty / maxProdQty) * 100));
+                return `
+                    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:9px 12px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:5px;">
+                            <div style="display:flex;align-items:center;gap:8px;min-width:0;">
+                                <span style="background:#0f172a;color:#fff;font-weight:900;font-size:0.74rem;padding:2px 7px;border-radius:6px;">#${i + 1}</span>
+                                <span style="font-weight:900;font-size:0.86rem;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.name}</span>
+                            </div>
+                            <div style="font-size:0.78rem;font-weight:900;color:#059669;white-space:nowrap;">${p.qty} قطعة (${Math.round(p.rev).toLocaleString('ar-EG')} ج.م)</div>
+                        </div>
+                        <div style="height:6px;background:#e2e8f0;border-radius:999px;overflow:hidden;">
+                            <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#059669,#10b981);border-radius:999px;"></div>
+                        </div>
+                    </div>`;
+            }).join('');
+
+            const topRegs = Array.from(regMap.values()).sort((a, b) => b.count - a.count).slice(0, 5);
+            const maxRegCount = topRegs[0]?.count || 1;
+            regBox.innerHTML = topRegs.map((r, i) => {
+                const pct = Math.max(12, Math.round((r.count / maxRegCount) * 100));
+                return `
+                    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:9px 12px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:5px;">
+                            <div style="display:flex;align-items:center;gap:8px;min-width:0;">
+                                <span style="background:#0284c7;color:#fff;font-weight:900;font-size:0.74rem;padding:2px 7px;border-radius:6px;">#${i + 1}</span>
+                                <span style="font-weight:900;font-size:0.86rem;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${r.name}</span>
+                            </div>
+                            <div style="font-size:0.78rem;font-weight:900;color:#0284c7;white-space:nowrap;">${r.count} طلب (${Math.round(r.rev).toLocaleString('ar-EG')} ج.م)</div>
+                        </div>
+                        <div style="height:6px;background:#e2e8f0;border-radius:999px;overflow:hidden;">
+                            <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#0284c7,#38bdf8);border-radius:999px;"></div>
+                        </div>
+                    </div>`;
+            }).join('');
         }
 
         // عرض أحدث الطلبات الواردة في الداشبورد مع الإجراءات الفورية
@@ -4274,42 +4379,54 @@
             `).join('');
         }
 
+        // ضغط الصور الذكي التلقائي (WebP/JPEG ~30-45KB) لحماية الـ 1 جيجا المجانية في Firebase
+        function compressImageDataUrl(rawDataUrl, maxW = 640, quality = 0.72) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = function () {
+                    const canvas = document.createElement('canvas');
+                    let w = img.width;
+                    let h = img.height;
+                    if (w > maxW) {
+                        h = Math.round((maxW / w) * h);
+                        w = maxW;
+                    }
+                    canvas.width = w;
+                    canvas.height = h;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, w, h);
+                    let out = canvas.toDataURL('image/webp', quality);
+                    if (!out || !out.startsWith('data:image/webp')) {
+                        out = canvas.toDataURL('image/jpeg', quality);
+                    }
+                    resolve(out);
+                };
+                img.onerror = function () { resolve(rawDataUrl); };
+                img.src = rawDataUrl;
+            });
+        }
+
         // إدارة ورفع الصور المتعددة بضغط فائق وسريع
         function handleMultipleImagesUpload(e) {
             const files = Array.from(e.target?.files || e.files || []);
             if (!files.length) return;
 
             let processed = 0;
+            let totalKb = 0;
             files.forEach(file => {
                 const reader = new FileReader();
-                reader.onload = function(evt) {
-                    const img = new Image();
-                    img.onload = function() {
-                        const canvas = document.createElement('canvas');
-                        const maxW = 680;
-                        let w = img.width;
-                        let h = img.height;
-                        if (w > maxW) {
-                            h = (maxW / w) * h;
-                            w = maxW;
-                        }
-                        canvas.width = w;
-                        canvas.height = h;
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0, w, h);
-                        // جودة 0.74 تضمن صورة فائقة الوضوح بحجم خفيف جداً (35-50KB) لسرعة لا تضاهى
-                        const compressed = canvas.toDataURL('image/jpeg', 0.74);
-                        if (uploadedImagesList.length < 6) {
-                            uploadedImagesList.push(compressed);
-                            imageColorsList.push('');
-                        }
-                        processed++;
-                        if (processed === files.length) {
-                            renderAdminGallery();
-                            showFastSaveToast(`⚡ تم تجهيز ${files.length} صورة بنجاح!`);
-                        }
-                    };
-                    img.src = evt.target.result;
+                reader.onload = async function(evt) {
+                    const compressed = await compressImageDataUrl(evt.target.result, 640, 0.72);
+                    totalKb += Math.round((compressed.length * 3) / 4 / 1024);
+                    if (uploadedImagesList.length < 6) {
+                        uploadedImagesList.push(compressed);
+                        imageColorsList.push('');
+                    }
+                    processed++;
+                    if (processed === files.length) {
+                        renderAdminGallery();
+                        showFastSaveToast(`⚡ تم ضغط وتجهيز ${files.length} صورة (~${totalKb}KB فقط) لتوفير مساحة السحابة!`);
+                    }
                 };
                 reader.readAsDataURL(file);
             });
@@ -8380,7 +8497,10 @@ ${itemsSummary}
 
             if (fileInput && fileInput.files && fileInput.files[0]) {
                 const reader = new FileReader();
-                reader.onload = (ev) => saveDoc(ev.target.result);
+                reader.onload = async (ev) => {
+                    const compressed = await compressImageDataUrl(ev.target.result, 600, 0.72);
+                    saveDoc(compressed);
+                };
                 reader.readAsDataURL(fileInput.files[0]);
             } else {
                 saveDoc(urlInput);
