@@ -23,13 +23,13 @@
   ];
 
   const STATUS_MAP = {
-    new:        { label: 'جديد — قيد المراجعة', idx: 0, cls: 'bg-amber-100 text-amber-800' },
-    pending:    { label: 'جديد — قيد المراجعة', idx: 0, cls: 'bg-amber-100 text-amber-800' },
-    processing: { label: 'قيد التجهيز',         idx: 1, cls: 'bg-sky-100 text-sky-800' },
-    confirmed:  { label: 'تم التأكيد والتجهيز', idx: 1, cls: 'bg-emerald-100 text-emerald-800' },
-    shipped:    { label: 'تم الشحن مع المندوب', idx: 2, cls: 'bg-violet-100 text-violet-800' },
-    delivered:  { label: 'تم التسليم بنجاح',    idx: 3, cls: 'bg-emerald-100 text-emerald-800' },
-    cancelled:  { label: 'ملغي',                idx: -1, cls: 'bg-rose-100 text-rose-800' }
+    new: { label: 'جديد — قيد المراجعة', idx: 0, cls: 'bg-amber-100 text-amber-800' },
+    pending: { label: 'جديد — قيد المراجعة', idx: 0, cls: 'bg-amber-100 text-amber-800' },
+    processing: { label: 'قيد التجهيز', idx: 1, cls: 'bg-sky-100 text-sky-800' },
+    confirmed: { label: 'تم التأكيد والتجهيز', idx: 1, cls: 'bg-emerald-100 text-emerald-800' },
+    shipped: { label: 'تم الشحن مع المندوب', idx: 2, cls: 'bg-violet-100 text-violet-800' },
+    delivered: { label: 'تم التسليم بنجاح', idx: 3, cls: 'bg-emerald-100 text-emerald-800' },
+    cancelled: { label: 'ملغي', idx: -1, cls: 'bg-rose-100 text-rose-800' }
   };
 
   const state = {
@@ -581,10 +581,9 @@
     wrap.innerHTML = categories.map(cat => {
       const active = state.activeCategory === cat;
       return `
-        <button onclick="filterByCategory('${escapeHTML(cat)}')" class="px-4 py-2 rounded-xl text-xs sm:text-sm font-extrabold transition shrink-0 ${
-          active
-            ? 'bg-slate-900 text-white shadow-sm'
-            : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-400'
+        <button onclick="filterByCategory('${escapeHTML(cat)}')" class="px-4 py-2 rounded-xl text-xs sm:text-sm font-extrabold transition shrink-0 ${active
+          ? 'bg-slate-900 text-white shadow-sm'
+          : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-400'
         }">
           ${escapeHTML(cat)}
         </button>`;
@@ -973,8 +972,7 @@
       document.getElementById('pd-colors-list').innerHTML = colors.map(c => {
         const active = state.pdSelectedColor === c.name;
         return `
-          <button type="button" onclick="selectPdColor('${escapeHTML(c.name)}')" class="flex items-center gap-2 px-3 py-1.5 rounded-xl border-2 text-xs font-bold transition ${
-            active ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-400'
+          <button type="button" onclick="selectPdColor('${escapeHTML(c.name)}')" class="flex items-center gap-2 px-3 py-1.5 rounded-xl border-2 text-xs font-bold transition ${active ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-400'
           }">
             <span class="w-4 h-4 rounded-full border border-slate-300 shadow-inner" style="background:${escapeHTML(c.hex || '#111827')}"></span>
             <span>${escapeHTML(c.name)}</span>
@@ -984,6 +982,7 @@
 
     const sizesWrap = document.getElementById('pd-sizes-wrap');
     const sizes = prod.sizes || [];
+    const vStock = prod.variantsStock && typeof prod.variantsStock === 'object' ? prod.variantsStock : null;
     if (!sizes.length) {
       sizesWrap.classList.add('hidden');
     } else {
@@ -991,9 +990,14 @@
       document.getElementById('pd-selected-size-name').textContent = state.pdSelectedSize;
       document.getElementById('pd-sizes-list').innerHTML = sizes.map(sz => {
         const active = state.pdSelectedSize === sz;
+        let outOfSz = false;
+        if (vStock) {
+          const keys = Object.keys(vStock).filter(k => k.includes(sz));
+          if (keys.length && keys.every(k => Number(vStock[k] || 0) <= 0)) outOfSz = true;
+        }
         return `
-          <button type="button" onclick="selectPdSize('${escapeHTML(sz)}')" class="min-w-[46px] px-3 py-2 rounded-xl border-2 text-xs sm:text-sm font-extrabold transition ${
-            active ? 'border-brand bg-rose-50 text-brand' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-400'
+          <button type="button" ${outOfSz ? 'disabled' : `onclick="selectPdSize('${escapeHTML(sz)}')"`} class="min-w-[46px] px-3 py-2 rounded-xl border-2 text-xs sm:text-sm font-extrabold transition ${
+            outOfSz ? 'border-slate-100 bg-slate-100 text-slate-400 line-through cursor-not-allowed' : (active ? 'border-brand bg-rose-50 text-brand' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-400')
           }">
             ${escapeHTML(sz)}
           </button>`;
@@ -1209,7 +1213,7 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ chat_id: state.settings.tgChatId, text })
-      }).catch(() => {});
+      }).catch(() => { });
     }
   }
 
@@ -1329,9 +1333,8 @@
     state.pdActiveTab = tab;
     document.querySelectorAll('.pd-tab-btn').forEach(btn => {
       const isActive = btn.dataset.pdtab === tab;
-      btn.className = `pd-tab-btn px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm shrink-0 transition ${
-        isActive ? 'font-extrabold bg-slate-900 text-white' : 'font-bold text-slate-600 hover:bg-slate-100'
-      }`;
+      btn.className = `pd-tab-btn px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm shrink-0 transition ${isActive ? 'font-extrabold bg-slate-900 text-white' : 'font-bold text-slate-600 hover:bg-slate-100'
+        }`;
     });
     renderPdTabContent();
   }
@@ -1859,9 +1862,8 @@
     const btn = document.getElementById('pd-wishlist-btn');
     if (!btn || !state.currentProduct) return;
     const isWished = state.wishlist.some(w => w.id === state.currentProduct.id);
-    btn.className = `w-9 h-9 rounded-xl border flex items-center justify-center transition ${
-      isWished ? 'border-brand bg-rose-50 text-brand' : 'border-slate-200 hover:bg-rose-50 text-slate-600'
-    }`;
+    btn.className = `w-9 h-9 rounded-xl border flex items-center justify-center transition ${isWished ? 'border-brand bg-rose-50 text-brand' : 'border-slate-200 hover:bg-rose-50 text-slate-600'
+      }`;
     btn.innerHTML = `<i class="${isWished ? 'fa-solid' : 'fa-regular'} fa-heart"></i>`;
   }
 
