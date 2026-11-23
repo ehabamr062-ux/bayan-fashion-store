@@ -453,7 +453,9 @@
             facebookUrl: d.facebookUrl || '',
             instagramUrl: d.instagramUrl || '',
             tiktokUrl: d.tiktokUrl || '',
-            whatsappChannelUrl: d.whatsappChannelUrl || ''
+            whatsappChannelUrl: d.whatsappChannelUrl || '',
+            tgBotToken: d.tgBotToken || '',
+            tgChatId: d.tgChatId || ''
           };
           applyBranding();
         }
@@ -1200,6 +1202,15 @@
         await BayanIDB.setOrder(orderPayload);
       }
     } catch (_) { }
+    // إشعار تليجرام فوري للتاجر إن كان مفعّلاً في الإعدادات
+    if (state.settings.tgBotToken && state.settings.tgChatId) {
+      const text = `🛒 طلب أونلاين جديد (${orderPayload.id})\n👤 العميل: ${orderPayload.customerName}\n📞 الهاتف: ${orderPayload.phone1}\n📍 المنطقة: ${orderPayload.city}\n💰 الإجمالي: ${orderPayload.grandTotal} ج.م`;
+      fetch(`https://api.telegram.org/bot${encodeURIComponent(state.settings.tgBotToken)}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: state.settings.tgChatId, text })
+      }).catch(() => {});
+    }
   }
 
   async function submitQuickOrder(e) {
