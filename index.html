@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl" class="scroll-smooth">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -7,11 +8,13 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="robots" content="index, follow" />
-  <meta name="description" content="تسوق أحدث الأزياء والموديلات العصرية أونلاين مع شحن سريع لجميع محافظات مصر، معاينة قبل الاستلام، والدفع عند الاستلام." />
+  <meta name="description"
+    content="تسوق أحدث الأزياء والموديلات العصرية أونلاين مع شحن سريع لجميع محافظات مصر، معاينة قبل الاستلام، والدفع عند الاستلام." />
   <meta property="og:type" content="website" />
   <meta property="og:locale" content="ar_EG" />
   <meta property="og:title" content="المتجر الإلكتروني | تسوق أونلاين" />
-  <meta property="og:description" content="تسوق أحدث الأزياء والموديلات العصرية أونلاين مع شحن سريع لجميع المحافظات ومعاينة قبل الاستلام." />
+  <meta property="og:description"
+    content="تسوق أحدث الأزياء والموديلات العصرية أونلاين مع شحن سريع لجميع المحافظات ومعاينة قبل الاستلام." />
   <meta property="og:url" content="https://ehabamr062-ux.github.io/bayan-fashion-store/" />
   <meta property="og:image" content="https://ehabamr062-ux.github.io/bayan-fashion-store/og-cover.png" />
   <meta name="twitter:card" content="summary_large_image" />
@@ -37,7 +40,8 @@
   <!-- Arabic Font: Cairo -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap"
+    rel="stylesheet" />
 
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -78,42 +82,74 @@
       -webkit-tap-highlight-color: transparent;
     }
 
-    html, body {
+    html,
+    body {
       background-color: #f8fafc;
       color: #0f172a;
       overflow-x: hidden;
       max-width: 100vw;
       -webkit-text-size-adjust: 100%;
     }
-    button, a {
+
+    button,
+    a {
       touch-action: manipulation;
     }
+
     @media (max-width: 768px) {
-      input, select, textarea {
+
+      input,
+      select,
+      textarea {
         font-size: 16px !important;
       }
+
       body {
         padding-bottom: env(safe-area-inset-bottom, 0px);
       }
     }
 
-    ::-webkit-scrollbar { width: 7px; height: 7px; }
-    ::-webkit-scrollbar-track { background: #f1f5f9; }
-    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; }
-    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    ::-webkit-scrollbar {
+      width: 7px;
+      height: 7px;
+    }
 
-    .bg-brand { background-color: var(--brand-color) !important; }
-    .text-brand { color: var(--brand-color) !important; }
-    .border-brand { border-color: var(--brand-color) !important; }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 999px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+
+    .bg-brand {
+      background-color: var(--brand-color) !important;
+    }
+
+    .text-brand {
+      color: var(--brand-color) !important;
+    }
+
+    .border-brand {
+      border-color: var(--brand-color) !important;
+    }
+
     .btn-brand {
       background-color: var(--brand-color);
       color: #ffffff;
       transition: all 0.2s ease;
     }
+
     .btn-brand:hover {
       filter: brightness(0.92);
       transform: translateY(-1px);
     }
+
     .btn-brand:active {
       transform: scale(0.98);
     }
@@ -122,33 +158,67 @@
       opacity: 0;
       transition: opacity 0.35s ease, transform 0.5s ease;
     }
+
     .product-card:hover .img-secondary {
       opacity: 1;
       transform: scale(1.04);
     }
+
     .product-card .img-primary {
       transition: transform 0.5s ease;
     }
+
     .product-card:hover .img-primary {
       transform: scale(1.04);
     }
 
     @keyframes fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
+      from {
+        opacity: 0;
+      }
+
+      to {
+        opacity: 1;
+      }
     }
+
     @keyframes slideUp {
-      from { opacity: 0; transform: translateY(16px); }
-      to { opacity: 1; transform: translateY(0); }
+      from {
+        opacity: 0;
+        transform: translateY(16px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
+
     @keyframes pulseRing {
-      0% { box-shadow: 0 0 0 0 rgba(225, 29, 72, 0.45); }
-      70% { box-shadow: 0 0 0 12px rgba(225, 29, 72, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(225, 29, 72, 0); }
+      0% {
+        box-shadow: 0 0 0 0 rgba(225, 29, 72, 0.45);
+      }
+
+      70% {
+        box-shadow: 0 0 0 12px rgba(225, 29, 72, 0);
+      }
+
+      100% {
+        box-shadow: 0 0 0 0 rgba(225, 29, 72, 0);
+      }
     }
-    .animate-fadeIn { animation: fadeIn 0.22s ease-out; }
-    .animate-slideUp { animation: slideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1); }
-    .pulse-cta { animation: pulseRing 2.2s infinite; }
+
+    .animate-fadeIn {
+      animation: fadeIn 0.22s ease-out;
+    }
+
+    .animate-slideUp {
+      animation: slideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .pulse-cta {
+      animation: pulseRing 2.2s infinite;
+    }
 
     .tier-card.active {
       border-color: var(--brand-color);
@@ -156,26 +226,39 @@
       box-shadow: 0 0 0 1px var(--brand-color);
     }
 
-    .no-scrollbar::-webkit-scrollbar { display: none; }
-    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
   </style>
 </head>
+
 <body class="min-h-screen flex flex-col">
 
   <!-- Toast Container -->
-  <div id="toast-container" class="fixed top-4 left-4 right-4 sm:right-auto sm:left-5 sm:w-96 z-[120] flex flex-col gap-2 pointer-events-none"></div>
+  <div id="toast-container"
+    class="fixed top-4 left-4 right-4 sm:right-auto sm:left-5 sm:w-96 z-[120] flex flex-col gap-2 pointer-events-none">
+  </div>
 
   <!-- Custom Confirm Modal -->
-  <div id="confirm-modal" class="hidden fixed inset-0 z-[115] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+  <div id="confirm-modal"
+    class="hidden fixed inset-0 z-[115] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
     <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 animate-slideUp">
-      <div class="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center text-xl mx-auto mb-3">
+      <div
+        class="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center text-xl mx-auto mb-3">
         <i class="fa-solid fa-triangle-exclamation"></i>
       </div>
       <h3 id="confirm-title" class="text-lg font-extrabold text-center text-slate-900 mb-1">تأكيد الإجراء</h3>
       <p id="confirm-msg" class="text-sm text-slate-600 text-center mb-5"></p>
       <div class="grid grid-cols-2 gap-3">
-        <button id="confirm-cancel-btn" onclick="resolveConfirm(false)" class="py-2.5 px-4 rounded-xl border border-slate-200 text-slate-700 font-bold hover:bg-slate-50 transition">إلغاء</button>
-        <button id="confirm-ok-btn" onclick="resolveConfirm(true)" class="py-2.5 px-4 rounded-xl bg-rose-600 text-white font-bold hover:bg-rose-700 transition">تأكيد</button>
+        <button id="confirm-cancel-btn" onclick="resolveConfirm(false)"
+          class="py-2.5 px-4 rounded-xl border border-slate-200 text-slate-700 font-bold hover:bg-slate-50 transition">إلغاء</button>
+        <button id="confirm-ok-btn" onclick="resolveConfirm(true)"
+          class="py-2.5 px-4 rounded-xl bg-rose-600 text-white font-bold hover:bg-rose-700 transition">تأكيد</button>
       </div>
     </div>
   </div>
@@ -186,7 +269,8 @@
   <div id="storefront-view" class="flex-1 flex flex-col">
 
     <!-- Top Announcement Bar -->
-    <div id="announcement-bar" class="bg-emerald-600 text-white text-xs sm:text-sm py-2 px-4 text-center font-bold shadow-xs">
+    <div id="announcement-bar"
+      class="bg-emerald-600 text-white text-xs sm:text-sm py-2 px-4 text-center font-bold shadow-xs">
       <div class="max-w-7xl mx-auto flex items-center justify-center gap-2 flex-wrap">
         <i class="fa-solid fa-truck-fast text-amber-300"></i>
         <span id="announcement-text">شحن سريع لجميع المحافظات • معاينة قبل الاستلام • الدفع عند الاستلام</span>
@@ -197,21 +281,30 @@
     <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
       <div class="max-w-7xl mx-auto px-3 sm:px-6 h-16 sm:h-[72px] flex items-center justify-between gap-2 sm:gap-3">
         <!-- Brand Logo -->
-        <button onclick="resetStoreFilters()" class="flex items-center gap-2 sm:gap-2.5 text-right group min-w-0 flex-1 md:flex-initial">
-          <div id="header-brand-logo-wrap" class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-slate-950 text-white flex items-center justify-center font-black text-lg sm:text-xl tracking-tighter shadow-sm group-hover:scale-105 transition overflow-hidden shrink-0">
+        <button onclick="resetStoreFilters()"
+          class="flex items-center gap-2 sm:gap-2.5 text-right group min-w-0 flex-1 md:flex-initial">
+          <div id="header-brand-logo-wrap"
+            class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-slate-950 text-white flex items-center justify-center font-black text-lg sm:text-xl tracking-tighter shadow-sm group-hover:scale-105 transition overflow-hidden shrink-0">
             <span id="header-brand-initial">م</span>
           </div>
           <div class="leading-tight min-w-0">
-            <div id="header-brand-name" class="text-base sm:text-xl font-black tracking-tight text-slate-950 truncate">المتجر</div>
-            <div id="header-brand-tagline" class="text-[10px] sm:text-[11px] font-semibold text-slate-500 truncate hidden sm:block">أزياء عصرية وشحن لجميع المحافظات</div>
+            <div id="header-brand-name" class="text-base sm:text-xl font-black tracking-tight text-slate-950 truncate">
+              المتجر</div>
+            <div id="header-brand-tagline"
+              class="text-[10px] sm:text-[11px] font-semibold text-slate-500 truncate hidden sm:block">أزياء عصرية وشحن
+              لجميع المحافظات</div>
           </div>
         </button>
 
         <!-- Desktop Search -->
         <div class="hidden md:flex flex-1 max-w-md relative">
-          <input id="desktop-search" type="text" oninput="handleSearch(this.value)" placeholder="ابحث عن منتج، قسم، موديل..." class="w-full bg-slate-100 hover:bg-slate-200/70 focus:bg-white border border-transparent focus:border-slate-300 rounded-2xl py-2.5 pr-11 pl-10 text-sm outline-none transition" />
+          <input id="desktop-search" type="text" oninput="handleSearch(this.value)"
+            placeholder="ابحث عن منتج، قسم، موديل..."
+            class="w-full bg-slate-100 hover:bg-slate-200/70 focus:bg-white border border-transparent focus:border-slate-300 rounded-2xl py-2.5 pr-11 pl-10 text-sm outline-none transition" />
           <i class="fa-solid fa-magnifying-glass text-slate-400 absolute right-4 top-1/2 -translate-y-1/2"></i>
-          <button id="desktop-search-clear" type="button" onclick="clearSearchInput()" class="hidden absolute left-2.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-rose-100 hover:bg-rose-500 text-rose-600 hover:text-white flex items-center justify-center transition shadow-xs" title="مسح البحث">
+          <button id="desktop-search-clear" type="button" onclick="clearSearchInput()"
+            class="hidden absolute left-2.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-rose-100 hover:bg-rose-500 text-rose-600 hover:text-white flex items-center justify-center transition shadow-xs"
+            title="مسح البحث">
             <i class="fa-solid fa-xmark text-xs"></i>
           </button>
         </div>
@@ -219,22 +312,30 @@
         <!-- Action Icons (Uniform Height & Spacing on Mobile) -->
         <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <!-- Track Order -->
-          <button onclick="openTrackOrderModal()" class="w-10 h-10 lg:w-auto lg:px-3.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center gap-1.5 transition text-xs sm:text-sm font-bold shrink-0" title="تتبع طلبك">
+          <button onclick="openTrackOrderModal()"
+            class="w-10 h-10 lg:w-auto lg:px-3.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center gap-1.5 transition text-xs sm:text-sm font-bold shrink-0"
+            title="تتبع طلبك">
             <i class="fa-solid fa-box-open text-brand text-base"></i>
             <span class="hidden lg:inline">تتبع طلبك</span>
           </button>
 
           <!-- Wishlist -->
-          <button onclick="openWishlistModal()" class="relative w-10 h-10 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-brand flex items-center justify-center transition shrink-0" title="المفضلة">
+          <button onclick="openWishlistModal()"
+            class="relative w-10 h-10 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-brand flex items-center justify-center transition shrink-0"
+            title="المفضلة">
             <i class="fa-regular fa-heart text-base sm:text-lg"></i>
-            <span id="wishlist-badge" class="hidden absolute -top-1 -left-1 min-w-[18px] h-[18px] px-1 rounded-full bg-brand text-white text-[10px] font-black flex items-center justify-center shadow-xs">0</span>
+            <span id="wishlist-badge"
+              class="hidden absolute -top-1 -left-1 min-w-[18px] h-[18px] px-1 rounded-full bg-brand text-white text-[10px] font-black flex items-center justify-center shadow-xs">0</span>
           </button>
 
           <!-- Cart -->
-          <button onclick="openCartDrawer()" class="relative h-10 flex items-center justify-center gap-1.5 px-3 sm:px-4 rounded-xl bg-slate-950 text-white hover:bg-slate-800 transition shadow-sm shrink-0" title="السلة">
+          <button onclick="openCartDrawer()"
+            class="relative h-10 flex items-center justify-center gap-1.5 px-3 sm:px-4 rounded-xl bg-slate-950 text-white hover:bg-slate-800 transition shadow-sm shrink-0"
+            title="السلة">
             <i class="fa-solid fa-bag-shopping text-sm sm:text-base"></i>
             <span class="hidden sm:inline text-xs sm:text-sm font-bold">السلة</span>
-            <span id="cart-badge" class="min-w-[20px] h-[20px] px-1 rounded-full bg-brand text-white text-[11px] font-extrabold flex items-center justify-center">0</span>
+            <span id="cart-badge"
+              class="min-w-[20px] h-[20px] px-1 rounded-full bg-brand text-white text-[11px] font-extrabold flex items-center justify-center">0</span>
           </button>
         </div>
       </div>
@@ -242,9 +343,13 @@
       <!-- Mobile Search Bar -->
       <div class="md:hidden px-3 pb-3">
         <div class="relative">
-          <input id="mobile-search" type="text" oninput="handleSearch(this.value)" placeholder="ابحث في المتجر..." class="w-full bg-slate-100 focus:bg-white border border-slate-200 rounded-xl py-2 pr-10 pl-10 text-sm outline-none" />
-          <i class="fa-solid fa-magnifying-glass text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 text-sm"></i>
-          <button id="mobile-search-clear" type="button" onclick="clearSearchInput()" class="hidden absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-rose-100 hover:bg-rose-500 text-rose-600 hover:text-white flex items-center justify-center transition shadow-xs" title="مسح البحث">
+          <input id="mobile-search" type="text" oninput="handleSearch(this.value)" placeholder="ابحث في المتجر..."
+            class="w-full bg-slate-100 focus:bg-white border border-slate-200 rounded-xl py-2 pr-10 pl-10 text-sm outline-none" />
+          <i
+            class="fa-solid fa-magnifying-glass text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 text-sm"></i>
+          <button id="mobile-search-clear" type="button" onclick="clearSearchInput()"
+            class="hidden absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-rose-100 hover:bg-rose-500 text-rose-600 hover:text-white flex items-center justify-center transition shadow-xs"
+            title="مسح البحث">
             <i class="fa-solid fa-xmark text-xs"></i>
           </button>
         </div>
@@ -253,10 +358,14 @@
 
     <!-- Hero Banner -->
     <section class="relative overflow-hidden bg-slate-950 text-white">
-      <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(225,29,72,0.35),transparent_55%),radial-gradient(circle_at_bottom_right,rgba(56,189,248,0.18),transparent_50%)]"></div>
-      <div class="max-w-7xl mx-auto px-3 sm:px-6 py-6 sm:py-12 relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-center">
+      <div
+        class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(225,29,72,0.35),transparent_55%),radial-gradient(circle_at_bottom_right,rgba(56,189,248,0.18),transparent_50%)]">
+      </div>
+      <div
+        class="max-w-7xl mx-auto px-3 sm:px-6 py-6 sm:py-12 relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-center">
         <div class="lg:col-span-7 space-y-4">
-          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/15 text-xs font-bold text-amber-300">
+          <div
+            class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/15 text-xs font-bold text-amber-300">
             <i class="fa-solid fa-bolt"></i>
             <span id="hero-badge-text">تشكيلة الموسم متوفرة الآن بأعلى جودة</span>
           </div>
@@ -264,14 +373,17 @@
             إطلالتك بأعلى خامة... <span class="text-brand">والمعاينة قبل الدفع!</span>
           </h1>
           <p id="hero-subtitle" class="text-slate-300 text-sm sm:text-base max-w-xl leading-relaxed">
-            تسوق أحدث الموديلات المختارة بعناية، اطلب في 30 ثانية بدون تسجيل حساب، واستلم طلبك حتى باب البيت مع ضمان الاستبدال.
+            تسوق أحدث الموديلات المختارة بعناية، اطلب في 30 ثانية بدون تسجيل حساب، واستلم طلبك حتى باب البيت مع ضمان
+            الاستبدال.
           </p>
           <div class="flex flex-wrap items-center gap-3 pt-1">
-            <a href="#catalog-section" class="btn-brand px-6 py-3 rounded-xl font-extrabold text-sm sm:text-base shadow-lg inline-flex items-center gap-2">
+            <a href="#catalog-section"
+              class="btn-brand px-6 py-3 rounded-xl font-extrabold text-sm sm:text-base shadow-lg inline-flex items-center gap-2">
               <span>تسوق الآن</span>
               <i class="fa-solid fa-arrow-down text-xs"></i>
             </a>
-            <button onclick="openTrackOrderModal()" class="px-5 py-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-white font-bold text-sm transition inline-flex items-center gap-2">
+            <button onclick="openTrackOrderModal()"
+              class="px-5 py-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-white font-bold text-sm transition inline-flex items-center gap-2">
               <i class="fa-solid fa-magnifying-glass-location"></i>
               <span>تتبع شحنتك</span>
             </button>
@@ -314,7 +426,8 @@
 
         <div class="flex items-center justify-between md:justify-end gap-3 shrink-0">
           <span id="products-count-label" class="text-xs sm:text-sm font-bold text-slate-500">جاري التحميل...</span>
-          <select id="sort-select" onchange="handleSort(this.value)" class="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-slate-700 outline-none focus:border-slate-400">
+          <select id="sort-select" onchange="handleSort(this.value)"
+            class="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-slate-700 outline-none focus:border-slate-400">
             <option value="featured">الأكثر مبيعاً</option>
             <option value="newest">الأحدث وصولاً</option>
             <option value="price-asc">السعر: من الأقل للأعلى</option>
@@ -356,8 +469,10 @@
       <div id="empty-products-state" class="hidden text-center py-16 bg-white rounded-3xl border border-slate-200">
         <i class="fa-solid fa-store-slash text-4xl text-slate-300 mb-3"></i>
         <h3 id="empty-products-title" class="text-lg font-extrabold text-slate-800">لا توجد منتجات منشورة حالياً</h3>
-        <p id="empty-products-subtitle" class="text-sm text-slate-500 mt-1 mb-4">تابعنا قريباً لتصفح أحدث الموديلات والعروض</p>
-        <button id="empty-reset-btn" onclick="resetStoreFilters()" class="hidden btn-brand px-5 py-2.5 rounded-xl font-bold text-sm">عرض جميع المنتجات</button>
+        <p id="empty-products-subtitle" class="text-sm text-slate-500 mt-1 mb-4">تابعنا قريباً لتصفح أحدث الموديلات
+          والعروض</p>
+        <button id="empty-reset-btn" onclick="resetStoreFilters()"
+          class="hidden btn-brand px-5 py-2.5 rounded-xl font-bold text-sm">عرض جميع المنتجات</button>
       </div>
     </main>
 
@@ -373,16 +488,19 @@
             <p class="text-xs sm:text-sm text-slate-500 mt-0.5">تجارب حقيقية لعملائنا — نصوص وصور منفصلة ومرقّمة</p>
           </div>
           <div class="flex items-center gap-2 bg-slate-100 p-1 rounded-2xl self-start sm:self-auto">
-            <button type="button" id="testi-tab-text" onclick="switchTestimonialsTab('text')" class="px-4 py-2 rounded-xl text-xs sm:text-sm font-extrabold bg-emerald-600 text-white transition">
+            <button type="button" id="testi-tab-text" onclick="switchTestimonialsTab('text')"
+              class="px-4 py-2 rounded-xl text-xs sm:text-sm font-extrabold bg-emerald-600 text-white transition">
               <i class="fa-solid fa-comment-dots ml-1"></i>آراء نصية (<span id="testi-text-count">0</span>)
             </button>
-            <button type="button" id="testi-tab-images" onclick="switchTestimonialsTab('image')" class="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-slate-600 hover:text-slate-900 transition">
+            <button type="button" id="testi-tab-images" onclick="switchTestimonialsTab('image')"
+              class="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-slate-600 hover:text-slate-900 transition">
               <i class="fa-solid fa-images ml-1"></i>آراء بالصور (<span id="testi-img-count">0</span>)
             </button>
           </div>
         </div>
         <div id="testimonials-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div class="col-span-full text-center py-8 text-xs sm:text-sm text-slate-400 font-bold">لا توجد آراء مضافة حالياً</div>
+          <div class="col-span-full text-center py-8 text-xs sm:text-sm text-slate-400 font-bold">لا توجد آراء مضافة
+            حالياً</div>
         </div>
       </div>
     </section>
@@ -392,13 +510,15 @@
       <div class="max-w-7xl mx-auto px-4 sm:px-6 py-10 grid grid-cols-1 md:grid-cols-3 gap-8">
         <div>
           <div class="flex items-center gap-2.5 mb-3">
-            <div id="footer-brand-logo-wrap" class="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black text-lg overflow-hidden shadow-xs">
+            <div id="footer-brand-logo-wrap"
+              class="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black text-lg overflow-hidden shadow-xs">
               <span id="footer-brand-initial">م</span>
             </div>
             <span id="footer-brand-name" class="text-xl font-black text-emerald-950">المتجر</span>
           </div>
           <p id="footer-brand-desc" class="text-xs sm:text-sm text-slate-600 leading-relaxed">
-            متجر إلكتروني متخصص في تقديم أفضل الخامات وأحدث الموديلات مع خدمة شحن سريعة لجميع المحافظات ومعاينة قبل الاستلام.
+            متجر إلكتروني متخصص في تقديم أفضل الخامات وأحدث الموديلات مع خدمة شحن سريعة لجميع المحافظات ومعاينة قبل
+            الاستلام.
           </p>
           <div id="footer-social-links" class="flex flex-wrap items-center gap-2 mt-4"></div>
         </div>
@@ -406,10 +526,16 @@
         <div>
           <h4 class="text-emerald-950 font-extrabold mb-3 text-sm">روابط سريعة</h4>
           <ul class="space-y-2 text-xs sm:text-sm text-slate-700 font-semibold">
-            <li><button onclick="openTrackOrderModal()" class="hover:text-emerald-700 transition"><i class="fa-solid fa-angle-left ml-1.5 text-emerald-600"></i>تتبع طلبك</button></li>
-            <li><button onclick="openCartDrawer()" class="hover:text-emerald-700 transition"><i class="fa-solid fa-angle-left ml-1.5 text-emerald-600"></i>سلة المشتريات</button></li>
-            <li><button onclick="openWishlistModal()" class="hover:text-emerald-700 transition"><i class="fa-solid fa-angle-left ml-1.5 text-emerald-600"></i>المفضلة</button></li>
-            <li><button onclick="document.getElementById('testimonials-section')?.scrollIntoView({ behavior: 'smooth' })" class="hover:text-emerald-700 transition"><i class="fa-solid fa-angle-left ml-1.5 text-emerald-600"></i>آراء العملاء</button></li>
+            <li><button onclick="openTrackOrderModal()" class="hover:text-emerald-700 transition"><i
+                  class="fa-solid fa-angle-left ml-1.5 text-emerald-600"></i>تتبع طلبك</button></li>
+            <li><button onclick="openCartDrawer()" class="hover:text-emerald-700 transition"><i
+                  class="fa-solid fa-angle-left ml-1.5 text-emerald-600"></i>سلة المشتريات</button></li>
+            <li><button onclick="openWishlistModal()" class="hover:text-emerald-700 transition"><i
+                  class="fa-solid fa-angle-left ml-1.5 text-emerald-600"></i>المفضلة</button></li>
+            <li><button
+                onclick="document.getElementById('testimonials-section')?.scrollIntoView({ behavior: 'smooth' })"
+                class="hover:text-emerald-700 transition"><i
+                  class="fa-solid fa-angle-left ml-1.5 text-emerald-600"></i>آراء العملاء</button></li>
           </ul>
         </div>
 
@@ -437,28 +563,38 @@
     </footer>
 
     <!-- Mobile Bottom Navigation Bar (5 Tabs - Mobile Only) -->
-    <nav id="mobile-bottom-nav" class="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-[0_-4px_20px_rgba(15,23,42,0.08)]" style="padding-bottom: env(safe-area-inset-bottom, 0px);">
+    <nav id="mobile-bottom-nav"
+      class="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-[0_-4px_20px_rgba(15,23,42,0.08)]"
+      style="padding-bottom: env(safe-area-inset-bottom, 0px);">
       <div class="grid grid-cols-5 h-16">
-        <button type="button" onclick="resetStoreFilters(); window.scrollTo({ top: 0, behavior: 'smooth' });" class="flex flex-col items-center justify-center gap-1 text-slate-700 hover:text-brand active:text-brand transition">
+        <button type="button" onclick="resetStoreFilters(); window.scrollTo({ top: 0, behavior: 'smooth' });"
+          class="flex flex-col items-center justify-center gap-1 text-slate-700 hover:text-brand active:text-brand transition">
           <i class="fa-solid fa-house text-base"></i>
           <span class="text-[10px] font-extrabold">الرئيسية</span>
         </button>
-        <button type="button" onclick="document.getElementById('catalog-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });" class="flex flex-col items-center justify-center gap-1 text-slate-700 hover:text-brand active:text-brand transition">
+        <button type="button"
+          onclick="document.getElementById('catalog-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });"
+          class="flex flex-col items-center justify-center gap-1 text-slate-700 hover:text-brand active:text-brand transition">
           <i class="fa-solid fa-layer-group text-base"></i>
           <span class="text-[10px] font-extrabold">الأقسام</span>
         </button>
-        <button type="button" onclick="openCartDrawer()" class="relative flex flex-col items-center justify-center gap-1 text-slate-700 hover:text-brand active:text-brand transition">
+        <button type="button" onclick="openCartDrawer()"
+          class="relative flex flex-col items-center justify-center gap-1 text-slate-700 hover:text-brand active:text-brand transition">
           <div class="relative">
             <i class="fa-solid fa-bag-shopping text-base"></i>
-            <span id="mobile-nav-cart-badge" class="hidden absolute -top-1.5 -left-2.5 min-w-[17px] h-[17px] px-1 rounded-full bg-brand text-white text-[9px] font-black flex items-center justify-center">0</span>
+            <span id="mobile-nav-cart-badge"
+              class="hidden absolute -top-1.5 -left-2.5 min-w-[17px] h-[17px] px-1 rounded-full bg-brand text-white text-[9px] font-black flex items-center justify-center">0</span>
           </div>
           <span class="text-[10px] font-extrabold">السلة</span>
         </button>
-        <button type="button" onclick="document.getElementById('testimonials-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });" class="flex flex-col items-center justify-center gap-1 text-slate-700 hover:text-brand active:text-brand transition">
+        <button type="button"
+          onclick="document.getElementById('testimonials-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });"
+          class="flex flex-col items-center justify-center gap-1 text-slate-700 hover:text-brand active:text-brand transition">
           <i class="fa-solid fa-star text-base"></i>
           <span class="text-[10px] font-extrabold">آراء العملاء</span>
         </button>
-        <button type="button" onclick="openTrackOrderModal()" class="flex flex-col items-center justify-center gap-1 text-slate-700 hover:text-brand active:text-brand transition">
+        <button type="button" onclick="openTrackOrderModal()"
+          class="flex flex-col items-center justify-center gap-1 text-slate-700 hover:text-brand active:text-brand transition">
           <i class="fa-solid fa-sliders text-base"></i>
           <span class="text-[10px] font-extrabold">طلباتي</span>
         </button>
@@ -466,7 +602,9 @@
     </nav>
 
     <!-- Floating WhatsApp Button -->
-    <a id="floating-whatsapp-btn" href="#" target="_blank" rel="noopener noreferrer" class="hidden fixed bottom-20 md:bottom-5 left-4 md:left-5 z-30 w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white shadow-xl flex items-center justify-center text-2xl transition hover:scale-110" title="تواصل معنا واتساب">
+    <a id="floating-whatsapp-btn" href="#" target="_blank" rel="noopener noreferrer"
+      class="hidden fixed bottom-20 md:bottom-5 left-4 md:left-5 z-30 w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white shadow-xl flex items-center justify-center text-2xl transition hover:scale-110"
+      title="تواصل معنا واتساب">
       <i class="fa-brands fa-whatsapp"></i>
     </a>
   </div>
@@ -474,22 +612,29 @@
   <!-- ===================================================================== -->
   <!-- SIGNATURE PRODUCT DETAIL & DIRECT COD ORDER MODAL                     -->
   <!-- ===================================================================== -->
-  <div id="product-detail-modal" class="hidden fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs overflow-y-auto animate-fadeIn">
+  <div id="product-detail-modal"
+    class="hidden fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs overflow-y-auto animate-fadeIn">
     <div class="min-h-screen sm:py-6 sm:px-4 flex items-start justify-center">
       <div class="bg-white w-full max-w-6xl sm:rounded-3xl shadow-2xl overflow-hidden animate-slideUp relative">
         <!-- Modal Sticky Topbar -->
-        <div class="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-slate-200 px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
+        <div
+          class="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-slate-200 px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
           <div class="flex items-center gap-2 min-w-0">
-            <button onclick="closeProductDetail()" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center shrink-0 transition">
+            <button onclick="closeProductDetail()"
+              class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center shrink-0 transition">
               <i class="fa-solid fa-arrow-right"></i>
             </button>
-            <h2 id="pd-topbar-title" class="font-extrabold text-sm sm:text-base text-slate-900 truncate">تفاصيل المنتج</h2>
+            <h2 id="pd-topbar-title" class="font-extrabold text-sm sm:text-base text-slate-900 truncate">تفاصيل المنتج
+            </h2>
           </div>
           <div class="flex items-center gap-2">
-            <button id="pd-wishlist-btn" onclick="toggleCurrentProductWishlist()" class="w-9 h-9 rounded-xl border border-slate-200 hover:bg-rose-50 text-slate-600 flex items-center justify-center transition" title="أضف للمفضلة">
+            <button id="pd-wishlist-btn" onclick="toggleCurrentProductWishlist()"
+              class="w-9 h-9 rounded-xl border border-slate-200 hover:bg-rose-50 text-slate-600 flex items-center justify-center transition"
+              title="أضف للمفضلة">
               <i class="fa-regular fa-heart"></i>
             </button>
-            <button onclick="openCartDrawer()" class="relative px-3 h-9 rounded-xl bg-slate-900 text-white text-xs font-bold flex items-center gap-1.5">
+            <button onclick="openCartDrawer()"
+              class="relative px-3 h-9 rounded-xl bg-slate-900 text-white text-xs font-bold flex items-center gap-1.5">
               <i class="fa-solid fa-bag-shopping"></i>
               <span id="pd-cart-badge">0</span>
             </button>
@@ -501,9 +646,11 @@
 
           <!-- Right Column (Gallery + Product Tabs on Desktop) -->
           <div class="lg:col-span-6 space-y-4">
-            <div class="relative aspect-square rounded-2xl sm:rounded-3xl overflow-hidden bg-slate-100 border border-slate-200">
+            <div
+              class="relative aspect-square rounded-2xl sm:rounded-3xl overflow-hidden bg-slate-100 border border-slate-200">
               <img id="pd-main-img" src="" alt="" class="w-full h-full object-cover" />
-              <span id="pd-discount-badge" class="hidden absolute top-3 right-3 px-3 py-1 rounded-xl bg-brand text-white text-xs font-black shadow-md"></span>
+              <span id="pd-discount-badge"
+                class="hidden absolute top-3 right-3 px-3 py-1 rounded-xl bg-brand text-white text-xs font-black shadow-md"></span>
             </div>
 
             <div id="pd-thumbnails" class="flex items-center gap-2.5 overflow-x-auto no-scrollbar pb-1"></div>
@@ -511,9 +658,15 @@
             <!-- Desktop Info Tabs -->
             <div class="hidden lg:block border border-slate-200 rounded-2xl overflow-hidden mt-4">
               <div class="flex border-b border-slate-200 bg-slate-50 p-1.5 gap-1">
-                <button onclick="switchPdTab('desc')" data-pdtab="desc" class="pd-tab-btn px-4 py-2 rounded-xl text-sm font-extrabold bg-slate-900 text-white transition">الوصف والخامة</button>
-                <button onclick="switchPdTab('shipping')" data-pdtab="shipping" class="pd-tab-btn px-4 py-2 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-200/70 transition">الشحن والاستبدال</button>
-                <button onclick="switchPdTab('reviews')" data-pdtab="reviews" class="pd-tab-btn px-4 py-2 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-200/70 transition">التقييمات (<span class="pd-reviews-count">0</span>)</button>
+                <button onclick="switchPdTab('desc')" data-pdtab="desc"
+                  class="pd-tab-btn px-4 py-2 rounded-xl text-sm font-extrabold bg-slate-900 text-white transition">الوصف
+                  والخامة</button>
+                <button onclick="switchPdTab('shipping')" data-pdtab="shipping"
+                  class="pd-tab-btn px-4 py-2 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-200/70 transition">الشحن
+                  والاستبدال</button>
+                <button onclick="switchPdTab('reviews')" data-pdtab="reviews"
+                  class="pd-tab-btn px-4 py-2 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-200/70 transition">التقييمات
+                  (<span class="pd-reviews-count">0</span>)</button>
               </div>
               <div id="pd-tab-content-desktop" class="p-4 bg-white"></div>
             </div>
@@ -523,32 +676,39 @@
           <div class="lg:col-span-6 space-y-5">
             <div>
               <div class="flex items-center justify-between gap-2 mb-1.5">
-                <span id="pd-category" class="px-2.5 py-0.5 rounded-lg bg-slate-100 text-slate-600 text-xs font-bold"></span>
+                <span id="pd-category"
+                  class="px-2.5 py-0.5 rounded-lg bg-slate-100 text-slate-600 text-xs font-bold"></span>
                 <div id="pd-rating-summary" class="flex items-center gap-1 text-xs font-bold text-amber-500"></div>
               </div>
               <h2 id="pd-title" class="text-xl sm:text-2xl font-black text-slate-950 leading-snug"></h2>
               <div class="flex items-center gap-3 mt-2.5">
                 <span id="pd-price" class="text-2xl sm:text-3xl font-black text-brand"></span>
-                <span id="pd-old-price" class="hidden text-base sm:text-lg text-slate-400 line-through font-bold"></span>
+                <span id="pd-old-price"
+                  class="hidden text-base sm:text-lg text-slate-400 line-through font-bold"></span>
                 <span id="pd-stock-pill" class="mr-auto px-2.5 py-1 rounded-lg text-[11px] font-bold"></span>
               </div>
             </div>
 
             <!-- Color Swatches -->
             <div id="pd-colors-wrap" class="space-y-2">
-              <div class="text-xs sm:text-sm font-extrabold text-slate-800">اللون: <span id="pd-selected-color-name" class="text-brand"></span></div>
+              <div class="text-xs sm:text-sm font-extrabold text-slate-800">اللون: <span id="pd-selected-color-name"
+                  class="text-brand"></span></div>
               <div id="pd-colors-list" class="flex flex-wrap items-center gap-2"></div>
             </div>
 
             <!-- Size Selector -->
             <div id="pd-sizes-wrap" class="space-y-2">
               <div class="flex items-center justify-between">
-                <div class="text-xs sm:text-sm font-extrabold text-slate-800">المقاس: <span id="pd-selected-size-name" class="text-brand"></span></div>
-                <button type="button" onclick="toggleSizeGuide()" class="text-xs font-bold text-slate-500 hover:text-brand underline">دليل المقاسات</button>
+                <div class="text-xs sm:text-sm font-extrabold text-slate-800">المقاس: <span id="pd-selected-size-name"
+                    class="text-brand"></span></div>
+                <button type="button" onclick="toggleSizeGuide()"
+                  class="text-xs font-bold text-slate-500 hover:text-brand underline">دليل المقاسات</button>
               </div>
               <div id="pd-sizes-list" class="flex flex-wrap items-center gap-2"></div>
-              <div id="pd-size-guide" class="hidden p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600">
-                <strong>دليل سريع:</strong> المقاسات مطابقة للمقاسات القياسية. في حال كنت بين مقاسين يُنصح باختيار المقاس الأكبر للراحة.
+              <div id="pd-size-guide"
+                class="hidden p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600">
+                <strong>دليل سريع:</strong> المقاسات مطابقة للمقاسات القياسية. في حال كنت بين مقاسين يُنصح باختيار
+                المقاس الأكبر للراحة.
               </div>
             </div>
 
@@ -562,7 +722,8 @@
             </div>
 
             <!-- Embedded Direct COD Order Form -->
-            <div id="pd-cod-form-container" class="rounded-2xl sm:rounded-3xl border-2 border-slate-900 bg-slate-50/70 p-4 sm:p-5 space-y-4">
+            <div id="pd-cod-form-container"
+              class="rounded-2xl sm:rounded-3xl border-2 border-slate-900 bg-slate-50/70 p-4 sm:p-5 space-y-4">
               <div class="flex items-center justify-between border-b border-slate-200 pb-3">
                 <div class="flex items-center gap-2">
                   <span class="w-8 h-8 rounded-xl bg-brand text-white flex items-center justify-center text-sm">
@@ -573,18 +734,22 @@
                     <p class="text-[11px] text-slate-500 font-semibold">بدون تسجيل حساب • الدفع عند الاستلام</p>
                   </div>
                 </div>
-                <span class="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 text-[11px] font-extrabold">COD آمن</span>
+                <span class="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 text-[11px] font-extrabold">COD
+                  آمن</span>
               </div>
 
               <form id="pd-quick-order-form" onsubmit="submitQuickOrder(event)" class="space-y-3">
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label class="block text-xs font-bold text-slate-700 mb-1">الاسم بالكامل *</label>
-                    <input id="qo-name" type="text" required placeholder="مثال: أحمد محمد علي" class="w-full bg-white border border-slate-300 focus:border-slate-900 rounded-xl px-3.5 py-2.5 text-sm outline-none" />
+                    <input id="qo-name" type="text" required placeholder="مثال: أحمد محمد علي"
+                      class="w-full bg-white border border-slate-300 focus:border-slate-900 rounded-xl px-3.5 py-2.5 text-sm outline-none" />
                   </div>
                   <div>
                     <label class="block text-xs font-bold text-slate-700 mb-1">رقم الموبايل (واتساب) *</label>
-                    <input id="qo-phone" type="tel" required maxlength="11" oninput="validateEgyptPhoneInput(this, 'qo-phone-hint')" placeholder="01012345678" dir="ltr" class="w-full bg-white border border-slate-300 focus:border-slate-900 rounded-xl px-3.5 py-2.5 text-sm text-right outline-none" />
+                    <input id="qo-phone" type="tel" required maxlength="11"
+                      oninput="validateEgyptPhoneInput(this, 'qo-phone-hint')" placeholder="01012345678" dir="ltr"
+                      class="w-full bg-white border border-slate-300 focus:border-slate-900 rounded-xl px-3.5 py-2.5 text-sm text-right outline-none" />
                     <div id="qo-phone-hint" class="text-[11px] mt-0.5 hidden"></div>
                   </div>
                 </div>
@@ -592,36 +757,46 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label class="block text-xs font-bold text-slate-700 mb-1">رقم موبايل احتياطي (اختياري)</label>
-                    <input id="qo-alt-phone" type="tel" maxlength="11" placeholder="011..." dir="ltr" class="w-full bg-white border border-slate-300 focus:border-slate-900 rounded-xl px-3.5 py-2.5 text-sm text-right outline-none" />
+                    <input id="qo-alt-phone" type="tel" maxlength="11" placeholder="011..." dir="ltr"
+                      class="w-full bg-white border border-slate-300 focus:border-slate-900 rounded-xl px-3.5 py-2.5 text-sm text-right outline-none" />
                   </div>
                   <div>
                     <label class="block text-xs font-bold text-slate-700 mb-1">المحافظة *</label>
-                    <select id="qo-gov" required onchange="recalcQuickOrderSummary()" class="w-full bg-white border border-slate-300 focus:border-slate-900 rounded-xl px-3 py-2.5 text-sm font-bold outline-none"></select>
+                    <select id="qo-gov" required onchange="recalcQuickOrderSummary()"
+                      class="w-full bg-white border border-slate-300 focus:border-slate-900 rounded-xl px-3 py-2.5 text-sm font-bold outline-none"></select>
                   </div>
                 </div>
 
                 <div>
-                  <label class="block text-xs font-bold text-slate-700 mb-1">العنوان بالتفصيل (المنطقة - الشارع - علامة مميزة) *</label>
-                  <textarea id="qo-address" rows="2" required placeholder="مثال: مدينة نصر - شارع عباس العقاد - عمارة 12 الدور 4" class="w-full bg-white border border-slate-300 focus:border-slate-900 rounded-xl px-3.5 py-2 text-sm outline-none resize-none"></textarea>
+                  <label class="block text-xs font-bold text-slate-700 mb-1">العنوان بالتفصيل (المنطقة - الشارع - علامة
+                    مميزة) *</label>
+                  <textarea id="qo-address" rows="2" required
+                    placeholder="مثال: مدينة نصر - شارع عباس العقاد - عمارة 12 الدور 4"
+                    class="w-full bg-white border border-slate-300 focus:border-slate-900 rounded-xl px-3.5 py-2 text-sm outline-none resize-none"></textarea>
                 </div>
 
                 <!-- Payment Method -->
                 <div>
                   <label class="block text-xs font-bold text-slate-700 mb-1">طريقة الدفع</label>
-                  <select id="qo-payment" onchange="renderPaymentHint('qo-payment', 'qo-payment-hint')" class="w-full bg-white border border-slate-300 focus:border-slate-900 rounded-xl px-3 py-2.5 text-sm font-bold outline-none">
+                  <select id="qo-payment" onchange="renderPaymentHint('qo-payment', 'qo-payment-hint')"
+                    class="w-full bg-white border border-slate-300 focus:border-slate-900 rounded-xl px-3 py-2.5 text-sm font-bold outline-none">
                     <option value="الدفع عند الاستلام">الدفع نقداً عند الاستلام (COD)</option>
                     <option value="فودافون كاش">تحويل فودافون كاش (Vodafone Cash)</option>
                     <option value="إنستا باي">تحويل إنستا باي (InstaPay)</option>
                   </select>
-                  <div id="qo-payment-hint" class="hidden mt-2 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900"></div>
+                  <div id="qo-payment-hint"
+                    class="hidden mt-2 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900">
+                  </div>
                 </div>
 
                 <!-- Coupon Row -->
                 <div>
                   <label class="block text-xs font-bold text-slate-700 mb-1">هل لديك كود خصم؟</label>
                   <div class="flex gap-2">
-                    <input id="qo-coupon-input" type="text" placeholder="أدخل كود الخصم" class="flex-1 bg-white border border-slate-300 rounded-xl px-3 py-2 text-sm uppercase outline-none" />
-                    <button type="button" onclick="applyQuickOrderCoupon()" class="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-extrabold hover:bg-slate-800 transition">تطبيق</button>
+                    <input id="qo-coupon-input" type="text" placeholder="أدخل كود الخصم"
+                      class="flex-1 bg-white border border-slate-300 rounded-xl px-3 py-2 text-sm uppercase outline-none" />
+                    <button type="button" onclick="applyQuickOrderCoupon()"
+                      class="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-extrabold hover:bg-slate-800 transition">تطبيق</button>
                   </div>
                   <div id="qo-coupon-msg" class="text-xs font-bold mt-1 hidden"></div>
                 </div>
@@ -644,24 +819,28 @@
                     <span>مصاريف الشحن:</span>
                     <span id="qo-sum-shipping" class="font-bold text-slate-900">0 ج.م</span>
                   </div>
-                  <div class="border-t border-dashed border-slate-200 pt-2 flex justify-between items-center text-base sm:text-lg font-black text-slate-950">
+                  <div
+                    class="border-t border-dashed border-slate-200 pt-2 flex justify-between items-center text-base sm:text-lg font-black text-slate-950">
                     <span>الإجمالي النهائي:</span>
                     <span id="qo-sum-total" class="text-brand">0 ج.م</span>
                   </div>
                 </div>
 
                 <!-- Submit & Secondary Actions -->
-                <button id="qo-submit-btn" type="submit" class="w-full btn-brand pulse-cta py-3.5 rounded-2xl font-black text-base shadow-lg flex items-center justify-center gap-2">
+                <button id="qo-submit-btn" type="submit"
+                  class="w-full btn-brand pulse-cta py-3.5 rounded-2xl font-black text-base shadow-lg flex items-center justify-center gap-2">
                   <i class="fa-solid fa-check-double"></i>
                   <span>تأكيد الطلب الآن</span>
                 </button>
 
                 <div class="grid grid-cols-2 gap-2.5 pt-1">
-                  <button type="button" onclick="addCurrentProductToCart()" class="py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 transition">
+                  <button type="button" onclick="addCurrentProductToCart()"
+                    class="py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 transition">
                     <i class="fa-solid fa-cart-plus"></i>
                     <span>أضف للسلة</span>
                   </button>
-                  <button id="qo-whatsapp-btn" type="button" onclick="orderViaWhatsApp()" class="py-2.5 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 transition">
+                  <button id="qo-whatsapp-btn" type="button" onclick="orderViaWhatsApp()"
+                    class="py-2.5 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 transition">
                     <i class="fa-brands fa-whatsapp text-base"></i>
                     <span>اطلب عبر واتساب</span>
                   </button>
@@ -672,9 +851,14 @@
             <!-- Mobile Info Tabs -->
             <div class="lg:hidden border border-slate-200 rounded-2xl overflow-hidden">
               <div class="flex border-b border-slate-200 bg-slate-50 p-1.5 gap-1 overflow-x-auto">
-                <button onclick="switchPdTab('desc')" data-pdtab="desc" class="pd-tab-btn px-3.5 py-2 rounded-xl text-xs font-extrabold bg-slate-900 text-white shrink-0">الوصف</button>
-                <button onclick="switchPdTab('shipping')" data-pdtab="shipping" class="pd-tab-btn px-3.5 py-2 rounded-xl text-xs font-bold text-slate-600 shrink-0">الشحن والاستبدال</button>
-                <button onclick="switchPdTab('reviews')" data-pdtab="reviews" class="pd-tab-btn px-3.5 py-2 rounded-xl text-xs font-bold text-slate-600 shrink-0">التقييمات (<span class="pd-reviews-count">0</span>)</button>
+                <button onclick="switchPdTab('desc')" data-pdtab="desc"
+                  class="pd-tab-btn px-3.5 py-2 rounded-xl text-xs font-extrabold bg-slate-900 text-white shrink-0">الوصف</button>
+                <button onclick="switchPdTab('shipping')" data-pdtab="shipping"
+                  class="pd-tab-btn px-3.5 py-2 rounded-xl text-xs font-bold text-slate-600 shrink-0">الشحن
+                  والاستبدال</button>
+                <button onclick="switchPdTab('reviews')" data-pdtab="reviews"
+                  class="pd-tab-btn px-3.5 py-2 rounded-xl text-xs font-bold text-slate-600 shrink-0">التقييمات (<span
+                    class="pd-reviews-count">0</span>)</button>
               </div>
               <div id="pd-tab-content-mobile" class="p-4 bg-white"></div>
             </div>
@@ -682,12 +866,14 @@
         </div>
 
         <!-- Mobile Sticky Bottom CTA -->
-        <div class="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-4 py-2.5 z-30 flex items-center justify-between gap-3 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
+        <div
+          class="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-4 py-2.5 z-30 flex items-center justify-between gap-3 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
           <div>
             <div class="text-[11px] text-slate-500 font-bold">الإجمالي شامل الشحن</div>
             <div id="pd-sticky-total" class="text-base font-black text-brand">0 ج.م</div>
           </div>
-          <button onclick="scrollToQuickForm()" class="btn-brand px-6 py-2.5 rounded-xl font-black text-sm flex items-center gap-2">
+          <button onclick="scrollToQuickForm()"
+            class="btn-brand px-6 py-2.5 rounded-xl font-black text-sm flex items-center gap-2">
             <span>أكمل الطلب الآن</span>
             <i class="fa-solid fa-bolt"></i>
           </button>
@@ -699,21 +885,26 @@
   <!-- ===================================================================== -->
   <!-- CART DRAWER & MULTI-ITEM CHECKOUT MODAL                               -->
   <!-- ===================================================================== -->
-  <div id="cart-drawer-overlay" class="hidden fixed inset-0 z-[60] bg-slate-950/60 backdrop-blur-xs flex justify-end animate-fadeIn" onclick="if(event.target===this) closeCartDrawer()">
+  <div id="cart-drawer-overlay"
+    class="hidden fixed inset-0 z-[60] bg-slate-950/60 backdrop-blur-xs flex justify-end animate-fadeIn"
+    onclick="if(event.target===this) closeCartDrawer()">
     <div class="bg-white w-full max-w-md h-full flex flex-col shadow-2xl animate-slideUp">
       <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
         <div class="flex items-center gap-2">
           <i class="fa-solid fa-bag-shopping text-brand text-xl"></i>
           <h3 class="text-lg font-black text-slate-950">سلة المشتريات</h3>
-          <span id="drawer-cart-count" class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-xs font-extrabold">0</span>
+          <span id="drawer-cart-count"
+            class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-xs font-extrabold">0</span>
         </div>
-        <button onclick="closeCartDrawer()" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center">
+        <button onclick="closeCartDrawer()"
+          class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center">
           <i class="fa-solid fa-xmark"></i>
         </button>
       </div>
 
       <!-- Free Shipping Progress -->
-      <div id="free-shipping-bar" class="px-5 py-2.5 bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-700"></div>
+      <div id="free-shipping-bar"
+        class="px-5 py-2.5 bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-700"></div>
 
       <!-- Cart Items -->
       <div id="cart-items-list" class="flex-1 overflow-y-auto p-4 space-y-3"></div>
@@ -724,7 +915,8 @@
           <span>المجموع الفرعي:</span>
           <span id="cart-subtotal-label" class="text-lg font-black text-slate-950">0 ج.م</span>
         </div>
-        <button onclick="openCartCheckoutModal()" class="w-full btn-brand py-3.5 rounded-2xl font-black text-sm sm:text-base shadow-md flex items-center justify-center gap-2">
+        <button onclick="openCartCheckoutModal()"
+          class="w-full btn-brand py-3.5 rounded-2xl font-black text-sm sm:text-base shadow-md flex items-center justify-center gap-2">
           <span>إتمام الطلب الآن</span>
           <i class="fa-solid fa-arrow-left"></i>
         </button>
@@ -733,14 +925,16 @@
   </div>
 
   <!-- Cart Multi-Item Checkout Modal -->
-  <div id="cart-checkout-modal" class="hidden fixed inset-0 z-[70] bg-slate-950/70 backdrop-blur-xs overflow-y-auto p-3 sm:p-6 flex items-start justify-center animate-fadeIn">
+  <div id="cart-checkout-modal"
+    class="hidden fixed inset-0 z-[70] bg-slate-950/70 backdrop-blur-xs overflow-y-auto p-3 sm:p-6 flex items-start justify-center animate-fadeIn">
     <div class="bg-white rounded-3xl shadow-2xl max-w-2xl w-full overflow-hidden my-auto animate-slideUp">
       <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
         <h3 class="text-base sm:text-lg font-black text-slate-950 flex items-center gap-2">
           <i class="fa-solid fa-truck-fast text-brand"></i>
           <span>إتمام طلب السلة (الدفع عند الاستلام)</span>
         </h3>
-        <button onclick="closeCartCheckoutModal()" class="w-9 h-9 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 flex items-center justify-center">
+        <button onclick="closeCartCheckoutModal()"
+          class="w-9 h-9 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 flex items-center justify-center">
           <i class="fa-solid fa-xmark"></i>
         </button>
       </div>
@@ -749,11 +943,14 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label class="block text-xs font-bold text-slate-700 mb-1">الاسم بالكامل *</label>
-            <input id="cc-name" type="text" required placeholder="الاسم ثلاثي" class="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-slate-900" />
+            <input id="cc-name" type="text" required placeholder="الاسم ثلاثي"
+              class="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-slate-900" />
           </div>
           <div>
             <label class="block text-xs font-bold text-slate-700 mb-1">رقم الموبايل *</label>
-            <input id="cc-phone" type="tel" required maxlength="11" oninput="validateEgyptPhoneInput(this, 'cc-phone-hint')" placeholder="01012345678" dir="ltr" class="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-right outline-none focus:border-slate-900" />
+            <input id="cc-phone" type="tel" required maxlength="11"
+              oninput="validateEgyptPhoneInput(this, 'cc-phone-hint')" placeholder="01012345678" dir="ltr"
+              class="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-right outline-none focus:border-slate-900" />
             <div id="cc-phone-hint" class="text-[11px] mt-0.5 hidden"></div>
           </div>
         </div>
@@ -761,23 +958,27 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label class="block text-xs font-bold text-slate-700 mb-1">رقم موبايل بديل (اختياري)</label>
-            <input id="cc-alt-phone" type="tel" maxlength="11" placeholder="012..." dir="ltr" class="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-right outline-none focus:border-slate-900" />
+            <input id="cc-alt-phone" type="tel" maxlength="11" placeholder="012..." dir="ltr"
+              class="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-right outline-none focus:border-slate-900" />
           </div>
           <div>
             <label class="block text-xs font-bold text-slate-700 mb-1">المحافظة *</label>
-            <select id="cc-gov" required onchange="recalcCartCheckoutSummary()" class="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm font-bold outline-none focus:border-slate-900"></select>
+            <select id="cc-gov" required onchange="recalcCartCheckoutSummary()"
+              class="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm font-bold outline-none focus:border-slate-900"></select>
           </div>
         </div>
 
         <div>
           <label class="block text-xs font-bold text-slate-700 mb-1">العنوان بالتفصيل *</label>
-          <textarea id="cc-address" rows="2" required placeholder="المحافظة / المنطقة / الشارع / رقم العمارة والدور" class="w-full border border-slate-300 rounded-xl px-3.5 py-2 text-sm outline-none focus:border-slate-900 resize-none"></textarea>
+          <textarea id="cc-address" rows="2" required placeholder="المحافظة / المنطقة / الشارع / رقم العمارة والدور"
+            class="w-full border border-slate-300 rounded-xl px-3.5 py-2 text-sm outline-none focus:border-slate-900 resize-none"></textarea>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label class="block text-xs font-bold text-slate-700 mb-1">طريقة الدفع</label>
-            <select id="cc-payment" onchange="renderPaymentHint('cc-payment', 'cc-payment-hint')" class="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm font-bold outline-none">
+            <select id="cc-payment" onchange="renderPaymentHint('cc-payment', 'cc-payment-hint')"
+              class="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm font-bold outline-none">
               <option value="الدفع عند الاستلام">الدفع نقداً عند الاستلام (COD)</option>
               <option value="فودافون كاش">تحويل فودافون كاش</option>
               <option value="إنستا باي">تحويل إنستا باي</option>
@@ -786,13 +987,16 @@
           <div>
             <label class="block text-xs font-bold text-slate-700 mb-1">كود الخصم</label>
             <div class="flex gap-2">
-              <input id="cc-coupon-input" type="text" placeholder="أدخل كود الخصم" class="flex-1 border border-slate-300 rounded-xl px-3 py-2 text-sm uppercase outline-none" />
-              <button type="button" onclick="applyCartCoupon()" class="px-3.5 py-2 rounded-xl bg-slate-900 text-white text-xs font-extrabold">تطبيق</button>
+              <input id="cc-coupon-input" type="text" placeholder="أدخل كود الخصم"
+                class="flex-1 border border-slate-300 rounded-xl px-3 py-2 text-sm uppercase outline-none" />
+              <button type="button" onclick="applyCartCoupon()"
+                class="px-3.5 py-2 rounded-xl bg-slate-900 text-white text-xs font-extrabold">تطبيق</button>
             </div>
             <div id="cc-coupon-msg" class="text-[11px] font-bold mt-1 hidden"></div>
           </div>
         </div>
-        <div id="cc-payment-hint" class="hidden p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900"></div>
+        <div id="cc-payment-hint"
+          class="hidden p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900"></div>
 
         <!-- Summary -->
         <div class="bg-slate-50 rounded-2xl border border-slate-200 p-4 space-y-2 text-sm">
@@ -814,7 +1018,8 @@
           </div>
         </div>
 
-        <button id="cc-submit-btn" type="submit" class="w-full btn-brand py-3.5 rounded-2xl font-black text-base shadow-lg">
+        <button id="cc-submit-btn" type="submit"
+          class="w-full btn-brand py-3.5 rounded-2xl font-black text-base shadow-lg">
           تأكيد الطلب وإرساله للشحن
         </button>
       </form>
@@ -824,9 +1029,11 @@
   <!-- ===================================================================== -->
   <!-- ORDER SUCCESS MODAL                                                   -->
   <!-- ===================================================================== -->
-  <div id="order-success-modal" class="hidden fixed inset-0 z-[80] bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+  <div id="order-success-modal"
+    class="hidden fixed inset-0 z-[80] bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
     <div class="bg-white rounded-3xl max-w-md w-full p-6 text-center shadow-2xl animate-slideUp">
-      <div class="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-3xl mx-auto mb-3">
+      <div
+        class="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-3xl mx-auto mb-3">
         <i class="fa-solid fa-circle-check"></i>
       </div>
       <h3 class="text-xl font-black text-slate-950">تم استلام طلبك بنجاح!</h3>
@@ -837,7 +1044,8 @@
           <span class="text-slate-500">رقم الطلب:</span>
           <div class="flex items-center gap-2">
             <strong id="success-order-id" class="font-black text-slate-950 font-mono"></strong>
-            <button onclick="copyText(document.getElementById('success-order-id').textContent, 'تم نسخ رقم الطلب')" class="text-brand text-xs font-bold hover:underline">نسخ</button>
+            <button onclick="copyText(document.getElementById('success-order-id').textContent, 'تم نسخ رقم الطلب')"
+              class="text-brand text-xs font-bold hover:underline">نسخ</button>
           </div>
         </div>
         <div class="flex justify-between">
@@ -851,11 +1059,13 @@
       </div>
 
       <div class="grid grid-cols-1 gap-2.5">
-        <a id="success-wa-link" href="#" target="_blank" rel="noopener noreferrer" class="hidden py-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-sm flex items-center justify-center gap-2">
+        <a id="success-wa-link" href="#" target="_blank" rel="noopener noreferrer"
+          class="hidden py-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-sm flex items-center justify-center gap-2">
           <i class="fa-brands fa-whatsapp text-lg"></i>
           <span>تأكيد الطلب عبر واتساب</span>
         </a>
-        <button onclick="closeOrderSuccessModal()" class="py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm">متابعة التسوق</button>
+        <button onclick="closeOrderSuccessModal()"
+          class="py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm">متابعة التسوق</button>
       </div>
     </div>
   </div>
@@ -863,24 +1073,28 @@
   <!-- ===================================================================== -->
   <!-- ORDER TRACKING MODAL                                                  -->
   <!-- ===================================================================== -->
-  <div id="track-order-modal" class="hidden fixed inset-0 z-[75] bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+  <div id="track-order-modal"
+    class="hidden fixed inset-0 z-[75] bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
     <div class="bg-white rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl animate-slideUp">
       <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
         <h3 class="font-black text-slate-950 flex items-center gap-2">
           <i class="fa-solid fa-magnifying-glass-location text-brand"></i>
           <span>تتبع حالة طلبك</span>
         </h3>
-        <button onclick="closeTrackOrderModal()" class="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center">
+        <button onclick="closeTrackOrderModal()"
+          class="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center">
           <i class="fa-solid fa-xmark"></i>
         </button>
       </div>
       <div class="p-5 space-y-4">
         <form onsubmit="searchTrackOrder(event)" class="flex gap-2">
-          <input id="track-query-input" type="text" required placeholder="أدخل رقم الطلب (ORD-...) أو رقم الموبايل" class="flex-1 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-slate-900" />
+          <input id="track-query-input" type="text" required placeholder="أدخل رقم الطلب (ORD-...) أو رقم الموبايل"
+            class="flex-1 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-slate-900" />
           <button type="submit" class="btn-brand px-5 py-2.5 rounded-xl font-extrabold text-sm shrink-0">بحث</button>
         </form>
         <div id="track-results-area" class="max-h-[60vh] overflow-y-auto space-y-3">
-          <div class="text-center py-6 text-xs text-slate-400">أدخل رقم الطلب أو رقم الموبايل لعرض حالة شحنتك لحظياً</div>
+          <div class="text-center py-6 text-xs text-slate-400">أدخل رقم الطلب أو رقم الموبايل لعرض حالة شحنتك لحظياً
+          </div>
         </div>
       </div>
     </div>
@@ -889,14 +1103,16 @@
   <!-- ===================================================================== -->
   <!-- WISHLIST MODAL                                                        -->
   <!-- ===================================================================== -->
-  <div id="wishlist-modal" class="hidden fixed inset-0 z-[75] bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+  <div id="wishlist-modal"
+    class="hidden fixed inset-0 z-[75] bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
     <div class="bg-white rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl animate-slideUp">
       <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
         <h3 class="font-black text-slate-950 flex items-center gap-2">
           <i class="fa-solid fa-heart text-brand"></i>
           <span>قائمة المفضلة</span>
         </h3>
-        <button onclick="closeWishlistModal()" class="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center">
+        <button onclick="closeWishlistModal()"
+          class="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center">
           <i class="fa-solid fa-xmark"></i>
         </button>
       </div>
@@ -906,6 +1122,7 @@
 
   <!-- Multi-Tenant Firebase Config & Storefront Engine -->
   <script src="js/firebase_config.js"></script>
-  <script src="js/storefront.js"></script>
+  <script src="js/storefront.js?v=5.1.6"></script>
 </body>
+
 </html>
