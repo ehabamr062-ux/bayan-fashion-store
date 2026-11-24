@@ -3224,6 +3224,15 @@
                         value="0">
                 </div>
 
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; justify-content: space-between; gap: 6px;">
+                        <span>👥 الحد الأقصى لعدد الزبائن (ساري لأول X زبون):</span>
+                        <span id="couponUsedCountBadge" style="font-size: 0.76rem; font-weight: 800; color: #0284c7;"></span>
+                    </label>
+                    <input type="number" id="inpCouponMaxUses" class="form-control" min="0" placeholder="مثلاً 15 (اتركه 0 لعدد غير محدود)"
+                        value="0">
+                </div>
+
                 <!-- مدة وصلاحية الكوبون (Duration & Expiry) -->
                 <div class="form-group"
                     style="background: #faf5ff; border: 1.5px solid #e9d5ff; border-radius: 12px; padding: 12px 14px;">
@@ -9061,6 +9070,14 @@ ${itemsSummary}
             document.getElementById('inpCouponType').value = coupon.type || 'percent';
             document.getElementById('inpCouponValue').value = coupon.value || '';
             document.getElementById('inpCouponMinOrder').value = coupon.minOrder !== undefined ? coupon.minOrder : 0;
+            const maxUsesEl = document.getElementById('inpCouponMaxUses');
+            if (maxUsesEl) maxUsesEl.value = coupon.maxUses !== undefined ? coupon.maxUses : 0;
+            const usedBadge = document.getElementById('couponUsedCountBadge');
+            if (usedBadge) {
+                const used = Number(coupon.usedCount || 0);
+                const maxU = Number(coupon.maxUses || 0);
+                usedBadge.textContent = maxU > 0 ? `تم الاستخدام: ${used} / ${maxU}` : (used > 0 ? `تم الاستخدام: ${used} مرة` : '');
+            }
             document.getElementById('inpCouponActive').value = coupon.active !== false ? 'true' : 'false';
 
             if (coupon.expireAt) {
@@ -9151,6 +9168,7 @@ ${itemsSummary}
             const type = document.getElementById('inpCouponType').value;
             const value = parseFloat(document.getElementById('inpCouponValue').value) || 0;
             const minOrder = parseFloat(document.getElementById('inpCouponMinOrder').value) || 0;
+            const maxUses = Math.max(0, parseInt(document.getElementById('inpCouponMaxUses')?.value, 10) || 0);
             const active = document.getElementById('inpCouponActive').value === 'true';
             const expireInput = document.getElementById('inpCouponExpire').value;
             const expireAt = expireInput ? new Date(expireInput).toISOString() : null;
@@ -9165,6 +9183,7 @@ ${itemsSummary}
                 type,
                 value,
                 minOrder,
+                maxUses,
                 active,
                 expireAt,
                 updatedAt: new Date().toISOString()
@@ -9179,6 +9198,7 @@ ${itemsSummary}
                     closeCouponModal();
                 }).catch(err => alert("حدث خطأ أثناء تعديل الكوبون: " + err.message));
             } else {
+                couponData.usedCount = 0;
                 couponData.createdAt = new Date().toISOString();
                 db.collection('coupons').doc(code).set(couponData).then(() => {
                     closeCouponModal();

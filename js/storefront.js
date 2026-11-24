@@ -1542,6 +1542,9 @@
     if (found.expireAt && new Date(found.expireAt).getTime() < Date.now()) {
       return { ok: false, msg: 'عذراً، انتهت صلاحية كود الخصم' };
     }
+    if (Number(found.maxUses || 0) > 0 && Number(found.usedCount || 0) >= Number(found.maxUses)) {
+      return { ok: false, msg: 'عذراً، اكتمل العدد المسموح لاستخدام هذا الكوبون!' };
+    }
     if (found.minOrder > 0 && subtotal < found.minOrder) {
       return { ok: false, msg: `الحد الأدنى لتطبيق هذا الكوبون هو ${formatEGP(found.minOrder)}` };
     }
@@ -1766,6 +1769,19 @@
 
     // تسجيل توقيت نجاح الطلب للحماية من التكرار والسبام
     try { sessionStorage.setItem('bayan_last_order_ts', String(Date.now())); } catch (_) { }
+
+    // 🎟️ زيادة عدّاد استخدام الكوبون تلقائياً في Firestore إذا استخدم العميل كوبون خصم
+    if (orderPayload && orderPayload.couponCode) {
+      try {
+        const cCode = String(orderPayload.couponCode).trim().toUpperCase();
+        const incVal = (window.firebase && firebase.firestore && firebase.firestore.FieldValue)
+          ? firebase.firestore.FieldValue.increment(1)
+          : null;
+        if (cCode && incVal) {
+          db.collection('coupons').doc(cCode).set({ usedCount: incVal, updatedAt: new Date().toISOString() }, { merge: true }).catch(() => { });
+        }
+      } catch (_) { }
+    }
 
     // تحديث الرصيد في الذاكرة والكاش المحلي فوراً بعد نجاح المعاملة
     for (const { productId, updateObj } of appliedUpdates) {
