@@ -736,11 +736,32 @@
     return { avg: (sum / revs.length).toFixed(1), count: revs.length };
   }
 
-  function renderProductsGrid() {
+  function normalizeArSearch(str) {
+    return String(str || '').toLowerCase()
+      .replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي')
+      .replace(/[\u064B-\u065F]/g, '').replace(/\s+/g, ' ').trim();
+  }
+
+  function getProductSearchHaystack(p) {
+    if (!p) return '';
+    if (p._searchIndex) return p._searchIndex;
+    const colorNames = Array.isArray(p.colors) ? p.colors.map(c => (typeof c === 'string' ? c : (c && c.name) || '')).join(' ') : '';
+    const sizeNames = Array.isArray(p.sizes) ? p.sizes.join(' ') : '';
+    p._searchIndex = normalizeArSearch(`${p.name || ''} ${p.category || ''} ${p.code || ''} ${p.barcode || ''} ${p.description || ''} ${colorNames} ${sizeNames}`);
+    return p._searchIndex;
+  }
+
+  function loadMoreProducts() {
+    state.visibleCount = (Number(state.visibleCount) || 16) + 16;
+    renderProductsGrid(true);
+  }
+
+  function renderProductsGrid(keepVisibleCount = false) {
     const loader = document.getElementById('products-loading-state');
     const grid = document.getElementById('products-grid');
     const empty = document.getElementById('empty-products-state');
     const countLabel = document.getElementById('products-count-label');
+    if (!keepVisibleCount) state.visibleCount = 16;
 
     if (!state.productsLoaded) {
       if (loader) loader.classList.remove('hidden');
@@ -758,12 +779,13 @@
     }
 
     if (state.searchQuery) {
-      list = list.filter(p =>
-        (p.name || '').toLowerCase().includes(state.searchQuery) ||
-        (p.category || '').toLowerCase().includes(state.searchQuery) ||
-        (p.code || '').toLowerCase().includes(state.searchQuery) ||
-        (p.description || '').toLowerCase().includes(state.searchQuery)
-      );
+      const tokens = normalizeArSearch(state.searchQuery).split(' ').filter(Boolean);
+      if (tokens.length) {
+        list = list.filter(p => {
+          const hay = getProductSearchHaystack(p);
+          return tokens.every(tok => hay.includes(tok));
+        });
+      }
     }
 
     if (state.sortBy === 'price-asc') list.sort((a, b) => a.price - b.price);
@@ -771,11 +793,28 @@
     else if (state.sortBy === 'newest') list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
     else list.sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0));
 
-    if (countLabel) countLabel.textContent = `${list.length} منتج`;
+    const totalMatches = list.length;
+    const limit = Math.max(16, Number(state.visibleCount) || 16);
+    const visibleList = list.slice(0, limit);
+
+    if (countLabel) {
+      countLabel.textContent = totalMatches > visibleList.length
+        ? `عرض ${visibleList.length} من ${totalMatches} منتج`
+        : `${totalMatches} منتج`;
+    }
+
+    let loadMoreWrap = document.getElementById('products-load-more-wrap');
+    if (!loadMoreWrap && grid && grid.parentElement) {
+      loadMoreWrap = document.createElement('div');
+      loadMoreWrap.id = 'products-load-more-wrap';
+      loadMoreWrap.className = 'mt-6 text-center';
+      grid.insertAdjacentElement('afterend', loadMoreWrap);
+    }
 
     if (!list.length) {
       grid.innerHTML = '';
       grid.classList.add('hidden');
+      if (loadMoreWrap) loadMoreWrap.innerHTML = '';
       empty.classList.remove('hidden');
       const isFiltered = state.products.length > 0 && (state.activeCategory !== 'الكل' || state.searchQuery);
       document.getElementById('empty-products-title').textContent = isFiltered ? 'لا توجد منتجات مطابقة للبحث' : 'لا توجد منتجات منشورة حالياً';
@@ -789,7 +828,7 @@
 
     const wishSet = new Set(state.wishlist.map(w => w.id));
 
-    grid.innerHTML = list.map(prod => {
+    grid.innerHTML = visibleList.map(prod => {
       const discount = prod.oldPrice && prod.oldPrice > prod.price
         ? Math.round(((prod.oldPrice - prod.price) / prod.oldPrice) * 100)
         : 0;
@@ -845,6 +884,25 @@
           </div>
         </article>`;
     }).join('');
+
+    if (loadMoreWrap) {
+      const remaining = totalMatches - visibleList.length;
+      if (remaining > 0) {
+        const pct = Math.min(100, Math.round((visibleList.length / totalMatches) * 100));
+        loadMoreWrap.innerHTML = `
+          <div class="inline-flex flex-col items-center gap-2.5 bg-white border border-slate-200 rounded-2xl px-5 py-4 shadow-xs max-w-sm w-full">
+            <div class="text-xs font-bold text-slate-600">تم عرض <strong class="text-slate-900">${visibleList.length}</strong> من أصل <strong class="text-slate-900">${totalMatches}</strong> منتج</div>
+            <div class="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+              <div class="h-full bg-emerald-600 rounded-full transition-all" style="width:${pct}%"></div>
+            </div>
+            <button type="button" onclick="loadMoreProducts()" class="w-full py-2.5 px-5 rounded-xl bg-slate-900 hover:bg-emerald-600 text-white text-xs sm:text-sm font-black transition cursor-pointer">
+              ⬇️ عرض المزيد من المنتجات (+${Math.min(16, remaining)})
+            </button>
+          </div>`;
+      } else {
+        loadMoreWrap.innerHTML = '';
+      }
+    }
   }
 
   function updateBadges() {
@@ -2005,42 +2063,78 @@
         return;
       }
 
-      const steps = ['تم الاستلام', 'قيد التجهيز', 'تم الشحن', 'تم التسليم'];
+      const steps = [
+        { label: 'تم الاستلام', icon: 'fa-clipboard-check' },
+        { label: 'قيد التجهيز', icon: 'fa-box-open' },
+        { label: 'تم الشحن', icon: 'fa-truck-fast' },
+        { label: 'تم التسليم', icon: 'fa-circle-check' }
+      ];
 
-      area.innerHTML = matches.map(ord => {
+      area.innerHTML = `<div class="space-y-3 max-h-[60vh] overflow-y-auto pl-1">` + matches.map(ord => {
         const st = STATUS_MAP[ord.status] || STATUS_MAP.new;
-        const itemsHtml = (ord.items || []).map(i =>
-          `<div class="text-xs text-slate-600">• ${escapeHTML(i.name)} ${i.size ? `(${escapeHTML(i.size)})` : ''} ${i.color ? `- ${escapeHTML(i.color)}` : ''} × ${i.qty}</div>`
-        ).join('');
+        const items = Array.isArray(ord.items) ? ord.items : [];
+        const totalPieces = items.reduce((s, x) => s + (Number(x.qty) || 1), 0);
+        const dtStr = (ord.date || ord.createdAt)
+          ? new Date(ord.date || ord.createdAt).toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' })
+          : '';
+        const itemsHtml = items.map((i, idx) => `
+          <div class="flex items-center justify-between gap-2 py-2 px-2.5 rounded-xl bg-white border border-slate-100 text-xs">
+            <div class="min-w-0 flex-1">
+              <div class="font-extrabold text-slate-800 truncate">${idx + 1}. ${escapeHTML(i.name || 'منتج')}</div>
+              <div class="flex flex-wrap items-center gap-1 mt-0.5 text-[10px] font-bold text-slate-500">
+                ${i.size ? `<span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700">مقاس: ${escapeHTML(i.size)}</span>` : ''}
+                ${i.color ? `<span class="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700">لون: ${escapeHTML(i.color)}</span>` : ''}
+              </div>
+            </div>
+            <div class="text-left shrink-0">
+              <div class="font-black text-slate-900">× ${Number(i.qty) || 1}</div>
+              ${i.price ? `<div class="text-[10px] text-slate-400 font-bold">${formatEGP(Number(i.price) * (Number(i.qty) || 1))}</div>` : ''}
+            </div>
+          </div>`).join('');
 
         return `
-          <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
-            <div class="flex items-center justify-between gap-2">
-              <div>
-                <div class="font-mono font-black text-sm text-slate-950">${escapeHTML(ord.id)}</div>
-                <div class="text-[11px] text-slate-500">${escapeHTML(ord.customerName || '')} • ${escapeHTML(ord.city || '')}</div>
+          <div class="p-3.5 sm:p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+            <div class="flex items-start justify-between gap-2">
+              <div class="min-w-0">
+                <div class="flex items-center gap-1.5">
+                  <span class="font-mono font-black text-sm text-slate-950">#${escapeHTML(ord.orderNumber || ord.id)}</span>
+                  ${dtStr ? `<span class="text-[10px] text-slate-400 font-bold">${escapeHTML(dtStr)}</span>` : ''}
+                </div>
+                <div class="text-[11px] text-slate-600 font-bold truncate mt-0.5">${escapeHTML(ord.customerName || '')}${ord.city ? ` • ${escapeHTML(ord.city)}` : ''}</div>
               </div>
-              <span class="px-2.5 py-1 rounded-xl text-xs font-extrabold ${st.cls}">${st.label}</span>
+              <span class="px-2.5 py-1 rounded-xl text-[11px] font-extrabold shrink-0 ${st.cls}">${st.label}</span>
             </div>
 
             ${st.idx >= 0 ? `
-              <div class="grid grid-cols-4 gap-1 pt-1">
+              <div class="grid grid-cols-4 gap-1.5 pt-1">
                 ${steps.map((s, idx) => `
                   <div class="text-center">
-                    <div class="h-1.5 rounded-full mb-1 ${idx <= st.idx ? 'bg-brand' : 'bg-slate-200'}"></div>
-                    <div class="text-[10px] font-bold ${idx <= st.idx ? 'text-slate-900' : 'text-slate-400'}">${s}</div>
+                    <div class="w-7 h-7 mx-auto mb-1 rounded-full flex items-center justify-center text-[11px] ${idx <= st.idx ? 'bg-emerald-600 text-white shadow-xs' : 'bg-slate-200 text-slate-400'}">
+                      <i class="fa-solid ${s.icon}"></i>
+                    </div>
+                    <div class="text-[10px] font-extrabold leading-tight ${idx <= st.idx ? 'text-slate-900' : 'text-slate-400'}">${s.label}</div>
                   </div>`).join('')}
               </div>` : ''}
 
-            <div class="pt-2 border-t border-slate-200 space-y-1">
-              ${itemsHtml}
-              <div class="flex justify-between pt-1.5 text-xs font-black text-slate-900">
-                <span>الإجمالي:</span>
-                <span class="text-brand">${formatEGP(ord.grandTotal ?? ord.total ?? 0)}</span>
+            <div class="pt-2 border-t border-slate-200 space-y-2">
+              <div class="flex items-center justify-between text-[11px] font-extrabold text-slate-600">
+                <span>📦 الأصناف (${items.length} موديل • ${totalPieces} قطعة)</span>
+                ${items.length > 3 ? '<span class="text-[10px] text-emerald-700">مرّر للأسفل لعرض الكل ↕️</span>' : ''}
+              </div>
+              <div class="space-y-1.5 max-h-48 overflow-y-auto pl-1">
+                ${itemsHtml}
+              </div>
+              <div class="pt-2 border-t border-slate-200 space-y-1 text-xs">
+                ${Number(ord.discountAmount || 0) > 0 ? `<div class="flex justify-between text-rose-600 font-bold"><span>الخصم:</span><span>-${formatEGP(ord.discountAmount)}</span></div>` : ''}
+                ${Number(ord.deliveryFee ?? ord.shippingFee ?? 0) > 0 ? `<div class="flex justify-between text-slate-500 font-bold"><span>الشحن:</span><span>${formatEGP(ord.deliveryFee ?? ord.shippingFee)}</span></div>` : ''}
+                <div class="flex justify-between text-sm font-black text-slate-950 pt-0.5">
+                  <span>الإجمالي النهائي:</span>
+                  <span class="text-emerald-700">${formatEGP(ord.grandTotal ?? ord.total ?? 0)}</span>
+                </div>
               </div>
             </div>
           </div>`;
-      }).join('');
+      }).join('') + `</div>`;
     } catch (err) {
       console.error('Track order error:', err);
       area.innerHTML = '<div class="text-center py-6 text-xs text-rose-600 font-bold">تعذر الاتصال بالخادم حالياً، يرجى المحاولة لاحقاً</div>';
@@ -2148,6 +2242,7 @@
     switchPdTab,
     submitProductReview,
     quickAddToCart,
+    loadMoreProducts,
     addCurrentProductToCart,
     openCartDrawer,
     closeCartDrawer,
