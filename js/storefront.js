@@ -244,8 +244,18 @@
     }
   }
 
+  function formatWhatsAppNumber(raw) {
+    let digits = String(raw || '').replace(/\D/g, '');
+    if (!digits) return '';
+    if (digits.startsWith('00')) digits = digits.slice(2);
+    if (digits.startsWith('01') && digits.length === 11) digits = '2' + digits;
+    else if (digits.startsWith('1') && digits.length === 10) digits = '20' + digits;
+    return digits;
+  }
+
   function normalizeColors(rawColors) {
     if (!Array.isArray(rawColors)) return [];
+    const ignored = new Set(['-', 'قياسي', 'أساسي', 'اساسي', 'افتراضي']);
     return rawColors
       .map(c => {
         if (!c) return null;
@@ -253,12 +263,13 @@
         if (typeof c === 'object' && c.name) return { name: String(c.name).trim(), hex: c.hex || '#111827' };
         return null;
       })
-      .filter(c => c && c.name);
+      .filter(c => c && c.name && !ignored.has(c.name.toLowerCase()));
   }
 
   function normalizeSizes(rawSizes) {
     if (!Array.isArray(rawSizes)) return [];
-    return rawSizes.map(s => String(s || '').trim()).filter(Boolean);
+    const ignored = new Set(['-', 'موحد', 'افتراضي']);
+    return rawSizes.map(s => String(s || '').trim()).filter(s => s && !ignored.has(s.toLowerCase()));
   }
 
   function normalizeImages(doc) {
@@ -397,7 +408,7 @@
     }
 
     // Contact rows (only show when configured in Firestore settings)
-    const waClean = String(s.whatsappNumber || '').replace(/\D/g, '');
+    const waClean = formatWhatsAppNumber(s.whatsappNumber);
     const waBtn = document.getElementById('floating-whatsapp-btn');
     const waRow = document.getElementById('footer-whatsapp-row');
     if (waClean) {
