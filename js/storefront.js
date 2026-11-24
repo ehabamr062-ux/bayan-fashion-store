@@ -2447,10 +2447,14 @@
         foundMap.set(byIdDoc.id, { id: byIdDoc.id, ...(byIdDoc.data() || {}) });
       }
 
-      // Query by phone1
+      // Query by phone1 and phone2 in parallel
       if (foundMap.size === 0) {
-        const byPhoneSnap = await db.collection('orders').where('phone1', '==', q).get();
-        byPhoneSnap.forEach(doc => foundMap.set(doc.id, { id: doc.id, ...(doc.data() || {}) }));
+        const [byPhone1Snap, byPhone2Snap] = await Promise.all([
+          db.collection('orders').where('phone1', '==', q).get(),
+          db.collection('orders').where('phone2', '==', q).get()
+        ]);
+        byPhone1Snap.forEach(doc => foundMap.set(doc.id, { id: doc.id, ...(doc.data() || {}) }));
+        byPhone2Snap.forEach(doc => foundMap.set(doc.id, { id: doc.id, ...(doc.data() || {}) }));
       }
 
       const matches = Array.from(foundMap.values()).sort((a, b) =>
