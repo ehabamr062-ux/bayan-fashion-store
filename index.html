@@ -573,7 +573,7 @@
           <span class="text-[10px] font-extrabold">الرئيسية</span>
         </button>
         <button type="button"
-          onclick="document.getElementById('catalog-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });"
+          onclick="openCategoriesDrawer()"
           class="flex flex-col items-center justify-center gap-1 text-slate-700 hover:text-brand active:text-brand transition">
           <i class="fa-solid fa-layer-group text-base"></i>
           <span class="text-[10px] font-extrabold">الأقسام</span>
@@ -1122,7 +1122,7 @@
 
   <!-- Multi-Tenant Firebase Config & Storefront Engine -->
   <script src="js/firebase_config.js"></script>
-  <script src="js/storefront.js?v=5.1.9"></script>
+  <script src="js/storefront.js?v=5.2.0"></script>
 </body>
 
 </html>

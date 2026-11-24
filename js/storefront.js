@@ -718,6 +718,7 @@
 
   function resetStoreFilters() {
     state.activeCategory = 'الكل';
+    state.activeSubCategory = 'الكل';
     state.searchQuery = '';
     state.sortBy = 'featured';
     const d = document.getElementById('desktop-search');
@@ -727,6 +728,137 @@
     if (m) m.value = '';
     if (s) s.value = 'featured';
     renderStorefront();
+  }
+
+  // 🧠 محرك التصنيف التلقائي الذكي (قسم رئيسي + قسم فرعي) لجميع الأنشطة التجارية
+  function classifyProductSmart(p) {
+    if (!p) return { main: 'عام', sub: '', icon: '🛍️' };
+    if (p._smartCat) return p._smartCat;
+    const rawCat = String(p.category || '').trim();
+    const isGeneric = !rawCat || ['عام', 'general', 'أخرى', 'تشكيلة أزياء', 'الكل', 'غير مصنف'].includes(rawCat.toLowerCase());
+    const n = normalizeArSearch(`${p.name || ''} ${rawCat}`);
+
+    const rules = [
+      // مشروبات وسوبر ماركت
+      { main: 'المشروبات', sub: 'عصائر', icon: '🧃', keys: ['عصير', 'فرجلو', 'بيتي', 'جهينه', 'المراعي', 'عبور لاند', 'بيست', 'بيبو', 'فيو', 'مانجو', 'جوافه', 'تفاح', 'برتقال', 'كوكتيل', 'اناناس'] },
+      { main: 'المشروبات', sub: 'مياه غازية وكانز', icon: '🥫', keys: ['بيبسي', 'كوكاكولا', 'كولا', 'سفن', 'ميرندا', 'ماريندا', 'شويبس', 'شوبسي', 'سبرايت', 'فانتا', 'كانز', 'كنز', 'تايجر', 'ريد بول', 'ستينج', 'فيروز', 'بريل', 'صودا'] },
+      { main: 'المشروبات', sub: 'مياه ومشروبات ساخنة', icon: '☕', keys: ['مياه', 'ميه', 'شاي', 'قهوه', 'نسكافيه', 'كابتشينو', 'ينسون', 'نعناع', 'سحلب', 'كاكاو'] },
+      { main: 'ألبان وأجبان', sub: 'ألبان وزبادي', icon: '🥛', keys: ['لبن', 'حليب', 'زبادي', 'رايب', 'كامل الدسم', 'خالي الدسم'] },
+      { main: 'ألبان وأجبان', sub: 'أجبان', icon: '🧀', keys: ['جبنه', 'جبن', 'رومي', 'شيدر', 'موتزاريلا', 'فيتا', 'قشطه', 'زبده'] },
+      { main: 'سناكس وحلويات', sub: 'شيبسي ومقرمشات', icon: '🍿', keys: ['شيبسي', 'بطاطس', 'دوريتوس', 'شيتوس', 'كرانشي', 'مقرمشات', 'فشار', 'سناكس'] },
+      { main: 'سناكس وحلويات', sub: 'شوكولاتة وبسكويت', icon: '🍫', keys: ['شوكولاته', 'بسكويت', 'ويفر', 'كيك', 'مولتو', 'تودو', 'هوهوز', 'كادبوري', 'جلاكسي', 'اوريو'] },
+      // أحذية وملابس وشنط
+      { main: 'أحذية وكوتشيات', sub: 'كوتشيات وسنيكرز', icon: '👟', keys: ['كوتشي', 'كوتش', 'سنيكر', 'رياضي', 'نايك', 'اديداس', 'بوما', 'كونفرس', 'راننج'] },
+      { main: 'أحذية وكوتشيات', sub: 'بوت وهاف بوت', icon: '🥾', keys: ['بوت', 'هاف بوت', 'هاف', 'شامواه'] },
+      { main: 'أحذية وكوتشيات', sub: 'صنادل وشباشب', icon: '🩴', keys: ['صندل', 'شبشب', 'سليبر', 'كروكس', 'فلات', 'سابو', 'باليرينا'] },
+      { main: 'أحذية وكوتشيات', sub: 'شوز كلاسيك', icon: '👞', keys: ['شوز', 'حذاء', 'جزمه', 'كلاسيك', 'لوفر', 'هيلز', 'كعب', 'سواريه'] },
+      { main: 'شنط وإكسسوارات', sub: 'شنط', icon: '👜', keys: ['شنطه', 'حقيبه', 'باك', 'كروس', 'توت', 'كلاتش', 'باج'] },
+      { main: 'شنط وإكسسوارات', sub: 'محافظ وأحزمة وساعات', icon: '⌚', keys: ['محفظه', 'حزام', 'ساعه', 'نظاره', 'كاب', 'طرحه', 'سكارف', 'شراب'] },
+      { main: 'ملابس', sub: 'تيشرتات وقمصان', icon: '👕', keys: ['تيشرت', 'تي شيرت', 'قميص', 'بولو', 'بلوزه', 'توب', 'بدي'] },
+      { main: 'ملابس', sub: 'بناطيل وجينز', icon: '👖', keys: ['بنطلون', 'جينز', 'شورت', 'ميلتون', 'سويت بانتس', 'ليجن', 'جيب', 'جيبه'] },
+      { main: 'ملابس', sub: 'جاكيت وهودي', icon: '🧥', keys: ['جاكيت', 'هودي', 'سويت شيرت', 'بلوفر', 'كارديجان', 'فيست', 'معطف', 'بليزر'] },
+      { main: 'ملابس', sub: 'فساتين وعبايات', icon: '👗', keys: ['فستان', 'دريس', 'عبايه', 'اسدال', 'طقم', 'بيجامه', 'ترنج'] },
+      // موبايلات وتجميل
+      { main: 'موبايلات وإكسسوارات', sub: 'شواحن وسماعات وجرابات', icon: '📱', keys: ['شاحن', 'كابل', 'سماعه', 'ايربودز', 'جراب', 'اسكرينه', 'باور بانك', 'موبايل'] },
+      { main: 'تجميل وعطور', sub: 'عطور وميك أب وعناية', icon: '💄', keys: ['برفان', 'عطر', 'سبلاش', 'روج', 'ماسكرا', 'فاونديشن', 'كريم', 'شامبو', 'غسول', 'سيروم'] }
+    ];
+
+    for (const r of rules) {
+      if (r.keys.some(k => n.includes(k))) {
+        p._smartCat = { main: isGeneric ? r.main : rawCat, sub: r.sub, icon: r.icon };
+        return p._smartCat;
+      }
+    }
+    p._smartCat = { main: isGeneric ? 'عام' : rawCat, sub: '', icon: '🛍️' };
+    return p._smartCat;
+  }
+
+  function buildSmartCategoryTree() {
+    const tree = new Map();
+    for (const p of state.products) {
+      const c = classifyProductSmart(p);
+      if (!tree.has(c.main)) {
+        tree.set(c.main, { name: c.main, icon: c.icon, count: 0, subs: new Map() });
+      }
+      const node = tree.get(c.main);
+      node.count++;
+      if (c.sub) {
+        node.subs.set(c.sub, (node.subs.get(c.sub) || 0) + 1);
+      }
+    }
+    return Array.from(tree.values()).sort((a, b) => b.count - a.count);
+  }
+
+  function selectSmartCategory(mainCat, subCat = 'الكل') {
+    state.activeCategory = mainCat || 'الكل';
+    state.activeSubCategory = subCat || 'الكل';
+    renderProductsGrid();
+    const drawer = document.getElementById('bayan-categories-drawer');
+    if (drawer) drawer.remove();
+    const sec = document.getElementById('catalog-section');
+    if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function openCategoriesDrawer(expandedMain = '') {
+    const old = document.getElementById('bayan-categories-drawer');
+    if (old) old.remove();
+    const tree = buildSmartCategoryTree();
+    const activeMain = expandedMain || (state.activeCategory !== 'الكل' ? state.activeCategory : '');
+
+    const modal = document.createElement('div');
+    modal.id = 'bayan-categories-drawer';
+    modal.className = 'fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4';
+    modal.onclick = (ev) => { if (ev.target === modal) modal.remove(); };
+
+    const cardsHtml = tree.map(cat => {
+      const subsArr = Array.from(cat.subs.entries()).sort((a, b) => b[1] - a[1]);
+      const isExpanded = activeMain === cat.name;
+      return `
+        <div class="rounded-2xl border ${isExpanded ? 'border-emerald-500 bg-emerald-50/40' : 'border-slate-200 bg-white'} overflow-hidden transition">
+          <button type="button" onclick="${subsArr.length ? `openCategoriesDrawer('${escapeHTML(cat.name)}')` : `selectSmartCategory('${escapeHTML(cat.name)}', 'الكل')`}"
+            class="w-full flex items-center justify-between p-3.5 text-right cursor-pointer">
+            <div class="flex items-center gap-2.5">
+              <span class="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-lg">${cat.icon}</span>
+              <div>
+                <div class="text-sm font-black text-slate-900">${escapeHTML(cat.name)}</div>
+                <div class="text-[11px] font-bold text-slate-500">${cat.count} منتج${subsArr.length ? ` • ${subsArr.length} تصنيفات فرعية` : ''}</div>
+              </div>
+            </div>
+            <i class="fa-solid ${subsArr.length ? (isExpanded ? 'fa-chevron-up text-emerald-600' : 'fa-chevron-down text-slate-400') : 'fa-chevron-left text-slate-400'} text-xs"></i>
+          </button>
+          ${subsArr.length && isExpanded ? `
+            <div class="px-3.5 pb-3.5 pt-1 flex flex-wrap gap-1.5 border-t border-emerald-100">
+              <button type="button" onclick="selectSmartCategory('${escapeHTML(cat.name)}', 'الكل')"
+                class="px-3 py-1.5 rounded-xl text-xs font-extrabold bg-emerald-600 text-white cursor-pointer">
+                عرض كل ${escapeHTML(cat.name)} (${cat.count})
+              </button>
+              ${subsArr.map(([subName, cnt]) => `
+                <button type="button" onclick="selectSmartCategory('${escapeHTML(cat.name)}', '${escapeHTML(subName)}')"
+                  class="px-3 py-1.5 rounded-xl text-xs font-extrabold bg-white border border-slate-200 hover:border-emerald-500 text-slate-800 cursor-pointer">
+                  ${escapeHTML(subName)} (${cnt})
+                </button>`).join('')}
+            </div>` : ''}
+        </div>`;
+    }).join('');
+
+    modal.innerHTML = `
+      <div class="bg-slate-50 w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl max-h-[82vh] flex flex-col overflow-hidden shadow-2xl">
+        <div class="bg-white px-5 py-4 border-b border-slate-200 flex items-center justify-between">
+          <div>
+            <h3 class="text-base font-black text-slate-900">🗂️ تصفح الأقسام والتصنيفات</h3>
+            <p class="text-[11px] font-bold text-slate-500">اختر القسم الرئيسي أو الفرعي للوصول السريع للمنتجات</p>
+          </div>
+          <button type="button" onclick="document.getElementById('bayan-categories-drawer').remove()" class="w-8 h-8 rounded-xl bg-slate-100 text-slate-600 font-black cursor-pointer">✕</button>
+        </div>
+        <div class="p-4 space-y-2.5 overflow-y-auto flex-1">
+          <button type="button" onclick="selectSmartCategory('الكل', 'الكل')" class="w-full py-2.5 px-4 rounded-xl bg-slate-900 text-white text-xs font-black flex items-center justify-between cursor-pointer">
+            <span>🛍️ عرض جميع المنتجات</span>
+            <span>${state.products.length} منتج</span>
+          </button>
+          ${cardsHtml}
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
   }
 
   function getProductAvgRating(prod) {
@@ -775,7 +907,13 @@
     let list = [...state.products];
 
     if (state.activeCategory !== 'الكل') {
-      list = list.filter(p => p.category === state.activeCategory);
+      list = list.filter(p => {
+        const sc = classifyProductSmart(p);
+        return p.category === state.activeCategory || sc.main === state.activeCategory;
+      });
+    }
+    if (state.activeSubCategory && state.activeSubCategory !== 'الكل') {
+      list = list.filter(p => classifyProductSmart(p).sub === state.activeSubCategory);
     }
 
     if (state.searchQuery) {
@@ -2243,6 +2381,8 @@
     submitProductReview,
     quickAddToCart,
     loadMoreProducts,
+    openCategoriesDrawer,
+    selectSmartCategory,
     addCurrentProductToCart,
     openCartDrawer,
     closeCartDrawer,
