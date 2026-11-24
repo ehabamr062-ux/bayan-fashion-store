@@ -1583,9 +1583,12 @@
     const tiers = getOfferTiers(prod);
     const tier = tiers.find(t => t.qty === state.pdSelectedTier) || tiers[0];
 
-    const subtotal = prod.price * tier.qty;
-    const tierDiscount = Math.round(subtotal * (tier.discPct / 100));
-    const afterTier = subtotal - tierDiscount;
+    const unitPrice = getEffectivePrice(prod);
+    const subtotal = unitPrice * tier.qty;
+    const afterTier = (tier.bundlePrice != null && tier.bundlePrice > 0)
+      ? tier.bundlePrice
+      : Math.max(0, subtotal - Math.round(subtotal * (tier.discPct / 100)));
+    const tierDiscount = Math.max(0, subtotal - afterTier);
 
     let couponDiscount = 0;
     if (state.pdAppliedCoupon) {

@@ -5992,7 +5992,7 @@
                 return;
             }
 
-            db.collection('orders').orderBy('createdAt', 'desc').onSnapshot(snapshot => {
+            db.collection('orders').orderBy('createdAt', 'desc').limit(200).onSnapshot(snapshot => {
                 const hadOrdersBefore = !isInitialOrdersLoad;
                 let newIncomingOrder = null;
 
