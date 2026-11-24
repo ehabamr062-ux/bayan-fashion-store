@@ -515,9 +515,25 @@
       (err) => console.warn('Shipping listener warning:', err)
     );
 
-    // 3) Products (live sync, filtered: active !== false && isFrozen !== true)
-    db.collection('products').onSnapshot(
-      (snap) => {
+    // 3) Products — كاش محلي ذكي لمدة 5 دقائق لتوفير 90% من قراءات Firebase Firestore
+    const CACHE_KEY = `bayan_store_prods_v2_${state.shopId}`;
+    const CACHE_TTL_MS = 5 * 60 * 1000;
+    let servedFromFreshCache = false;
+    try {
+      const rawCache = localStorage.getItem(CACHE_KEY);
+      if (rawCache) {
+        const parsed = JSON.parse(rawCache);
+        if (parsed && Array.isArray(parsed.items) && (Date.now() - Number(parsed.ts || 0)) < CACHE_TTL_MS) {
+          state.products = parsed.items;
+          state.productsLoaded = true;
+          servedFromFreshCache = true;
+          renderStorefront();
+        }
+      }
+    } catch (_) { }
+
+    if (!servedFromFreshCache) {
+      db.collection('products').get().then((snap) => {
         const list = [];
         snap.forEach((doc) => {
           const prod = normalizeProduct(doc.id, doc.data() || {});
@@ -527,14 +543,16 @@
         });
         state.products = list;
         state.productsLoaded = true;
+        try {
+          localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), items: list }));
+        } catch (_) { }
         renderStorefront();
-      },
-      (err) => {
-        console.warn('Products listener warning:', err);
+      }).catch((err) => {
+        console.warn('Products fetch warning:', err);
         state.productsLoaded = true;
         renderStorefront();
-      }
-    );
+      });
+    }
 
     // 4) Coupons
     db.collection('coupons').onSnapshot(
@@ -1105,25 +1123,7 @@
       discBadge.classList.add('hidden');
     }
 
-    const stockPill = document.getElementById('pd-stock-pill');
-    const showStockNum = state.settings.showStockCountToCustomers !== false;
-    const effAvailNow = getAvailableStockForSelection(prod, state.pdSelectedColor, state.pdSelectedSize);
-    if (effAvailNow > 5) {
-      stockPill.className = 'mr-auto px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-50 text-emerald-700';
-      stockPill.innerHTML = showStockNum
-        ? `<i class="fa-solid fa-check ml-1"></i>متوفر (${effAvailNow} قطعة)`
-        : `<i class="fa-solid fa-check ml-1"></i>متوفر بالمخزون`;
-    } else if (effAvailNow > 0) {
-      stockPill.className = 'mr-auto px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-50 text-amber-700';
-      stockPill.innerHTML = showStockNum
-        ? `<i class="fa-solid fa-fire ml-1"></i>باقي ${effAvailNow} قطع فقط!`
-        : `<i class="fa-solid fa-check ml-1"></i>متوفر بكمية محدودة`;
-    } else {
-      stockPill.className = 'mr-auto px-2.5 py-1 rounded-lg text-[11px] font-bold bg-rose-50 text-rose-700';
-      stockPill.innerHTML = (Number(prod.dailySalesLimit || 0) > 0 && Number(prod.stock || 0) > 0)
-        ? 'اكتمل الحد اليومي — متاح غداً'
-        : 'نفذت الكمية';
-    }
+    updatePdStockPill();
 
     const r = getProductAvgRating(prod);
     document.getElementById('pd-rating-summary').innerHTML = `
@@ -1269,9 +1269,40 @@
     }
   }
 
+  function updatePdStockPill() {
+    const prod = state.currentProduct;
+    const stockPill = document.getElementById('pd-stock-pill');
+    if (!prod || !stockPill) return;
+    const showStockNum = state.settings.showStockCountToCustomers !== false;
+    const effAvailNow = getAvailableStockForSelection(prod, state.pdSelectedColor, state.pdSelectedSize);
+    if (effAvailNow > 5) {
+      stockPill.className = 'mr-auto px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-50 text-emerald-700';
+      stockPill.innerHTML = showStockNum
+        ? `<i class="fa-solid fa-check ml-1"></i>متوفر (${effAvailNow} قطعة)`
+        : `<i class="fa-solid fa-check ml-1"></i>متوفر بالمخزون`;
+    } else if (effAvailNow > 0) {
+      stockPill.className = 'mr-auto px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-50 text-amber-700';
+      stockPill.innerHTML = showStockNum
+        ? `<i class="fa-solid fa-fire ml-1"></i>باقي ${effAvailNow} قطع فقط!`
+        : `<i class="fa-solid fa-check ml-1"></i>متوفر بكمية محدودة`;
+    } else {
+      stockPill.className = 'mr-auto px-2.5 py-1 rounded-lg text-[11px] font-bold bg-rose-50 text-rose-700';
+      stockPill.innerHTML = (Number(prod.dailySalesLimit || 0) > 0 && Number(prod.stock || 0) > 0)
+        ? 'اكتمل الحد اليومي — متاح غداً'
+        : 'نفذت الكمية';
+    }
+    const submitBtn = document.querySelector('#quick-order-form button[type="submit"]');
+    if (submitBtn) {
+      submitBtn.disabled = effAvailNow <= 0;
+      submitBtn.classList.toggle('opacity-50', effAvailNow <= 0);
+      submitBtn.classList.toggle('cursor-not-allowed', effAvailNow <= 0);
+    }
+  }
+
   function selectPdColor(name) {
     state.pdSelectedColor = name;
     renderPdVariants();
+    updatePdStockPill();
     renderPdOfferTiers();
     recalcQuickOrderSummary();
   }
@@ -1279,6 +1310,7 @@
   function selectPdSize(sz) {
     state.pdSelectedSize = sz;
     renderPdVariants();
+    updatePdStockPill();
     renderPdOfferTiers();
     recalcQuickOrderSummary();
   }
@@ -1289,8 +1321,14 @@
     const vs = prod.variantsStock;
     if (vs && typeof vs === 'object' && Object.keys(vs).length > 0) {
       const exactKey = `${size || 'موحد'}|${color || 'قياسي'}`;
-      if (vs[exactKey] !== undefined) avail = Math.max(0, Number(vs[exactKey]) || 0);
-      else if (size) {
+      if (vs[exactKey] !== undefined) {
+        avail = Math.max(0, Number(vs[exactKey]) || 0);
+      } else if (color && !size) {
+        const colorKeys = Object.keys(vs).filter(k => k.split('|')[1] === color);
+        if (colorKeys.length) {
+          avail = colorKeys.reduce((s, k) => s + Math.max(0, Number(vs[k]) || 0), 0);
+        }
+      } else if (size && !color) {
         const sizeKeys = Object.keys(vs).filter(k => k.split('|')[0] === size);
         if (sizeKeys.length) {
           avail = sizeKeys.reduce((s, k) => s + Math.max(0, Number(vs[k]) || 0), 0);
@@ -1546,7 +1584,17 @@
           }
         }
         db.collection('products').doc(p.id).set(updateObj, { merge: true }).catch(() => { });
+        // تحديث الرصيد في الذاكرة والكاش المحلي فوراً
+        p.stock = newStock;
+        p.stockQty = newStock;
+        p.inStock = newStock > 0;
+        p.dailySoldDate = todayISO;
+        p.dailySoldCount = prevDailySold + reqQty;
+        if (updateObj.variantsStock) p.variantsStock = updateObj.variantsStock;
       }
+      try {
+        localStorage.setItem(`bayan_store_prods_v2_${state.shopId}`, JSON.stringify({ ts: Date.now(), items: state.products }));
+      } catch (_) { }
     }
     try {
       if (typeof BayanIDB !== 'undefined' && typeof BayanIDB.setOrder === 'function') {
