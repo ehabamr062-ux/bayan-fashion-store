@@ -1609,6 +1609,37 @@
   }
 
   async function saveOrderToFirestore(orderPayload) {
+    // 🛡️ حماية ضد السبام وإغراق المتجر بطلبات متكررة (Rate Limiting: طلب كل 15 ثانية كحد أقصى)
+    try {
+      const lastOrderTs = Number(sessionStorage.getItem('bayan_last_order_ts') || 0);
+      const elapsedSec = Math.floor((Date.now() - lastOrderTs) / 1000);
+      if (lastOrderTs > 0 && elapsedSec < 15) {
+        throw new Error(`⚠️ يرجى الانتظار ${15 - elapsedSec} ثانية قبل إرسال طلب جديد للحماية من التكرار.`);
+      }
+    } catch (rateErr) {
+      if (rateErr && rateErr.message && rateErr.message.includes('⚠️')) throw rateErr;
+    }
+
+    // 🛡️ تنظيف وتحقق صارم من نصوص الطلب والكميات لمنع الحقن والتلاعب
+    const stripTags = (s, maxLen = 180) => String(s || '').replace(/[<>]/g, '').trim().slice(0, maxLen);
+    if (orderPayload) {
+      orderPayload.customerName = stripTags(orderPayload.customerName, 80);
+      orderPayload.address = stripTags(orderPayload.address, 220);
+      if (orderPayload.notes) orderPayload.notes = stripTags(orderPayload.notes, 250);
+      if (orderPayload.city) orderPayload.city = stripTags(orderPayload.city, 60);
+      if (Array.isArray(orderPayload.items)) {
+        for (const it of orderPayload.items) {
+          const q = Number(it.qty || 0);
+          if (!Number.isFinite(q) || q < 1 || q > 50) {
+            throw new Error('⚠️ كمية غير صالحة في الطلب (الحد الأقصى 50 قطعة للصنف).');
+          }
+          if (Number(it.unitPrice) < 0 || Number(it.total) < 0) {
+            throw new Error('⚠️ بيانات السعر غير صالحة.');
+          }
+        }
+      }
+    }
+
     const db = typeof getBayanDb === 'function' ? getBayanDb() : null;
     if (!db) throw new Error('تعذر الاتصال بقاعدة البيانات السحابية');
 
@@ -1697,6 +1728,9 @@
     } else {
       await db.collection('orders').doc(orderPayload.id).set(orderPayload);
     }
+
+    // تسجيل توقيت نجاح الطلب للحماية من التكرار والسبام
+    try { sessionStorage.setItem('bayan_last_order_ts', String(Date.now())); } catch (_) { }
 
     // تحديث الرصيد في الذاكرة والكاش المحلي فوراً بعد نجاح المعاملة
     for (const { productId, updateObj } of appliedUpdates) {

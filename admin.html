@@ -3337,6 +3337,18 @@
                 return;
             }
 
+            // 🛡️ حماية ضد تخمين رمز المرور (Brute-Force Lockout: 60 ثانية بعد 5 محاولات خاطئة)
+            const lockUntil = Number(sessionStorage.getItem('bayan_pin_lock_until') || 0);
+            if (lockUntil > Date.now()) {
+                const remSec = Math.ceil((lockUntil - Date.now()) / 1000);
+                const errEl = document.getElementById('pinErrorMsg');
+                if (errEl) {
+                    errEl.style.display = 'block';
+                    errEl.textContent = `🔒 تم قفل الدخول مؤقتاً للحماية — حاول بعد ${remSec} ثانية.`;
+                }
+                return;
+            }
+
             // 1. فحص فوري مقابل الرمز المخزن محلياً في IndexedDB أو الذاكرة
             const localSaved = (typeof BayanIDB !== 'undefined' ? BayanIDB.getItem('bayan_admin_pin') : null) || currentAdminPin || '1234';
 
@@ -3366,11 +3378,20 @@
                 }
             }
 
-            // في حالة كان الرمز خاطئاً
+            // في حالة كان الرمز خاطئاً — تسجيل المحاولة وتفعيل القفل المؤقت بعد 5 محاولات
+            const fails = Number(sessionStorage.getItem('bayan_pin_fails') || 0) + 1;
+            sessionStorage.setItem('bayan_pin_fails', String(fails));
             const errorEl = document.getElementById('pinErrorMsg');
-            if (errorEl) {
+            if (fails >= 5) {
+                sessionStorage.setItem('bayan_pin_lock_until', String(Date.now() + 60000));
+                sessionStorage.setItem('bayan_pin_fails', '0');
+                if (errorEl) {
+                    errorEl.style.display = 'block';
+                    errorEl.textContent = '🔒 تم تجاوز 5 محاولات خاطئة — تم قفل الدخول لمدة 60 ثانية للحماية!';
+                }
+            } else if (errorEl) {
                 errorEl.style.display = 'block';
-                errorEl.textContent = '❌ رمز المرور غير صحيح! حاول مرة أخرى.';
+                errorEl.textContent = `❌ رمز المرور غير صحيح! (متبقي ${5 - fails} محاولات)`;
             }
             pinInput.classList.add('pin-error-shake');
             setTimeout(() => pinInput.classList.remove('pin-error-shake'), 400);
@@ -3388,6 +3409,8 @@
         }
 
         function unlockDashboard() {
+            sessionStorage.removeItem('bayan_pin_fails');
+            sessionStorage.removeItem('bayan_pin_lock_until');
             sessionStorage.setItem('bayan_admin_authenticated', 'true');
             const overlay = document.getElementById('pinLockOverlay');
             if (overlay) overlay.style.display = 'none';
