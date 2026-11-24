@@ -2374,19 +2374,27 @@
             </div>
           </div>`).join('');
 
-        return `
-          <div class="p-3.5 sm:p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
-            <div class="flex items-start justify-between gap-2">
-              <div class="min-w-0">
-                <div class="flex items-center gap-1.5">
-                  <span class="font-mono font-black text-sm text-slate-950">#${escapeHTML(ord.orderNumber || ord.id)}</span>
-                  ${dtStr ? `<span class="text-[10px] text-slate-400 font-bold">${escapeHTML(dtStr)}</span>` : ''}
-                </div>
-                <div class="text-[11px] text-slate-600 font-bold truncate mt-0.5">${escapeHTML(ord.customerName || '')}${ord.city ? ` • ${escapeHTML(ord.city)}` : ''}</div>
-              </div>
-              <span class="px-2.5 py-1 rounded-xl text-[11px] font-extrabold shrink-0 ${st.cls}">${st.label}</span>
-            </div>
+        const isActiveOrder = !['delivered', 'confirmed', 'cancelled'].includes(String(ord.status || 'new'));
+        const openAttr = (isActiveOrder || matches.length === 1) ? 'open' : '';
 
+        return `
+          <details ${openAttr} class="group rounded-2xl bg-slate-50 border ${isActiveOrder ? 'border-emerald-300 shadow-xs' : 'border-slate-200'} overflow-hidden">
+            <summary class="list-none cursor-pointer p-3.5 sm:p-4 flex items-center justify-between gap-2 select-none hover:bg-slate-100/70 transition">
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-1.5 flex-wrap">
+                  <span class="font-mono font-black text-sm text-slate-950">🧾 طلب #${escapeHTML(ord.orderNumber || ord.id)}</span>
+                  ${dtStr ? `<span class="text-[10px] text-slate-400 font-bold">${escapeHTML(dtStr)}</span>` : ''}
+                  ${isActiveOrder ? '<span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[9px] font-black">طلب جاري</span>' : ''}
+                </div>
+                <div class="text-[11px] text-slate-600 font-bold truncate mt-0.5">${escapeHTML(ord.customerName || '')}${ord.city ? ` • ${escapeHTML(ord.city)}` : ''} • <strong class="text-emerald-700">${formatEGP(ord.grandTotal ?? ord.total ?? 0)}</strong></div>
+              </div>
+              <div class="flex items-center gap-1.5 shrink-0">
+                <span class="px-2.5 py-1 rounded-xl text-[11px] font-extrabold ${st.cls}">${st.label}</span>
+                <i class="fa-solid fa-chevron-down text-xs text-slate-400 transition-transform group-open:rotate-180"></i>
+              </div>
+            </summary>
+
+            <div class="px-3.5 sm:px-4 pb-3.5 sm:pb-4 space-y-3 border-t border-slate-200/80 pt-3">
             ${st.idx >= 0 ? `
               <div class="grid grid-cols-4 gap-1.5 pt-1">
                 ${steps.map((s, idx) => `
@@ -2415,7 +2423,8 @@
                 </div>
               </div>
             </div>
-          </div>`;
+            </div>
+          </details>`;
       }).join('') + `</div>`;
     } catch (err) {
       console.error('Track order error:', err);

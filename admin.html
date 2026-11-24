@@ -3732,6 +3732,12 @@
         }
 
         // عرض أحدث الطلبات الواردة في الداشبورد مع الإجراءات الفورية
+        let adminOrderInvoiceSearch = '';
+        function onAdminOrderInvoiceSearch(val) {
+            adminOrderInvoiceSearch = String(val || '').trim();
+            renderHomeRecentOrders();
+        }
+
         function renderHomeRecentOrders() {
             const container = document.getElementById('homeRecentOrdersContainer');
             if (!container) return;
@@ -3747,12 +3753,18 @@
                 return;
             }
 
-            // أحدث 6 طلبات
-            const recentList = [...adminOrdersList].sort((a, b) => {
+            const qRaw = adminOrderInvoiceSearch.replace(/^#/, '').toLowerCase();
+            const sortedAll = [...adminOrdersList].sort((a, b) => {
                 const dateA = parseOrderDate(a)?.getTime() || 0;
                 const dateB = parseOrderDate(b)?.getTime() || 0;
                 return dateB - dateA;
-            }).slice(0, 6);
+            });
+            const recentList = qRaw
+                ? sortedAll.filter(o => {
+                    const hay = `${o.orderNumber || ''} ${o.id || ''} ${o.posInvoiceNo || ''} ${o.customerName || ''} ${o.phone1 || ''} ${o.city || ''}`.toLowerCase();
+                    return hay.includes(qRaw);
+                })
+                : sortedAll.slice(0, 6);
 
             const statusBadge = {
                 'new': { label: '🟡 جديد', bg: '#fef3c7', text: '#92400e', border: '#fcd34d' },
@@ -3762,6 +3774,10 @@
             };
 
             let tableHtml = `
+                <div style="display:flex; gap:8px; align-items:center; margin-bottom:12px; flex-wrap:wrap;">
+                    <input type="text" value="${adminOrderInvoiceSearch.replace(/"/g, '&quot;')}" oninput="onAdminOrderInvoiceSearch(this.value)" placeholder="🔍 ابحث برقم الفاتورة / الطلب (مثال: 1 أو #2) أو اسم العميل أو الهاتف..." style="flex:1; min-width:220px; padding:9px 14px; border-radius:10px; border:1.5px solid #cbd5e1; font-family:Cairo,sans-serif; font-weight:700; font-size:0.86rem;">
+                    ${adminOrderInvoiceSearch ? `<button type="button" onclick="onAdminOrderInvoiceSearch('')" style="background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5; padding:8px 12px; border-radius:10px; font-weight:800; cursor:pointer; font-family:Cairo,sans-serif;">✕ مسح</button>` : ''}
+                </div>
                 <div style="overflow-x: auto;">
                     <table style="width: 100%; border-collapse: collapse; font-size: 0.86rem; text-align: right;">
                         <thead>
