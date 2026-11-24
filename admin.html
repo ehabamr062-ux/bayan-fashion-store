@@ -1382,8 +1382,6 @@
     <div id="pinLockOverlay">
         <div class="pin-card">
             <div style="font-size: 3rem;">🔐</div>
-            <h2>لوحة إدارة متجر بيان</h2>
-            <p id="pinLockSubTitle" style="color: #64748b; font-size: 0.88rem; margin: 8px 0 16px;">
             <h2 id="pinLockTitle" style="color: #0f172a; font-weight: 900;">لوحة إدارة المتجر</h2>
             <p id="pinLockSubTitle" style="color: #0f172a; font-size: 0.94rem; font-weight: 800; margin: 8px 0 6px;">
                 أدخل رمز PIN السري للمتابعة
@@ -1398,13 +1396,9 @@
                 <input type="password" id="adminPinInput" class="pin-input" maxlength="8" placeholder="••••" autofocus
                     onkeydown="if(event.key==='Enter') verifyAdminPin()">
                 <button type="button" onclick="togglePinVisibility('adminPinInput', this)"
-                    style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #64748b; padding: 4px;"
-                    title="إظهار / إخفاء الرمز">👁️</button>
-                <button type="button" onclick="togglePinVisibility('adminPinInput', this)"
                     style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #334155; padding: 4px;"
                     title="إظهار / إخفاء الرمز">👁️</button>
             </div>
-            <button type="button" class="btn-pin-submit" onclick="verifyAdminPin()">دخول اللوحة 🚀</button>
             <button type="button" class="btn-pin-submit" onclick="verifyAdminPin()"
                 style="background: linear-gradient(135deg, #059669, #047857) !important; box-shadow: 0 6px 18px rgba(5,150,105,0.35);">دخول
                 اللوحة 🚀</button>
