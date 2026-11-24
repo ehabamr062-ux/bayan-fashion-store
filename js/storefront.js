@@ -1568,45 +1568,89 @@
   async function saveOrderToFirestore(orderPayload) {
     const db = typeof getBayanDb === 'function' ? getBayanDb() : null;
     if (!db) throw new Error('تعذر الاتصال بقاعدة البيانات السحابية');
-    await db.collection('orders').doc(orderPayload.id).set(orderPayload);
-    // خصم الرصيد فوراً في Firestore حتى يتطابق المتجر مع لوحة التحكم
-    if (Array.isArray(orderPayload.items)) {
-      for (const it of orderPayload.items) {
-        const p = state.products.find(x => x.id === it.productId);
-        if (!p) continue;
-        const reqQty = Math.max(1, Number(it.qty) || 1);
-        const newStock = Math.max(0, Number(p.stock || 0) - reqQty);
-        const todayISO = new Date().toISOString().slice(0, 10);
-        const prevDailySold = (p.dailySoldDate === todayISO) ? Math.max(0, Number(p.dailySoldCount || 0)) : 0;
-        const updateObj = {
-          stock: newStock,
-          stockQty: newStock,
-          inStock: newStock > 0,
-          dailySoldDate: todayISO,
-          dailySoldCount: prevDailySold + reqQty,
-          updatedAt: new Date().toISOString()
-        };
-        if (p.variantsStock && typeof p.variantsStock === 'object') {
-          const vCopy = { ...p.variantsStock };
+
+    const rawFs = (window.firebase && typeof window.firebase.firestore === 'function') ? window.firebase.firestore() : null;
+    const todayISO = new Date().toISOString().slice(0, 10);
+    const items = Array.isArray(orderPayload.items) ? orderPayload.items : [];
+    const appliedUpdates = [];
+
+    if (rawFs && typeof rawFs.runTransaction === 'function') {
+      // 🔒 معاملة ذرّية (Atomic Firestore Transaction) لمنع تضارب الطلبات المتزامنة (Race Condition)
+      await rawFs.runTransaction(async (tx) => {
+        const reads = [];
+        for (const it of items) {
+          if (!it.productId) continue;
+          const prodRef = db.collection('products').doc(it.productId);
+          const snap = await tx.get(prodRef);
+          reads.push({ it, prodRef, snap });
+        }
+
+        // التحقق الصارم من الرصيد الحقيقي على السيرفر لحظة الطلب
+        for (const { it, prodRef, snap } of reads) {
+          if (!snap.exists) continue;
+          const d = snap.data() || {};
+          const reqQty = Math.max(1, Number(it.qty) || 1);
+          const liveStock = Math.max(0, Number(d.stock ?? d.stockQty ?? 0));
+          let effAvail = liveStock;
+
+          let vCopy = null;
           const exactKey = `${it.size || 'موحد'}|${it.color || 'قياسي'}`;
-          if (vCopy[exactKey] !== undefined) {
+          if (d.variantsStock && typeof d.variantsStock === 'object') {
+            vCopy = { ...d.variantsStock };
+            if (vCopy[exactKey] !== undefined) {
+              effAvail = Math.max(0, Number(vCopy[exactKey]) || 0);
+            }
+          }
+
+          const dailyLimit = Math.max(0, Number(d.dailySalesLimit || 0));
+          const prevDailySold = (d.dailySoldDate === todayISO) ? Math.max(0, Number(d.dailySoldCount || 0)) : 0;
+          if (dailyLimit > 0) {
+            effAvail = Math.min(effAvail, Math.max(0, dailyLimit - prevDailySold));
+          }
+
+          if (d.inStock === false || effAvail < reqQty) {
+            throw new Error(`⚠️ عذراً، تم حجز الكمية للتو من «${it.name || d.name || 'المنتج'}» (المتاح الآن: ${effAvail} قطعة فقط)`);
+          }
+
+          const newStock = Math.max(0, liveStock - reqQty);
+          const updateObj = {
+            stock: newStock,
+            stockQty: newStock,
+            inStock: newStock > 0,
+            dailySoldDate: todayISO,
+            dailySoldCount: prevDailySold + reqQty,
+            updatedAt: new Date().toISOString()
+          };
+          if (vCopy && vCopy[exactKey] !== undefined) {
             vCopy[exactKey] = Math.max(0, (Number(vCopy[exactKey]) || 0) - reqQty);
             updateObj.variantsStock = vCopy;
           }
+
+          tx.set(prodRef, updateObj, { merge: true });
+          appliedUpdates.push({ productId: it.productId, updateObj });
         }
-        db.collection('products').doc(p.id).set(updateObj, { merge: true }).catch(() => { });
-        // تحديث الرصيد في الذاكرة والكاش المحلي فوراً
-        p.stock = newStock;
-        p.stockQty = newStock;
-        p.inStock = newStock > 0;
-        p.dailySoldDate = todayISO;
-        p.dailySoldCount = prevDailySold + reqQty;
-        if (updateObj.variantsStock) p.variantsStock = updateObj.variantsStock;
-      }
-      try {
-        localStorage.setItem(`bayan_store_prods_v2_${state.shopId}`, JSON.stringify({ ts: Date.now(), items: state.products }));
-      } catch (_) { }
+
+        const orderRef = db.collection('orders').doc(orderPayload.id);
+        tx.set(orderRef, orderPayload);
+      });
+    } else {
+      await db.collection('orders').doc(orderPayload.id).set(orderPayload);
     }
+
+    // تحديث الرصيد في الذاكرة والكاش المحلي فوراً بعد نجاح المعاملة
+    for (const { productId, updateObj } of appliedUpdates) {
+      const p = state.products.find(x => x.id === productId);
+      if (!p) continue;
+      p.stock = updateObj.stock;
+      p.stockQty = updateObj.stockQty;
+      p.inStock = updateObj.inStock;
+      p.dailySoldDate = updateObj.dailySoldDate;
+      p.dailySoldCount = updateObj.dailySoldCount;
+      if (updateObj.variantsStock) p.variantsStock = updateObj.variantsStock;
+    }
+    try {
+      localStorage.setItem(`bayan_store_prods_v2_${state.shopId}`, JSON.stringify({ ts: Date.now(), items: state.products }));
+    } catch (_) { }
     try {
       if (typeof BayanIDB !== 'undefined' && typeof BayanIDB.setOrder === 'function') {
         await BayanIDB.setOrder(orderPayload);
