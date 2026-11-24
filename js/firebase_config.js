@@ -208,10 +208,7 @@ const BayanIDB = {
                         this.setItem(k, v);
                     }
                 }
-                try {
-                    window.localStorage.clear();
-                    console.log("✨ تم مسح وتفريغ localStorage بنسبة 100%، والاعتماد بالكامل على IndexedDB!");
-                } catch (e) { }
+                // تم الاحتفاظ بـ localStorage لدعم كاش المنتجات الذكي (5 دقائق) وملف العميل في storefront.js
             }
         } catch (e) {
             console.warn("BayanIDB cache sync warning:", e);
@@ -377,12 +374,9 @@ const BayanIDB = {
 
 // تشغيل وتهيئة فورية تلقائية لـ BayanIDB عند استدعاء السكريبت
 if (typeof window !== 'undefined') {
-    // تفريغ localStorage فوراً لحماية الخصوصية ومنع أي تخزين به
-    try { window.localStorage.clear(); } catch (e) { }
-
-    // فتح قاعدة بيانات IndexedDB فوراً
+    // فتح قاعدة بيانات IndexedDB فوراً مع الحفاظ على كاش storefront في localStorage
     BayanIDB.open().then(() => {
-        console.log("🚀 تم تفعيل قاعدة بيانات IndexedDB الخالصة (BayanIDB Pure) - بدون localStorage نهائياً!");
+        console.log("🚀 تم تفعيل قاعدة بيانات IndexedDB (BayanIDB) بنجاح!");
     }).catch(console.warn);
 
     window.addEventListener('DOMContentLoaded', () => {

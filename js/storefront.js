@@ -98,18 +98,20 @@
   async function generateNextOrderId() {
     try {
       const db = typeof getBayanDb === 'function' ? getBayanDb() : null;
-      if (db) {
-        const snap = await db.collection('orders').get();
-        let maxNum = snap.size;
-        snap.forEach(doc => {
-          const d = doc.data() || {};
-          const n = parseInt(d.orderNumber || d.id || doc.id, 10);
-          if (!isNaN(n) && n > maxNum) maxNum = n;
+      const rawFs = typeof getRawBayanDb === 'function' ? getRawBayanDb() : (window.firebase && firebase.firestore ? firebase.firestore() : null);
+      if (db && rawFs && typeof rawFs.runTransaction === 'function') {
+        const counterRef = db.collection('settings').doc('counters');
+        const nextNum = await rawFs.runTransaction(async (tx) => {
+          const snap = await tx.get(counterRef);
+          const cur = snap.exists ? (parseInt(snap.data().lastOrderNumber, 10) || 0) : 0;
+          const next = cur + 1;
+          tx.set(counterRef, { lastOrderNumber: next, updatedAt: new Date().toISOString() }, { merge: true });
+          return next;
         });
-        return String(maxNum + 1);
+        return String(nextNum);
       }
     } catch (_) { }
-    return '1';
+    return String(Math.floor(100000 + Math.random() * 900000));
   }
 
   function handleImgError(img, label = '') {
@@ -1299,9 +1301,17 @@
       document.getElementById('pd-sizes-list').innerHTML = sizes.map(sz => {
         const active = state.pdSelectedSize === sz;
         let outOfSz = false;
-        if (vStock) {
-          const keys = Object.keys(vStock).filter(k => k.includes(sz));
-          if (keys.length && keys.every(k => Number(vStock[k] || 0) <= 0)) outOfSz = true;
+        if (vStock && Object.keys(vStock).length > 0) {
+          const selectedColor = state.pdSelectedColor || '';
+          const keys = Object.keys(vStock).filter(k => {
+            const parts = k.split('|');
+            const kSize = (parts[0] || '').trim();
+            const kColor = (parts[1] || '').trim();
+            if (kSize !== sz) return false;
+            if (selectedColor && colors.length > 0) return kColor === selectedColor;
+            return true;
+          });
+          if (!keys.length || keys.every(k => Number(vStock[k] || 0) <= 0)) outOfSz = true;
         }
         return `
           <button type="button" ${outOfSz ? 'disabled' : `onclick="selectPdSize('${escapeHTML(sz)}')"`} class="min-w-[46px] px-3 py-2 rounded-xl border-2 text-xs sm:text-sm font-extrabold transition ${outOfSz ? 'border-slate-100 bg-slate-100 text-slate-400 line-through cursor-not-allowed' : (active ? 'border-brand bg-rose-50 text-brand' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-400')
@@ -1334,7 +1344,7 @@
         ? 'اكتمل الحد اليومي — متاح غداً'
         : 'نفذت الكمية';
     }
-    const submitBtn = document.querySelector('#quick-order-form button[type="submit"]');
+    const submitBtn = document.querySelector('#pd-quick-order-form button[type="submit"], #qo-submit-btn');
     if (submitBtn) {
       submitBtn.disabled = effAvailNow <= 0;
       submitBtn.classList.toggle('opacity-50', effAvailNow <= 0);
@@ -1363,19 +1373,20 @@
     let avail = Math.max(0, Number(prod.stock ?? 0));
     const vs = prod.variantsStock;
     if (vs && typeof vs === 'object' && Object.keys(vs).length > 0) {
-      const exactKey = `${size || 'موحد'}|${color || 'قياسي'}`;
+      const normSize = (size && size !== '-') ? String(size).trim() : 'موحد';
+      const normColor = (color && color !== '-') ? String(color).trim() : 'قياسي';
+      const exactKey = `${normSize}|${normColor}`;
       if (vs[exactKey] !== undefined) {
         avail = Math.max(0, Number(vs[exactKey]) || 0);
       } else if (color && !size) {
-        const colorKeys = Object.keys(vs).filter(k => k.split('|')[1] === color);
-        if (colorKeys.length) {
-          avail = colorKeys.reduce((s, k) => s + Math.max(0, Number(vs[k]) || 0), 0);
-        }
+        const colorKeys = Object.keys(vs).filter(k => (k.split('|')[1] || '').trim() === normColor);
+        avail = colorKeys.reduce((s, k) => s + Math.max(0, Number(vs[k]) || 0), 0);
       } else if (size && !color) {
-        const sizeKeys = Object.keys(vs).filter(k => k.split('|')[0] === size);
-        if (sizeKeys.length) {
-          avail = sizeKeys.reduce((s, k) => s + Math.max(0, Number(vs[k]) || 0), 0);
-        }
+        const sizeKeys = Object.keys(vs).filter(k => (k.split('|')[0] || '').trim() === normSize);
+        avail = sizeKeys.reduce((s, k) => s + Math.max(0, Number(vs[k]) || 0), 0);
+      } else {
+        // إذا اختار العميل مقاساً ولوناً معاً غير موجودين في variantsStock، فهذا المزيج غير متوفر (0) وليس الرصيد الإجمالي!
+        avail = 0;
       }
     }
     // 📅 تطبيق الحد الأقصى للبيع اليومي (Daily Sales Limit) إن كان مفعّلاً من لوحة التحكم
@@ -1607,59 +1618,77 @@
     const appliedUpdates = [];
 
     if (rawFs && typeof rawFs.runTransaction === 'function') {
-      // 🔒 معاملة ذرّية (Atomic Firestore Transaction) لمنع تضارب الطلبات المتزامنة (Race Condition)
+      // 🔒 معاملة ذرّية (Atomic Firestore Transaction) مع تجميع عناصر نفس المنتج لمنع إلغاء خصم المقاسات المتعددة
       await rawFs.runTransaction(async (tx) => {
-        const reads = [];
+        const grouped = new Map();
         for (const it of items) {
           if (!it.productId) continue;
-          const prodRef = db.collection('products').doc(it.productId);
+          if (!grouped.has(it.productId)) grouped.set(it.productId, []);
+          grouped.get(it.productId).push(it);
+        }
+
+        const reads = [];
+        for (const [productId, prodItems] of grouped.entries()) {
+          const prodRef = db.collection('products').doc(productId);
           const snap = await tx.get(prodRef);
-          reads.push({ it, prodRef, snap });
+          reads.push({ productId, prodItems, prodRef, snap });
         }
 
         // التحقق الصارم من الرصيد الحقيقي على السيرفر لحظة الطلب
-        for (const { it, prodRef, snap } of reads) {
+        for (const { productId, prodItems, prodRef, snap } of reads) {
           if (!snap.exists) continue;
           const d = snap.data() || {};
-          const reqQty = Math.max(1, Number(it.qty) || 1);
-          const liveStock = Math.max(0, Number(d.stock ?? d.stockQty ?? 0));
-          let effAvail = liveStock;
-
-          let vCopy = null;
-          const exactKey = `${it.size || 'موحد'}|${it.color || 'قياسي'}`;
-          if (d.variantsStock && typeof d.variantsStock === 'object') {
-            vCopy = { ...d.variantsStock };
-            if (vCopy[exactKey] !== undefined) {
-              effAvail = Math.max(0, Number(vCopy[exactKey]) || 0);
-            }
-          }
+          let liveStock = Math.max(0, Number(d.stock ?? d.stockQty ?? 0));
+          const hasVariants = d.variantsStock && typeof d.variantsStock === 'object' && Object.keys(d.variantsStock).length > 0;
+          const vCopy = hasVariants ? { ...d.variantsStock } : null;
 
           const dailyLimit = Math.max(0, Number(d.dailySalesLimit || 0));
           const prevDailySold = (d.dailySoldDate === todayISO) ? Math.max(0, Number(d.dailySoldCount || 0)) : 0;
-          if (dailyLimit > 0) {
-            effAvail = Math.min(effAvail, Math.max(0, dailyLimit - prevDailySold));
+          let totalReqForProd = 0;
+
+          for (const it of prodItems) {
+            const reqQty = Math.max(1, Number(it.qty) || 1);
+            totalReqForProd += reqQty;
+            const normSize = (it.size && it.size !== '-') ? String(it.size).trim() : 'موحد';
+            const normColor = (it.color && it.color !== '-') ? String(it.color).trim() : 'قياسي';
+            const exactKey = `${normSize}|${normColor}`;
+
+            let effAvail = liveStock;
+            if (hasVariants) {
+              effAvail = vCopy[exactKey] !== undefined ? Math.max(0, Number(vCopy[exactKey]) || 0) : 0;
+            }
+            if (dailyLimit > 0) {
+              effAvail = Math.min(effAvail, Math.max(0, dailyLimit - (prevDailySold + totalReqForProd - reqQty)));
+            }
+
+            if (d.inStock === false || effAvail < reqQty) {
+              throw new Error(`⚠️ عذراً، الكمية المطلوبة غير متوفرة من «${it.name || d.name || 'المنتج'}» (${normSize}/${normColor}) — المتاح الآن: ${effAvail} قطعة فقط`);
+            }
+
+            if (hasVariants && vCopy[exactKey] !== undefined) {
+              vCopy[exactKey] = Math.max(0, (Number(vCopy[exactKey]) || 0) - reqQty);
+            }
+            liveStock = Math.max(0, liveStock - reqQty);
           }
 
-          if (d.inStock === false || effAvail < reqQty) {
-            throw new Error(`⚠️ عذراً، تم حجز الكمية للتو من «${it.name || d.name || 'المنتج'}» (المتاح الآن: ${effAvail} قطعة فقط)`);
-          }
+          const finalStock = hasVariants
+            ? Object.values(vCopy).reduce((s, val) => s + Math.max(0, Number(val) || 0), 0)
+            : liveStock;
 
-          const newStock = Math.max(0, liveStock - reqQty);
           const updateObj = {
-            stock: newStock,
-            stockQty: newStock,
-            inStock: newStock > 0,
+            stock: finalStock,
+            stockQty: finalStock,
+            inStock: finalStock > 0,
             dailySoldDate: todayISO,
-            dailySoldCount: prevDailySold + reqQty,
+            dailySoldCount: prevDailySold + totalReqForProd,
             updatedAt: new Date().toISOString()
           };
-          if (vCopy && vCopy[exactKey] !== undefined) {
-            vCopy[exactKey] = Math.max(0, (Number(vCopy[exactKey]) || 0) - reqQty);
+          if (hasVariants) {
             updateObj.variantsStock = vCopy;
           }
 
           tx.set(prodRef, updateObj, { merge: true });
-          appliedUpdates.push({ productId: it.productId, updateObj });
+          appliedUpdates.push({ productId, updateObj });
         }
 
         const orderRef = db.collection('orders').doc(orderPayload.id);
@@ -1783,7 +1812,7 @@
       showOrderSuccessModal(order);
     } catch (err) {
       console.error('Order submit error:', err);
-      showToast('حدث خطأ أثناء إرسال الطلب، يرجى المحاولة مرة أخرى', 'error');
+      showToast((err && err.message && err.message.includes('⚠️')) ? err.message : 'حدث خطأ أثناء إرسال الطلب، يرجى المحاولة مرة أخرى', 'error');
     } finally {
       state.submittingOrder = false;
       if (btn) btn.disabled = false;
@@ -1792,7 +1821,7 @@
 
   function orderViaWhatsApp() {
     const prod = state.currentProduct;
-    const waNum = String(state.settings.whatsappNumber || '').replace(/\D/g, '');
+    const waNum = formatWhatsAppNumber(state.settings.whatsappNumber || '');
     if (!prod || !waNum) return;
     const calc = getQuickOrderCalculation();
     const name = document.getElementById('qo-name').value.trim() || 'عميل جديد';
@@ -2246,7 +2275,7 @@
     if (btn) btn.disabled = true;
 
     try {
-      saveCustomerProfile({ name, phone1, phone2, address, govId: document.getElementById('qo-gov').value });
+      saveCustomerProfile({ name, phone1, phone2, address, govId: document.getElementById('cc-gov').value });
       await saveOrderToFirestore(order);
       state.cart = [];
       await saveCart();
@@ -2255,7 +2284,7 @@
       showOrderSuccessModal(order);
     } catch (err) {
       console.error('Cart checkout error:', err);
-      showToast('حدث خطأ أثناء إرسال الطلب، يرجى المحاولة مرة أخرى', 'error');
+      showToast((err && err.message && err.message.includes('⚠️')) ? err.message : 'حدث خطأ أثناء إرسال الطلب، يرجى المحاولة مرة أخرى', 'error');
     } finally {
       state.submittingOrder = false;
       if (btn) btn.disabled = false;

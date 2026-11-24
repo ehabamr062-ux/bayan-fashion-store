@@ -7283,16 +7283,94 @@
             reader.readAsText(file);
         }
 
-        function updateCloudOrderStatus(docId, newStatus) {
+        async function updateCloudOrderStatus(docId, newStatus) {
             const db = getBayanDb();
             if (!db) return;
+            const rawFs = typeof getRawBayanDb === 'function' ? getRawBayanDb() : (window.firebase && firebase.firestore ? firebase.firestore() : null);
 
-            db.collection('orders').doc(docId).update({
-                status: newStatus,
-                updatedAt: new Date().toISOString()
-            }).then(() => {
-                console.log("Order status updated successfully in cloud");
-            }).catch(e => alert("خطأ في تحديث الطلب: " + e.message));
+            try {
+                if (rawFs && typeof rawFs.runTransaction === 'function') {
+                    const orderRef = db.collection('orders').doc(docId);
+                    await rawFs.runTransaction(async (tx) => {
+                        const orderSnap = await tx.get(orderRef);
+                        if (!orderSnap.exists) throw new Error('الطلب غير موجود');
+                        const order = orderSnap.data() || {};
+                        const prevStatus = order.status || 'pending';
+                        const items = Array.isArray(order.items) ? order.items : [];
+                        const alreadyRestored = order.stockRestored === true;
+
+                        // تحديد اتجاه حركة المخزون: +1 عند الإلغاء لأول مرة، -1 عند إعادة التفعيل بعد الإلغاء
+                        let deltaSign = 0;
+                        let nextRestored = alreadyRestored;
+                        if (newStatus === 'cancelled' && prevStatus !== 'cancelled' && !alreadyRestored) {
+                            deltaSign = 1;
+                            nextRestored = true;
+                        } else if (newStatus !== 'cancelled' && prevStatus === 'cancelled' && alreadyRestored) {
+                            deltaSign = -1;
+                            nextRestored = false;
+                        }
+
+                        if (deltaSign !== 0 && items.length > 0) {
+                            const grouped = new Map();
+                            for (const it of items) {
+                                if (!it || !it.productId) continue;
+                                if (!grouped.has(it.productId)) grouped.set(it.productId, []);
+                                grouped.get(it.productId).push(it);
+                            }
+                            const prodReads = [];
+                            for (const [productId, prodItems] of grouped.entries()) {
+                                const prodRef = db.collection('products').doc(productId);
+                                const pSnap = await tx.get(prodRef);
+                                prodReads.push({ prodRef, pSnap, prodItems });
+                            }
+                            for (const { prodRef, pSnap, prodItems } of prodReads) {
+                                if (!pSnap.exists) continue;
+                                const d = pSnap.data() || {};
+                                let liveStock = Math.max(0, Number(d.stock ?? d.stockQty ?? 0));
+                                const hasVariants = d.variantsStock && typeof d.variantsStock === 'object' && Object.keys(d.variantsStock).length > 0;
+                                const vCopy = hasVariants ? { ...d.variantsStock } : null;
+
+                                for (const it of prodItems) {
+                                    const q = Math.max(1, Number(it.qty) || 1);
+                                    const normSize = (it.size && it.size !== '-') ? String(it.size).trim() : 'موحد';
+                                    const normColor = (it.color && it.color !== '-') ? String(it.color).trim() : 'قياسي';
+                                    const exactKey = `${normSize}|${normColor}`;
+                                    if (hasVariants && vCopy[exactKey] !== undefined) {
+                                        vCopy[exactKey] = Math.max(0, (Number(vCopy[exactKey]) || 0) + (deltaSign * q));
+                                    }
+                                    liveStock = Math.max(0, liveStock + (deltaSign * q));
+                                }
+
+                                const finalStock = hasVariants
+                                    ? Object.values(vCopy).reduce((s, val) => s + Math.max(0, Number(val) || 0), 0)
+                                    : liveStock;
+                                const updateObj = {
+                                    stock: finalStock,
+                                    stockQty: finalStock,
+                                    inStock: finalStock > 0,
+                                    updatedAt: new Date().toISOString()
+                                };
+                                if (hasVariants) updateObj.variantsStock = vCopy;
+                                tx.set(prodRef, updateObj, { merge: true });
+                            }
+                        }
+
+                        tx.update(orderRef, {
+                            status: newStatus,
+                            stockRestored: nextRestored,
+                            updatedAt: new Date().toISOString()
+                        });
+                    });
+                } else {
+                    await db.collection('orders').doc(docId).update({
+                        status: newStatus,
+                        updatedAt: new Date().toISOString()
+                    });
+                }
+                console.log("Order status updated successfully in cloud (with atomic stock sync)");
+            } catch (e) {
+                alert("خطأ في تحديث الطلب: " + e.message);
+            }
         }
 
         // 6. حفظ واسترجاع الإعدادات
@@ -7689,13 +7767,20 @@
         function removeCustomShippingZone(idx) {
             customShippingZones.splice(idx, 1);
             renderCustomShippingZones();
+            const db = (typeof getBayanDb === 'function') ? getBayanDb() : null;
+            if (db) {
+                db.collection('settings').doc('shipping').set({ rates: customShippingZones, updatedAt: new Date().toISOString() }, { merge: true }).catch(console.warn);
+            }
+            if (typeof showFastSaveToast === 'function') showFastSaveToast('🗑️ تم حذف منطقة الشحن ومزامنة التغيير سحابياً!');
         }
 
         function saveShippingSettings(e) {
             e.preventDefault();
+            const rawDefaultFee = document.getElementById('setShipDefault').value;
+            const parsedDefaultFee = rawDefaultFee === '' ? 50 : Number(rawDefaultFee);
             const shippingData = {
                 rates: customShippingZones,
-                defaultFee: Number(document.getElementById('setShipDefault').value) || 50,
+                defaultFee: isNaN(parsedDefaultFee) ? 50 : Math.max(0, parsedDefaultFee),
                 freeShippingThreshold: Number(document.getElementById('setFreeShippingThreshold').value) || 0,
                 showStockCountToCustomers: document.getElementById('setShowStockCount') ? document.getElementById('setShowStockCount').checked : true,
                 estimatedTime: document.getElementById('setDeliveryEstimatedTime').value.trim() || 'خلال 24 إلى 48 ساعة',
