@@ -2600,9 +2600,19 @@
                                     فورياً عند فتح اللوحة أو عمل ريفريش</small>
                             </div>
                         </div>
-                        <span
-                            style="background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; padding: 4px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 900;">مطلوب
-                            عند كل ريفريش 🔒</span>
+                        <span id="adminAutoLockBadge"
+                            style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; padding: 4px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 900;">⏱️ قفل تلقائي كل 12 ساعة</span>
+                    </div>
+
+                    <div class="form-group" style="background:#f8fafc; border:1.5px solid #e2e8f0; border-radius:12px; padding:12px 14px; margin-bottom:14px;">
+                        <label style="font-size: 0.85rem; font-weight: 900; color: #0f172a; display:block; margin-bottom:6px;">⏱️ القفل التلقائي وطلب كلمة المرور:</label>
+                        <select id="setAdminAutoLockHours" class="form-control" onchange="saveAdminAutoLockSetting(this.value)" style="font-weight:800;">
+                            <option value="12">قفل تلقائي كل 12 ساعة (بدون طلب رمز عند الريفريش)</option>
+                            <option value="6">قفل تلقائي كل 6 ساعات (بدون طلب رمز عند الريفريش)</option>
+                            <option value="24">قفل تلقائي كل 24 ساعة</option>
+                            <option value="0">قفل فوري عند كل ريفريش (أعلى أمان)</option>
+                        </select>
+                        <small style="color:#64748b; font-size:0.78rem; display:block; margin-top:4px;">يمكنك دائماً قفل اللوحة فوراً في أي وقت من زر «🔒 قفل» بالأعلى.</small>
                     </div>
 
                     <form id="adminPinSecurityForm" onsubmit="saveNewAdminPin(event)"
@@ -3408,30 +3418,77 @@
                 .replace(/'/g, '&#039;');
         }
 
+        function getAdminAutoLockHours() {
+            try {
+                const raw = localStorage.getItem('bayan_admin_auto_lock_hours');
+                if (raw === null || raw === '') return 12; // الافتراضي: قفل تلقائي كل 12 ساعة
+                const n = Number(raw);
+                return Number.isFinite(n) && n >= 0 ? n : 12;
+            } catch (_) { return 12; }
+        }
+
+        function updateAdminAutoLockUI() {
+            const hrs = getAdminAutoLockHours();
+            const sel = document.getElementById('setAdminAutoLockHours');
+            if (sel) sel.value = String(hrs);
+            const badge = document.getElementById('adminAutoLockBadge');
+            if (badge) {
+                if (hrs === 0) {
+                    badge.textContent = 'مطلوب عند كل ريفريش 🔒';
+                    badge.style.background = '#fef2f2';
+                    badge.style.color = '#dc2626';
+                    badge.style.borderColor = '#fecaca';
+                } else {
+                    badge.textContent = `⏱️ قفل تلقائي كل ${hrs} ساعة`;
+                    badge.style.background = '#ecfdf5';
+                    badge.style.color = '#047857';
+                    badge.style.borderColor = '#a7f3d0';
+                }
+            }
+        }
+
+        function saveAdminAutoLockSetting(val) {
+            const hrs = Math.max(0, Number(val) || 0);
+            try {
+                localStorage.setItem('bayan_admin_auto_lock_hours', String(hrs));
+                if (hrs > 0) {
+                    localStorage.setItem('bayan_admin_auth_until', String(Date.now() + hrs * 3600000));
+                } else {
+                    localStorage.removeItem('bayan_admin_auth_until');
+                }
+            } catch (_) { }
+            updateAdminAutoLockUI();
+            if (typeof showFastSaveToast === 'function') {
+                showFastSaveToast(hrs === 0 ? '🔒 تم تفعيل القفل الفوري عند كل ريفريش' : `⏱️ تم ضبط القفل التلقائي كل ${hrs} ساعة بنجاح!`);
+            }
+        }
+
         function unlockDashboard() {
             sessionStorage.removeItem('bayan_pin_fails');
             sessionStorage.removeItem('bayan_pin_lock_until');
             sessionStorage.setItem('bayan_admin_authenticated', 'true');
+            const hrs = getAdminAutoLockHours();
+            try {
+                if (hrs > 0) {
+                    localStorage.setItem('bayan_admin_auth_until', String(Date.now() + hrs * 3600000));
+                } else {
+                    localStorage.removeItem('bayan_admin_auth_until');
+                }
+            } catch (_) { }
             const overlay = document.getElementById('pinLockOverlay');
             if (overlay) overlay.style.display = 'none';
             const errorEl = document.getElementById('pinErrorMsg');
             if (errorEl) errorEl.style.display = 'none';
+            updateAdminAutoLockUI();
             if (!window._adminDashboardInitialized) {
                 window._adminDashboardInitialized = true;
                 initAdminDashboard();
             }
         }
 
-        // إجبار طلب رمز PIN عند كل فتح للموقع وعند كل ريفريش (F5) لضمان أعلى درجات الأمان
+        // فحص جلسة الدخول حسب إعداد القفل التلقائي (6 / 12 / 24 ساعة أو عند كل ريفريش)
         function checkAuthSession() {
-            sessionStorage.removeItem('bayan_admin_authenticated');
-            const overlay = document.getElementById('pinLockOverlay');
-            if (overlay) overlay.style.display = 'flex';
-            const pinInput = document.getElementById('adminPinInput');
-            if (pinInput) {
-                pinInput.value = '';
-                setTimeout(() => pinInput.focus(), 150);
-            }
+            updateAdminAutoLockUI();
             // تطبيق ترويسة اللوحة واسم البراند فورياً من IndexedDB
             try {
                 if (typeof BayanIDB !== 'undefined') {
@@ -3443,10 +3500,28 @@
                 }
             } catch (e) { }
             syncAdminPinFromCloud();
+
+            const hrs = getAdminAutoLockHours();
+            let authUntil = 0;
+            try { authUntil = Number(localStorage.getItem('bayan_admin_auth_until') || 0); } catch (_) { }
+            if (hrs > 0 && authUntil > Date.now()) {
+                unlockDashboard();
+                return;
+            }
+
+            sessionStorage.removeItem('bayan_admin_authenticated');
+            const overlay = document.getElementById('pinLockOverlay');
+            if (overlay) overlay.style.display = 'flex';
+            const pinInput = document.getElementById('adminPinInput');
+            if (pinInput) {
+                pinInput.value = '';
+                setTimeout(() => pinInput.focus(), 150);
+            }
         }
 
         function lockAdminPanel() {
             sessionStorage.removeItem('bayan_admin_authenticated');
+            try { localStorage.removeItem('bayan_admin_auth_until'); } catch (_) { }
             const overlay = document.getElementById('pinLockOverlay');
             if (overlay) overlay.style.display = 'flex';
             const pinInput = document.getElementById('adminPinInput');
