@@ -282,8 +282,13 @@
   function normalizeProduct(docId, data) {
     const stock = Number(data.stock ?? data.stockQty ?? data.qty ?? 0);
     const colors = normalizeColors(data.colors);
-    const sizes = normalizeSizes(data.sizes);
+    let sizes = normalizeSizes(data.sizes);
     const vs = (data.variantsStock && typeof data.variantsStock === 'object') ? data.variantsStock : null;
+    // 🛡️ تنظيف المقاسات الافتراضية القديمة (M/L/XL) إذا كان الصنف في POS بدون مقاسات (موحد|...)
+    if (vs && Object.keys(vs).length > 0 && Object.keys(vs).every(k => String(k).startsWith('موحد|') || String(k).startsWith('-|'))) {
+      const isLegacyDefault = sizes.length === 3 && sizes[0] === 'M' && sizes[1] === 'L' && sizes[2] === 'XL';
+      if (isLegacyDefault) sizes = [];
+    }
     // 🛡️ ضمان عدم ضياع أي لون أو مقاس موجود في variantsStock
     if (vs) {
       const colorSet = new Set(colors.map(c => c.name));
