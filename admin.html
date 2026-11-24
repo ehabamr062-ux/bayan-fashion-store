@@ -2216,6 +2216,19 @@
                     </div>
 
                     <form id="shippingSettingsForm" onsubmit="saveShippingSettings(event)" style="display: flex; flex-direction: column; gap: 14px;">
+                        <!-- ميزة إظهار أو إخفاء عدد القطع المتوفرة بالمخزون للعملاء -->
+                        <div style="background: #eff6ff; border: 1.5px solid #bfdbfe; border-radius: 12px; padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;">
+                            <div>
+                                <label for="setShowStockCount" style="font-weight: 900; color: #1e3a8a; font-size: 0.88rem; cursor: pointer; display: block;">
+                                    👁️ إظهار عدد القطع المتوفرة بالمخزون للعملاء (مثال: متوفر 505 قطعة)
+                                </label>
+                                <small style="color: #3b82f6; font-size: 0.76rem; font-weight: 700;">
+                                    عند إيقاف هذا الخيار ستظهر كلمة «متوفر» فقط للعميل دون كشف رقم الرصيد الحقيقي بالمخزن.
+                                </small>
+                            </div>
+                            <input type="checkbox" id="setShowStockCount" checked style="width: 22px; height: 22px; accent-color: #2563eb; cursor: pointer;">
+                        </div>
+
                         <!-- ميزة حد الشحن المجاني التلقائي -->
                         <div style="background: #ecfdf5; border: 1.5px solid #a7f3d0; border-radius: 12px; padding: 12px 14px;">
                             <label style="font-weight: 950; color: #065f46; font-size: 0.88rem; display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
@@ -2443,6 +2456,11 @@
                     <div class="form-group">
                         <label>كمية المخزون المتاحة (رصيد القطع):</label>
                         <input type="number" id="inpProdStockQty" class="form-control" placeholder="مثال: 15" value="20" min="0">
+                    </div>
+
+                    <div class="form-group">
+                        <label style="color: #7c3aed; font-weight: 900;">📅 الحد الأقصى للبيع اليومي (0 = غير محدود):</label>
+                        <input type="number" id="inpProdDailyLimit" class="form-control" placeholder="مثال: 50 قطعة/يوم" value="0" min="0" style="border-color: #c4b5fd;">
                     </div>
 
                     <div class="form-group">
@@ -4324,6 +4342,9 @@
             if (document.getElementById('inpProdStockQty')) {
                 document.getElementById('inpProdStockQty').value = (target.stockQty !== undefined ? target.stockQty : (target.stock !== undefined ? target.stock : 0));
             }
+            if (document.getElementById('inpProdDailyLimit')) {
+                document.getElementById('inpProdDailyLimit').value = Number(target.dailySalesLimit || 0);
+            }
             document.getElementById('inpProdDesc').value = target.description || '';
             document.getElementById('inpProdImageUrl').value = '';
 
@@ -4744,6 +4765,7 @@
                 inStock: (inStock && stockQty > 0),
                 stock: stockQty,
                 stockQty: stockQty,
+                dailySalesLimit: Math.max(0, parseInt(document.getElementById('inpProdDailyLimit')?.value) || 0),
                 active: !isFrozen,
                 isFrozen: isFrozen,
                 status: isFrozen ? 'frozen' : 'active',
@@ -4840,6 +4862,9 @@
             document.getElementById('inpProdInStock').value = (target.inStock !== false) ? 'true' : 'false';
             if (document.getElementById('inpProdStockQty')) {
                 document.getElementById('inpProdStockQty').value = (target.stockQty !== undefined ? target.stockQty : (target.stock !== undefined ? target.stock : 0));
+            }
+            if (document.getElementById('inpProdDailyLimit')) {
+                document.getElementById('inpProdDailyLimit').value = Number(target.dailySalesLimit || 0);
             }
             document.getElementById('inpProdDesc').value = target.description || '';
 
@@ -6952,6 +6977,7 @@
                     if (s.remote !== undefined && document.getElementById('setShipRemote')) document.getElementById('setShipRemote').value = s.remote;
                     if (s.defaultFee !== undefined && document.getElementById('setShipDefault')) document.getElementById('setShipDefault').value = s.defaultFee;
                     if (s.freeShippingThreshold !== undefined && document.getElementById('setFreeShippingThreshold')) document.getElementById('setFreeShippingThreshold').value = s.freeShippingThreshold;
+                    if (s.showStockCountToCustomers !== undefined && document.getElementById('setShowStockCount')) document.getElementById('setShowStockCount').checked = (s.showStockCountToCustomers !== false);
                     if (s.estimatedTime && document.getElementById('setDeliveryEstimatedTime')) document.getElementById('setDeliveryEstimatedTime').value = s.estimatedTime;
                 }
             } catch(e) {}
@@ -7012,6 +7038,7 @@
                         if (s.remote !== undefined && document.getElementById('setShipRemote')) document.getElementById('setShipRemote').value = s.remote;
                         if (s.defaultFee !== undefined && document.getElementById('setShipDefault')) document.getElementById('setShipDefault').value = s.defaultFee;
                         if (s.freeShippingThreshold !== undefined && document.getElementById('setFreeShippingThreshold')) document.getElementById('setFreeShippingThreshold').value = s.freeShippingThreshold;
+                    if (s.showStockCountToCustomers !== undefined && document.getElementById('setShowStockCount')) document.getElementById('setShowStockCount').checked = (s.showStockCountToCustomers !== false);
                         if (s.estimatedTime && document.getElementById('setDeliveryEstimatedTime')) document.getElementById('setDeliveryEstimatedTime').value = s.estimatedTime;
                         if (typeof BayanIDB !== 'undefined') {
                             BayanIDB.setItem('bayan_shipping_settings', JSON.stringify(s));
@@ -7160,6 +7187,7 @@
                 rates: customShippingZones,
                 defaultFee: Number(document.getElementById('setShipDefault').value) || 50,
                 freeShippingThreshold: Number(document.getElementById('setFreeShippingThreshold').value) || 0,
+                showStockCountToCustomers: document.getElementById('setShowStockCount') ? document.getElementById('setShowStockCount').checked : true,
                 estimatedTime: document.getElementById('setDeliveryEstimatedTime').value.trim() || 'خلال 24 إلى 48 ساعة',
                 updatedAt: new Date().toISOString()
             };

@@ -910,15 +910,23 @@
     }
 
     const stockPill = document.getElementById('pd-stock-pill');
-    if (prod.stock > 5) {
+    const showStockNum = state.settings.showStockCountToCustomers !== false;
+    const effAvailNow = getAvailableStockForSelection(prod, state.pdSelectedColor, state.pdSelectedSize);
+    if (effAvailNow > 5) {
       stockPill.className = 'mr-auto px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-50 text-emerald-700';
-      stockPill.innerHTML = `<i class="fa-solid fa-check ml-1"></i>متوفر (${prod.stock} قطعة)`;
-    } else if (prod.stock > 0) {
+      stockPill.innerHTML = showStockNum
+        ? `<i class="fa-solid fa-check ml-1"></i>متوفر (${effAvailNow} قطعة)`
+        : `<i class="fa-solid fa-check ml-1"></i>متوفر بالمخزون`;
+    } else if (effAvailNow > 0) {
       stockPill.className = 'mr-auto px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-50 text-amber-700';
-      stockPill.innerHTML = `<i class="fa-solid fa-fire ml-1"></i>باقي ${prod.stock} قطع فقط!`;
+      stockPill.innerHTML = showStockNum
+        ? `<i class="fa-solid fa-fire ml-1"></i>باقي ${effAvailNow} قطع فقط!`
+        : `<i class="fa-solid fa-check ml-1"></i>متوفر بكمية محدودة`;
     } else {
       stockPill.className = 'mr-auto px-2.5 py-1 rounded-lg text-[11px] font-bold bg-rose-50 text-rose-700';
-      stockPill.innerHTML = 'نفذت الكمية';
+      stockPill.innerHTML = (Number(prod.dailySalesLimit || 0) > 0 && Number(prod.stock || 0) > 0)
+        ? 'اكتمل الحد اليومي — متاح غداً'
+        : 'نفذت الكمية';
     }
 
     const r = getProductAvgRating(prod);
@@ -1057,8 +1065,7 @@
           if (keys.length && keys.every(k => Number(vStock[k] || 0) <= 0)) outOfSz = true;
         }
         return `
-          <button type="button" ${outOfSz ? 'disabled' : `onclick="selectPdSize('${escapeHTML(sz)}')"`} class="min-w-[46px] px-3 py-2 rounded-xl border-2 text-xs sm:text-sm font-extrabold transition ${
-            outOfSz ? 'border-slate-100 bg-slate-100 text-slate-400 line-through cursor-not-allowed' : (active ? 'border-brand bg-rose-50 text-brand' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-400')
+          <button type="button" ${outOfSz ? 'disabled' : `onclick="selectPdSize('${escapeHTML(sz)}')"`} class="min-w-[46px] px-3 py-2 rounded-xl border-2 text-xs sm:text-sm font-extrabold transition ${outOfSz ? 'border-slate-100 bg-slate-100 text-slate-400 line-through cursor-not-allowed' : (active ? 'border-brand bg-rose-50 text-brand' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-400')
           }">
             ${escapeHTML(sz)}
           </button>`;
@@ -1082,19 +1089,27 @@
 
   function getAvailableStockForSelection(prod, color, size) {
     if (!prod) return 0;
-    const totalSt = Math.max(0, Number(prod.stock ?? 0));
+    let avail = Math.max(0, Number(prod.stock ?? 0));
     const vs = prod.variantsStock;
     if (vs && typeof vs === 'object' && Object.keys(vs).length > 0) {
       const exactKey = `${size || 'موحد'}|${color || 'قياسي'}`;
-      if (vs[exactKey] !== undefined) return Math.max(0, Number(vs[exactKey]) || 0);
-      if (size) {
+      if (vs[exactKey] !== undefined) avail = Math.max(0, Number(vs[exactKey]) || 0);
+      else if (size) {
         const sizeKeys = Object.keys(vs).filter(k => k.split('|')[0] === size);
         if (sizeKeys.length) {
-          return sizeKeys.reduce((s, k) => s + Math.max(0, Number(vs[k]) || 0), 0);
+          avail = sizeKeys.reduce((s, k) => s + Math.max(0, Number(vs[k]) || 0), 0);
         }
       }
     }
-    return totalSt;
+    // 📅 تطبيق الحد الأقصى للبيع اليومي (Daily Sales Limit) إن كان مفعّلاً من لوحة التحكم
+    const dailyLimit = Math.max(0, Number(prod.dailySalesLimit || 0));
+    if (dailyLimit > 0) {
+      const todayISO = new Date().toISOString().slice(0, 10);
+      const soldToday = (prod.dailySoldDate === todayISO) ? Math.max(0, Number(prod.dailySoldCount || 0)) : 0;
+      const dailyRemaining = Math.max(0, dailyLimit - soldToday);
+      avail = Math.min(avail, dailyRemaining);
+    }
+    return avail;
   }
 
   function toggleSizeGuide() {
@@ -1102,14 +1117,32 @@
   }
 
   function getOfferTiers(prod) {
-    if (prod.enableOffers === false) {
-      return [{ qty: 1, title: 'قطعة واحدة', badge: '', discPct: 0, freeShip: false }];
-    }
-    return [
-      { qty: 1, title: 'قطعة واحدة', badge: '', discPct: 0, freeShip: false },
-      { qty: 2, title: 'قطعتين (خصم إضافي 10%)', badge: 'الأكثر طلباً 🔥', discPct: 10, freeShip: false },
-      { qty: 3, title: '3 قطع (خصم 15% + شحن مجاني!)', badge: 'أعلى توفير 🎁', discPct: 15, freeShip: true }
-    ];
+    const base = [{ qty: 1, title: 'قطعة واحدة', badge: '', discPct: 0, bundlePrice: null, freeShip: false }];
+    if (!prod || prod.enableOffers === false) return base;
+    // ربط كامل 100% بعروض الكميات المحددة في لوحة التحكم (admin.html) — بدون أي خصم إجباري ثابت!
+    const customOffers = Array.isArray(prod.quantityOffers) ? prod.quantityOffers : [];
+    if (!customOffers.length) return base;
+
+    const unitPrice = Math.max(0, Number(prod.price) || 0);
+    const dynamic = customOffers
+      .filter(o => o && Number(o.qty) >= 2 && Number(o.bundlePrice) > 0)
+      .sort((a, b) => Number(a.qty) - Number(b.qty))
+      .map(o => {
+        const q = Number(o.qty);
+        const bp = Number(o.bundlePrice);
+        const rawTotal = unitPrice * q;
+        const discPct = rawTotal > 0 ? Math.max(0, Math.round(((rawTotal - bp) / rawTotal) * 100)) : 0;
+        const label = q === 2 ? 'قطعتين' : `${q} قطع`;
+        return {
+          qty: q,
+          title: discPct > 0 ? `${label} (وفر ${discPct}%)` : label,
+          badge: String(o.badge || '').trim(),
+          discPct,
+          bundlePrice: bp,
+          freeShip: Boolean(o.freeShip)
+        };
+      });
+    return [...base, ...dynamic];
   }
 
   function renderPdOfferTiers() {
@@ -1120,12 +1153,15 @@
       state.pdSelectedTier = 1;
     }
     const tiers = getOfferTiers(prod);
+    if (!tiers.some(t => t.qty === state.pdSelectedTier)) {
+      state.pdSelectedTier = 1;
+    }
     const wrap = document.getElementById('pd-offer-tiers');
 
     wrap.innerHTML = tiers.map(t => {
       const rawTotal = prod.price * t.qty;
-      const disc = Math.round(rawTotal * (t.discPct / 100));
-      const net = rawTotal - disc;
+      const net = (t.bundlePrice != null && t.bundlePrice > 0) ? t.bundlePrice : (rawTotal - Math.round(rawTotal * (t.discPct / 100)));
+      const disc = Math.max(0, rawTotal - net);
       const disabled = t.qty > avail;
       const active = !disabled && state.pdSelectedTier === t.qty;
 
@@ -1295,10 +1331,14 @@
         if (!p) continue;
         const reqQty = Math.max(1, Number(it.qty) || 1);
         const newStock = Math.max(0, Number(p.stock || 0) - reqQty);
+        const todayISO = new Date().toISOString().slice(0, 10);
+        const prevDailySold = (p.dailySoldDate === todayISO) ? Math.max(0, Number(p.dailySoldCount || 0)) : 0;
         const updateObj = {
           stock: newStock,
           stockQty: newStock,
           inStock: newStock > 0,
+          dailySoldDate: todayISO,
+          dailySoldCount: prevDailySold + reqQty,
           updatedAt: new Date().toISOString()
         };
         if (p.variantsStock && typeof p.variantsStock === 'object') {
@@ -1309,7 +1349,7 @@
             updateObj.variantsStock = vCopy;
           }
         }
-        db.collection('products').doc(p.id).set(updateObj, { merge: true }).catch(() => {});
+        db.collection('products').doc(p.id).set(updateObj, { merge: true }).catch(() => { });
       }
     }
     try {
@@ -1565,9 +1605,14 @@
   async function quickAddToCart(productId) {
     const prod = state.products.find(p => p.id === productId);
     if (!prod || prod.stock <= 0 || prod.inStock === false) return;
-    const color = (prod.colors && prod.colors[0]?.name) || '';
-    const size = (prod.sizes && prod.sizes[0]) || '';
-    await addItemToCart(prod, color, size, 1);
+    // إذا كان للمنتج ألوان أو مقاسات متعددة، نفتح نافذة المنتج ليختار العميل مقاسه ولونه بدقة
+    const hasChoices = (Array.isArray(prod.colors) && prod.colors.length > 0) || (Array.isArray(prod.sizes) && prod.sizes.length > 0);
+    if (hasChoices) {
+      openProductDetail(productId);
+      showToast('👆 يرجى اختيار اللون والمقاس المناسب أولاً', 'info');
+      return;
+    }
+    await addItemToCart(prod, '', '', 1);
     showToast(`تمت إضافة "${prod.name}" إلى السلة`);
   }
 
