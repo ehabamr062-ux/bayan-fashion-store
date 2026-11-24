@@ -1461,8 +1461,8 @@
             </div>
             <div>
               <div class="flex flex-wrap items-center gap-1.5">
-                <span class="text-xs sm:text-sm font-extrabold text-slate-900">${t.title}</span>
-                ${t.badge ? `<span class="px-2 py-0.5 rounded-md bg-brand text-white text-[10px] font-black">${t.badge}</span>` : ''}
+                <span class="text-xs sm:text-sm font-extrabold text-slate-900">${escapeHTML(t.title)}</span>
+                ${t.badge ? `<span class="px-2 py-0.5 rounded-md bg-brand text-white text-[10px] font-black">${escapeHTML(t.badge)}</span>` : ''}
               </div>
               ${t.freeShip ? '<div class="text-[11px] font-bold text-emerald-600 mt-0.5"><i class="fa-solid fa-truck-fast ml-1"></i>شحن مجاني لجميع المحافظات</div>' : ''}
             </div>

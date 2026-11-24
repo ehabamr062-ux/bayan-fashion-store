@@ -3401,13 +3401,25 @@
             pinInput.select();
         }
 
+        function escapeAdminHtml(str) {
+            return String(str ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
         function unlockDashboard() {
             sessionStorage.setItem('bayan_admin_authenticated', 'true');
             const overlay = document.getElementById('pinLockOverlay');
             if (overlay) overlay.style.display = 'none';
             const errorEl = document.getElementById('pinErrorMsg');
             if (errorEl) errorEl.style.display = 'none';
-            initAdminDashboard();
+            if (!window._adminDashboardInitialized) {
+                window._adminDashboardInitialized = true;
+                initAdminDashboard();
+            }
         }
 
         // إجبار طلب رمز PIN عند كل فتح للموقع وعند كل ريفريش (F5) لضمان أعلى درجات الأمان
@@ -6060,11 +6072,11 @@
                             <div style="display: flex; align-items: center; gap: 12px;">
                                 <span style="font-size: 1.4rem;">🛵</span>
                                 <div>
-                                    <div style="font-weight: 950; font-size: 1.1rem; color: #0f172a;">طلب رقم #${o.id}</div>
+                                    <div style="font-weight: 950; font-size: 1.1rem; color: #0f172a;">طلب رقم #${escapeAdminHtml(o.id)}</div>
                                     <div style="font-size: 0.85rem; color: #64748b;">
-                                        👤 العميل: <b style="color:#0284c7;">${o.customerName}</b>
+                                        👤 العميل: <b style="color:#0284c7;">${escapeAdminHtml(o.customerName)}</b>
                                         ${isVipCustomer ? `<span style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white; padding: 2px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 900; margin-right: 6px;">👑 عميل VIP (${customerOrderCount} طلبات)</span>` : ''}
-                                        | 📍 ${o.city} - ${o.address}
+                                        | 📍 ${escapeAdminHtml(o.city)} - ${escapeAdminHtml(o.address)}
                                     </div>
                                 </div>
                             </div>
@@ -7660,20 +7672,25 @@
             const newPin = (document.getElementById('setAdminPin')?.value || '').trim();
 
             if (newPin && newPin.length >= 4) {
-                currentAdminPin = newPin;
-                if (typeof BayanIDB !== 'undefined') {
-                    BayanIDB.setItem('bayan_admin_pin', newPin);
-                    BayanIDB.setSetting('security', { adminPin: newPin, updatedAt: new Date().toISOString() });
+                const verifyCurrent = prompt('🔐 لتأكيد تغيير رمز الأمان، أدخل رمز PIN الحالي:');
+                if (verifyCurrent !== currentAdminPin) {
+                    alert('❌ رمز PIN الحالي غير صحيح — لم يتم تغيير رمز الأمان.');
+                } else {
+                    currentAdminPin = newPin;
+                    if (typeof BayanIDB !== 'undefined') {
+                        BayanIDB.setItem('bayan_admin_pin', newPin);
+                        BayanIDB.setSetting('security', { adminPin: newPin, updatedAt: new Date().toISOString() });
+                    }
+                    const dbSec = (typeof getBayanDb === 'function') ? getBayanDb() : null;
+                    if (dbSec) {
+                        dbSec.collection('settings').doc('security').set({
+                            adminPin: newPin,
+                            updatedAt: new Date().toISOString()
+                        }, { merge: true }).catch(console.warn);
+                    }
+                    document.getElementById('setAdminPin').value = '';
+                    showFastSaveToast('🔐 تم تحديث رمز PIN الجديد بنجاح!');
                 }
-                const dbSec = (typeof getBayanDb === 'function') ? getBayanDb() : null;
-                if (dbSec) {
-                    dbSec.collection('settings').doc('security').set({
-                        adminPin: newPin,
-                        updatedAt: new Date().toISOString()
-                    }, { merge: true }).catch(console.warn);
-                }
-                document.getElementById('setAdminPin').value = '';
-                showFastSaveToast(`🔐 تم تحديث رمز PIN الجديد (${newPin})!`);
             }
 
             const cfg = {
