@@ -2265,12 +2265,26 @@
     document.getElementById('success-order-name').textContent = order.customerName;
     document.getElementById('success-order-total').textContent = formatEGP(order.grandTotal);
 
-    const waNum = String(state.settings.whatsappNumber || '').replace(/\D/g, '');
+    const waNum = formatWhatsAppNumber(state.settings.whatsappNumber);
     const waLink = document.getElementById('success-wa-link');
     if (waNum && waLink) {
-      const msg = `مرحباً ${state.settings.storeName}، قمت بعمل طلب جديد رقم: ${order.id}\nالاسم: ${order.customerName}\nالإجمالي: ${formatEGP(order.grandTotal)}`;
-      waLink.href = `https://wa.me/${waNum}?text=${encodeURIComponent(msg)}`;
+      const itemsLines = (Array.isArray(order.items) ? order.items : []).map((it, idx) =>
+        `${idx + 1}. ${it.name}${it.size ? ` (مقاس: ${it.size})` : ''}${it.color ? ` - لون: ${it.color}` : ''} × ${it.qty || 1}`
+      ).join('\n');
+      const msg = `مرحباً ${state.settings.storeName || 'المتجر'} 👋\n` +
+        `أريد تأكيد طلبي الجديد رقم: #${order.orderNumber || order.id}\n` +
+        `👤 الاسم: ${order.customerName}\n` +
+        `📱 الموبايل: ${order.phone1 || ''}\n` +
+        `📍 العنوان: ${order.city || ''} - ${order.address || ''}\n` +
+        (itemsLines ? `📦 الأصناف:\n${itemsLines}\n` : '') +
+        `💰 الإجمالي النهائي: ${formatEGP(order.grandTotal)}`;
+      const waUrl = `https://wa.me/${waNum}?text=${encodeURIComponent(msg)}`;
+      waLink.href = waUrl;
       waLink.classList.remove('hidden');
+      // فتح واتساب تلقائياً بعد ثانية لتأكيد الطلب مباشرة مع التاجر
+      setTimeout(() => {
+        try { window.open(waUrl, '_blank', 'noopener'); } catch (_) { }
+      }, 900);
     } else if (waLink) {
       waLink.classList.add('hidden');
     }
