@@ -971,6 +971,50 @@
     btn.classList.remove('border-slate-200', 'opacity-75');
   }
 
+  function resolveArabicColorHex(name, explicitHex) {
+    if (explicitHex && /^#[0-9a-f]{3,8}$/i.test(String(explicitHex).trim()) && String(explicitHex).trim().toLowerCase() !== '#111827') {
+      return String(explicitHex).trim();
+    }
+    const n = String(name || '').trim().toLowerCase()
+      .replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي');
+    if (!n) return '';
+    const map = [
+      [['اسود', 'سوداء', 'بلاك', 'black'], '#111827'],
+      [['اوف وايت', 'اوفوايت', 'off white', 'offwhite', 'كريمي', 'سكري'], '#f5f0e6'],
+      [['ابيض', 'بيضاء', 'وايت', 'white'], '#ffffff'],
+      [['كافيه', 'كافى', 'لاتيه', 'موكا', 'كابتشينو', 'cafe', 'coffee', 'mocha'], '#8b6b4c'],
+      [['جملي', 'كاميل', 'هافان', 'عسلي', 'camel', 'tan'], '#c19a6b'],
+      [['بني', 'بنى', 'شوكولاته', 'كاكاو', 'brown', 'chocolate'], '#5c3a21'],
+      [['بيج', 'شامبين', 'رملي', 'beige', 'sand', 'nude'], '#dfc9a6'],
+      [['رمادي', 'رصاصي', 'جراي', 'فيراني', 'سيلفر', 'فضي', 'gray', 'grey', 'silver'], '#64748b'],
+      [['كحلي', 'نيفي', 'navy'], '#1e3a5f'],
+      [['بترولي', 'بترول', 'petrol', 'teal'], '#0f5c6e'],
+      [['بيبي بلو', 'سماوي', 'لبني', 'sky', 'baby blue'], '#7dd3fc'],
+      [['تركواز', 'تيفاني', 'turquoise', 'cyan'], '#14b8a6'],
+      [['جينز', 'دنيم', 'denim'], '#3b6ea5'],
+      [['ازرق', 'بلو', 'blue'], '#2563eb'],
+      [['نبيتي', 'عنابي', 'بوردو', 'برجندي', 'burgundy', 'maroon', 'wine'], '#7f1d1d'],
+      [['احمر', 'ريد', 'red'], '#dc2626'],
+      [['كشمير', 'كشميري', 'روز', 'rose', 'mauve'], '#c08497'],
+      [['فوشيا', 'ماجنتا', 'fuchsia', 'magenta'], '#d946ef'],
+      [['بينك', 'وردي', 'بمبي', 'زهري', 'pink'], '#f472b6'],
+      [['سيمون', 'خوخي', 'سالمون', 'peach', 'salmon', 'coral'], '#fb923c'],
+      [['زيتي', 'زيتوني', 'كاكي', 'olive', 'khaki'], '#556b2f'],
+      [['مينت', 'نعناعي', 'فسدقي', 'فستقي', 'mint', 'pistachio'], '#6ee7b7'],
+      [['اخضر', 'زمردي', 'جرين', 'green', 'emerald'], '#16a34a'],
+      [['مسطرده', 'خردلي', 'مسترده', 'mustard'], '#ca8a04'],
+      [['ذهبي', 'دهبي', 'جولد', 'gold'], '#d4af37'],
+      [['اصفر', 'لموني', 'ليموني', 'yellow'], '#eab308'],
+      [['برتقالي', 'اورانج', 'طوبي', 'نحاسي', 'orange', 'rust'], '#ea580c'],
+      [['لافندر', 'ليلاك', 'lavender', 'lilac'], '#c4b5fd'],
+      [['موف', 'بنفسجي', 'باذنجاني', 'purple', 'violet'], '#7c3aed']
+    ];
+    for (const [keys, hex] of map) {
+      if (keys.some(k => n.includes(k))) return hex;
+    }
+    return '';
+  }
+
   function renderPdVariants() {
     const prod = state.currentProduct;
     if (!prod) return;
@@ -984,10 +1028,14 @@
       document.getElementById('pd-selected-color-name').textContent = state.pdSelectedColor;
       document.getElementById('pd-colors-list').innerHTML = colors.map(c => {
         const active = state.pdSelectedColor === c.name;
+        const swatchHex = resolveArabicColorHex(c.name, c.hex);
+        const dotHtml = swatchHex
+          ? `<span class="w-4 h-4 rounded-full border ${active ? 'border-white/90' : 'border-slate-300'} shadow-inner shrink-0" style="background:${escapeHTML(swatchHex)}"></span>`
+          : '';
         return `
-          <button type="button" onclick="selectPdColor('${escapeHTML(c.name)}')" class="flex items-center gap-2 px-3 py-1.5 rounded-xl border-2 text-xs font-bold transition ${active ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-400'
+          <button type="button" onclick="selectPdColor('${escapeHTML(c.name)}')" class="flex items-center gap-2 px-3 py-1.5 rounded-xl border-2 text-xs font-bold transition ${active ? 'border-emerald-600 bg-emerald-600 text-white shadow-sm' : 'border-slate-200 bg-white text-slate-700 hover:border-emerald-400 hover:bg-emerald-50'
           }">
-            <span class="w-4 h-4 rounded-full border border-slate-300 shadow-inner" style="background:${escapeHTML(c.hex || '#111827')}"></span>
+            ${dotHtml}
             <span>${escapeHTML(c.name)}</span>
           </button>`;
       }).join('');
