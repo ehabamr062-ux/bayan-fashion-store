@@ -281,6 +281,29 @@
 
   function normalizeProduct(docId, data) {
     const stock = Number(data.stock ?? data.stockQty ?? data.qty ?? 0);
+    const colors = normalizeColors(data.colors);
+    const sizes = normalizeSizes(data.sizes);
+    const vs = (data.variantsStock && typeof data.variantsStock === 'object') ? data.variantsStock : null;
+    // 🛡️ ضمان عدم ضياع أي لون أو مقاس موجود في variantsStock
+    if (vs) {
+      const colorSet = new Set(colors.map(c => c.name));
+      const sizeSet = new Set(sizes);
+      const ignoredC = new Set(['-', 'قياسي', 'أساسي', 'اساسي', 'افتراضي', '']);
+      const ignoredS = new Set(['-', 'موحد', 'افتراضي', '']);
+      Object.keys(vs).forEach(k => {
+        const parts = String(k).split('|');
+        const sz = String(parts[0] || '').trim();
+        const cl = String(parts[1] || '').trim();
+        if (sz && !ignoredS.has(sz.toLowerCase()) && !sizeSet.has(sz)) {
+          sizeSet.add(sz);
+          sizes.push(sz);
+        }
+        if (cl && !ignoredC.has(cl.toLowerCase()) && !colorSet.has(cl)) {
+          colorSet.add(cl);
+          colors.push({ name: cl, hex: '#111827' });
+        }
+      });
+    }
     return {
       id: docId,
       pos_id: data.pos_id ?? data.posId ?? '',
@@ -300,10 +323,14 @@
       isFrozen: data.isFrozen === true,
       featured: Boolean(data.featured),
       enableOffers: data.enableOffers !== false,
+      dailySalesLimit: Number(data.dailySalesLimit || 0),
+      dailySoldCount: Number(data.dailySoldCount || 0),
+      dailySoldDate: data.dailySoldDate || '',
+      quantityOffers: Array.isArray(data.quantityOffers) ? data.quantityOffers : [],
       images: normalizeImages(data),
-      colors: normalizeColors(data.colors),
-      sizes: normalizeSizes(data.sizes),
-      variantsStock: data.variantsStock || null,
+      colors,
+      sizes,
+      variantsStock: vs,
       reviews: Array.isArray(data.reviews) ? data.reviews : [],
       createdAt: Number(data.createdAt || data.updatedAt || 0)
     };
