@@ -4322,7 +4322,7 @@
             calculateProfitMarginPreview();
             document.getElementById('inpProdInStock').value = (target.inStock !== false) ? 'true' : 'false';
             if (document.getElementById('inpProdStockQty')) {
-                document.getElementById('inpProdStockQty').value = (target.stockQty !== undefined) ? target.stockQty : 20;
+                document.getElementById('inpProdStockQty').value = (target.stockQty !== undefined ? target.stockQty : (target.stock !== undefined ? target.stock : 0));
             }
             document.getElementById('inpProdDesc').value = target.description || '';
             document.getElementById('inpProdImageUrl').value = '';
@@ -4839,7 +4839,7 @@
             document.getElementById('inpProdBadge').value = target.badge || '';
             document.getElementById('inpProdInStock').value = (target.inStock !== false) ? 'true' : 'false';
             if (document.getElementById('inpProdStockQty')) {
-                document.getElementById('inpProdStockQty').value = (target.stockQty !== undefined) ? target.stockQty : 20;
+                document.getElementById('inpProdStockQty').value = (target.stockQty !== undefined ? target.stockQty : (target.stock !== undefined ? target.stock : 0));
             }
             document.getElementById('inpProdDesc').value = target.description || '';
 

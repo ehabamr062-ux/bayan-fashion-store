@@ -1289,6 +1289,12 @@
       showToast('عذراً، هذا المنتج غير متوفر حالياً بالمخزون', 'error');
       return;
     }
+    const availForSel = getAvailableStockForSelection(prod, state.pdSelectedColor, state.pdSelectedSize);
+    const reqTierQty = Math.max(1, Number(state.pdSelectedTier) || 1);
+    if (availForSel <= 0 || reqTierQty > availForSel) {
+      showToast(`⚠️ عذراً، المتاح حالياً من هذا المقاس/اللون (${availForSel}) قطعة فقط`, 'error');
+      return;
+    }
 
     const name = document.getElementById('qo-name').value.trim();
     const phone1 = document.getElementById('qo-phone').value.trim();
@@ -1755,6 +1761,17 @@
       showToast('يرجى إدخال رقم موبايل مصري صحيح (11 رقم يبدأ بـ 01)', 'error');
       document.getElementById('cc-phone').focus();
       return;
+    }
+
+    // 🛡️ تحقق صارم من رصيد كل صنف/مقاس/لون في السلة قبل تأكيد الطلب
+    for (const ci of state.cart) {
+      const p = state.products.find(x => x.id === ci.productId);
+      if (!p) continue;
+      const avail = getAvailableStockForSelection(p, ci.color, ci.size);
+      if (avail <= 0 || (Number(ci.qty) || 1) > avail) {
+        showToast(`⚠️ عذراً، المتاح حالياً من «${ci.name}» (${ci.size || 'موحد'}) هو (${avail}) قطعة فقط`, 'error');
+        return;
+      }
     }
 
     const calc = getCartCheckoutCalculation();
