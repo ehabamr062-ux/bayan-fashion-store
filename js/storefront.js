@@ -691,13 +691,25 @@
 
   function handleSearch(val) {
     state.searchQuery = val.trim().toLowerCase();
+    state.visibleCount = 16;
     const d = document.getElementById('desktop-search');
     const m = document.getElementById('mobile-search');
     if (d && d.value !== val) d.value = val;
     if (m && m.value !== val) m.value = val;
     toggleSearchClearBtns(val.length > 0);
     clearTimeout(state._searchTimer);
-    state._searchTimer = setTimeout(() => renderProductsGrid(), 120);
+    state._searchTimer = setTimeout(() => {
+      renderProductsGrid();
+      if (state.searchQuery.length >= 2) {
+        const prodSec = document.getElementById('products-section') || document.getElementById('products-grid');
+        if (prodSec) {
+          const rect = prodSec.getBoundingClientRect();
+          if (rect.top > window.innerHeight * 0.65) {
+            prodSec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }
+      }
+    }, 120);
   }
 
   function switchTestimonialsTab(tab) {
@@ -979,17 +991,40 @@
       list = list.filter(p => classifyProductSmart(p).sub === state.activeSubCategory);
     }
 
+    let searchScores = null;
     if (state.searchQuery) {
-      const tokens = normalizeArSearch(state.searchQuery).split(' ').filter(Boolean);
+      const normQ = normalizeArSearch(state.searchQuery);
+      const tokens = normQ.split(' ').filter(Boolean);
       if (tokens.length) {
+        searchScores = new Map();
         list = list.filter(p => {
           const hay = getProductSearchHaystack(p);
-          return tokens.every(tok => hay.includes(tok));
+          if (!tokens.every(tok => hay.includes(tok))) return false;
+          // 🎯 فهرسة وترتيب ذكي حسب درجة التطابق (الأقرب يظهر أولاً دائماً)
+          const normName = normalizeArSearch(p.name || '');
+          const normCode = normalizeArSearch(`${p.code || ''} ${p.barcode || ''}`);
+          const normCat = normalizeArSearch(p.category || '');
+          let score = 0;
+          if (normName === normQ || normCode.trim() === normQ) score += 1000;
+          else if (normName.startsWith(normQ)) score += 600;
+          else if (normName.includes(normQ)) score += 350;
+          if (normCode.includes(normQ)) score += 450;
+          for (const tok of tokens) {
+            if (normName.startsWith(tok)) score += 140;
+            else if (normName.includes(tok)) score += 90;
+            else if (normCat.includes(tok)) score += 40;
+            else score += 10;
+          }
+          if (Number(p.stock || 0) > 0 && p.inStock !== false) score += 25;
+          searchScores.set(p.id, score);
+          return true;
         });
       }
     }
 
-    if (state.sortBy === 'price-asc') list.sort((a, b) => a.price - b.price);
+    if (searchScores && state.sortBy !== 'price-asc' && state.sortBy !== 'price-desc') {
+      list.sort((a, b) => (searchScores.get(b.id) || 0) - (searchScores.get(a.id) || 0));
+    } else if (state.sortBy === 'price-asc') list.sort((a, b) => a.price - b.price);
     else if (state.sortBy === 'price-desc') list.sort((a, b) => b.price - a.price);
     else if (state.sortBy === 'newest') list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
     else list.sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0));
