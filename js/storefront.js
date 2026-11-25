@@ -672,7 +672,8 @@
     const wrap = document.getElementById('category-pills');
     if (!wrap) return;
     const uniqueCats = Array.from(new Set(state.products.map(p => (p.category || '').trim()).filter(Boolean)));
-    const categories = ['الكل', ...uniqueCats];
+    const hasNewProducts = state.products.some(p => Boolean(p.isNew));
+    const categories = hasNewProducts ? ['الكل', '🔥 وصل حديثاً', ...uniqueCats] : ['الكل', ...uniqueCats];
 
     if (!categories.includes(state.activeCategory)) {
       state.activeCategory = 'الكل';
@@ -680,11 +681,15 @@
 
     wrap.innerHTML = categories.map(cat => {
       const active = state.activeCategory === cat;
+      const isNewPill = cat === '🔥 وصل حديثاً';
+      const activeStyle = isNewPill
+        ? 'bg-rose-600 text-white shadow-sm'
+        : 'bg-slate-900 text-white shadow-sm';
+      const idleStyle = isNewPill
+        ? 'bg-rose-50 text-rose-700 border border-rose-200 hover:border-rose-400'
+        : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-400';
       return `
-        <button onclick="filterByCategory('${escapeHTML(cat)}')" class="px-4 py-2 rounded-xl text-xs sm:text-sm font-extrabold transition shrink-0 ${active
-          ? 'bg-slate-900 text-white shadow-sm'
-          : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-400'
-        }">
+        <button onclick="filterByCategory('${escapeHTML(cat)}')" class="px-4 py-2 rounded-xl text-xs sm:text-sm font-extrabold transition shrink-0 ${active ? activeStyle : idleStyle}">
           ${escapeHTML(cat)}
         </button>`;
     }).join('');
@@ -1005,7 +1010,9 @@
 
     let list = [...state.products];
 
-    if (state.activeCategory !== 'الكل') {
+    if (state.activeCategory === '🔥 وصل حديثاً') {
+      list = list.filter(p => Boolean(p.isNew));
+    } else if (state.activeCategory !== 'الكل') {
       list = list.filter(p => {
         const sc = classifyProductSmart(p);
         return p.category === state.activeCategory || sc.main === state.activeCategory;
