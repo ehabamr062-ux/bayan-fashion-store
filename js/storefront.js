@@ -948,7 +948,7 @@
 
   function getProductAvgRating(prod) {
     const revs = prod.reviews || [];
-    if (!revs.length) return { avg: '4.9', count: 0 };
+    if (!revs.length) return { avg: null, count: 0 };
     const sum = revs.reduce((acc, r) => acc + Number(r.rating || 5), 0);
     return { avg: (sum / revs.length).toFixed(1), count: revs.length };
   }
@@ -1104,9 +1104,7 @@
           <div class="p-3 sm:p-4 flex-1 flex flex-col">
             <div class="flex items-center justify-between text-[11px] text-slate-500 mb-1">
               <span class="truncate">${escapeHTML(prod.category)}</span>
-              <span class="flex items-center gap-0.5 text-amber-500 font-bold shrink-0">
-                <i class="fa-solid fa-star text-[10px]"></i> ${rating.avg}
-              </span>
+              ${rating.count > 0 ? `<span class="flex items-center gap-0.5 text-amber-500 font-bold shrink-0"><i class="fa-solid fa-star text-[10px]"></i> ${rating.avg}</span>` : ''}
             </div>
 
             <h3 onclick="openProductDetail('${escapeHTML(prod.id)}')" class="text-xs sm:text-sm font-extrabold text-slate-900 line-clamp-2 leading-snug cursor-pointer hover:text-brand transition mb-2 min-h-[36px] sm:min-h-[40px]">
@@ -1216,10 +1214,9 @@
     updatePdStockPill();
 
     const r = getProductAvgRating(prod);
-    document.getElementById('pd-rating-summary').innerHTML = `
-      <i class="fa-solid fa-star"></i>
-      <span>${r.avg}</span>
-      <span class="text-slate-400 font-semibold">(${r.count} تقييم)</span>`;
+    document.getElementById('pd-rating-summary').innerHTML = r.count > 0
+      ? `<i class="fa-solid fa-star"></i><span>${r.avg}</span><span class="text-slate-400 font-semibold">(${r.count} تقييم)</span>`
+      : `<span class="text-slate-400 font-semibold text-xs">لا توجد تقييمات بعد</span>`;
 
     const imgs = (prod.images && prod.images.length) ? prod.images : [''];
     const mainImg = document.getElementById('pd-main-img');
