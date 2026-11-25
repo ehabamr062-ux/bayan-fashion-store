@@ -555,6 +555,16 @@
           if (d.freeShippingThreshold !== undefined) {
             state.settings.freeShippingThreshold = Number(d.freeShippingThreshold);
           }
+          if (d.estimatedTime) state.settings.estimatedTime = String(d.estimatedTime);
+          if (d.returnPolicyText !== undefined) state.settings.returnPolicyText = String(d.returnPolicyText || '');
+          if (d.prepaidShippingMode) state.settings.prepaidShippingMode = String(d.prepaidShippingMode);
+          if (Array.isArray(d.customPaymentMethods)) {
+            state.settings.customPaymentMethods = d.customPaymentMethods;
+            syncCustomPaymentMethodsUI();
+          }
+          if (d.showStockCountToCustomers !== undefined) {
+            state.settings.showStockCountToCustomers = d.showStockCountToCustomers !== false;
+          }
         }
       },
       (err) => console.warn('Shipping listener warning:', err)
@@ -1215,6 +1225,9 @@
     const mainImg = document.getElementById('pd-main-img');
     mainImg.src = imgs[0];
     mainImg.onerror = () => handleImgError(mainImg, prod.name);
+    mainImg.style.cursor = 'zoom-in';
+    mainImg.title = 'اضغط لتكبير الصورة';
+    mainImg.onclick = () => openProductImageLightbox(mainImg.src, prod.name);
 
     const thumbsWrap = document.getElementById('pd-thumbnails');
     thumbsWrap.innerHTML = imgs.map((url, idx) => `
@@ -1247,12 +1260,36 @@
     const mainImg = document.getElementById('pd-main-img');
     mainImg.src = url;
     mainImg.onerror = () => handleImgError(mainImg, state.currentProduct?.name);
+    mainImg.onclick = () => openProductImageLightbox(mainImg.src, state.currentProduct?.name || '');
     document.querySelectorAll('.pd-thumb').forEach(b => {
       b.classList.remove('border-brand');
       b.classList.add('border-slate-200', 'opacity-75');
     });
     btn.classList.add('border-brand');
     btn.classList.remove('border-slate-200', 'opacity-75');
+  }
+
+  function openProductImageLightbox(imgSrc, caption) {
+    if (!imgSrc) return;
+    let lb = document.getElementById('bayan-img-lightbox');
+    if (!lb) {
+      lb = document.createElement('div');
+      lb.id = 'bayan-img-lightbox';
+      lb.style.cssText = 'position:fixed;inset:0;z-index:999999;background:rgba(15,23,42,0.92);backdrop-filter:blur(6px);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;';
+      lb.onclick = (e) => { if (e.target === lb) lb.classList.add('hidden'); };
+      lb.innerHTML = `
+        <button type="button" onclick="document.getElementById('bayan-img-lightbox').classList.add('hidden')"
+          style="position:fixed;top:18px;left:18px;width:44px;height:44px;border-radius:999px;border:1px solid rgba(255,255,255,0.25);background:rgba(255,255,255,0.14);color:#fff;font-size:20px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+        <img id="bayan-img-lightbox-pic" src="" alt="" style="max-width:94vw;max-height:82vh;object-fit:contain;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.6);background:#fff;" />
+        <div id="bayan-img-lightbox-cap" style="color:#f8fafc;font-weight:800;font-size:14px;margin-top:12px;text-align:center;"></div>
+      `;
+      document.body.appendChild(lb);
+    }
+    const pic = document.getElementById('bayan-img-lightbox-pic');
+    const cap = document.getElementById('bayan-img-lightbox-cap');
+    if (pic) pic.src = imgSrc;
+    if (cap) cap.textContent = caption || '';
+    lb.classList.remove('hidden');
   }
 
   function resolveArabicColorHex(name, explicitHex) {
@@ -1604,9 +1641,34 @@
     const freeThreshold = Number(state.settings.freeShippingThreshold || 1500);
     const isFreeShipping = tier.freeShip || afterDiscounts >= freeThreshold;
     const shippingFee = isFreeShipping ? 0 : Number(gov.fee);
-    const total = afterDiscounts + shippingFee;
+    const isPrepaidMandatory = state.settings.prepaidShippingMode === 'mandatory' && shippingFee > 0;
+    const prepaidShipping = isPrepaidMandatory ? shippingFee : 0;
+    const codDueAmount = isPrepaidMandatory ? afterDiscounts : (afterDiscounts + shippingFee);
+    const total = codDueAmount;
 
-    return { qty: tier.qty, subtotal, tierDiscount, couponDiscount, totalDiscount, shippingFee, total, govName: gov.name, isFreeShipping };
+    return { qty: tier.qty, subtotal, tierDiscount, couponDiscount, totalDiscount, shippingFee, prepaidShipping, codDueAmount, isPrepaidMandatory, total, govName: gov.name, isFreeShipping };
+  }
+
+  function syncCustomPaymentMethodsUI() {
+    const customs = Array.isArray(state.settings.customPaymentMethods) ? state.settings.customPaymentMethods : [];
+    if (!customs.length) return;
+    ['qo-payment', 'cc-payment'].forEach(selId => {
+      const sel = document.getElementById(selId);
+      if (!sel) return;
+      sel.querySelectorAll('option[data-custom-pm="1"]').forEach(o => o.remove());
+      customs.forEach(m => {
+        const name = String(m || '').trim();
+        if (!name) return;
+        const exists = Array.from(sel.options).some(o => o.value === name);
+        if (!exists) {
+          const opt = document.createElement('option');
+          opt.value = name;
+          opt.textContent = `💳 ${name}`;
+          opt.dataset.customPm = '1';
+          sel.appendChild(opt);
+        }
+      });
+    });
   }
 
   function recalcQuickOrderSummary() {
@@ -1639,9 +1701,13 @@
 
     document.getElementById('qo-sum-shipping').innerHTML = calc.isFreeShipping
       ? '<span class="text-emerald-600 font-black">مجاني 🎉</span>'
-      : formatEGP(calc.shippingFee);
+      : (calc.isPrepaidMandatory
+        ? `<span class="text-amber-700 font-black">${formatEGP(calc.shippingFee)} (يُسدد مقدماً — مخصوم من الاستلام)</span>`
+        : formatEGP(calc.shippingFee));
 
-    document.getElementById('qo-sum-total').textContent = formatEGP(calc.total);
+    document.getElementById('qo-sum-total').textContent = calc.isPrepaidMandatory
+      ? `${formatEGP(calc.codDueAmount)} (المطلوب عند الاستلام)`
+      : formatEGP(calc.total);
     document.getElementById('pd-sticky-total').textContent = formatEGP(calc.total);
   }
 
@@ -1967,16 +2033,22 @@
           </ul>
         </div>`;
     } else if (state.pdActiveTab === 'shipping') {
+      const estTime = state.settings.estimatedTime || 'القاهرة والجيزة خلال 24 - 48 ساعة عمل، وباقي المحافظات خلال 2 - 4 أيام عمل.';
+      const retPolicy = state.settings.returnPolicyText || 'يمكنك استبدال المقاس أو إرجاع المنتج خلال 14 يوم من تاريخ الاستلام بشرط وجود المنتج بحالته الأصلية.';
+      const prepaidNote = state.settings.prepaidShippingMode === 'mandatory'
+        ? `<div class="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900"><strong class="block mb-1">💳 سياسة دفع الشحن مقدماً:</strong>يتم تحويل مصاريف الشحن مقدماً لتأكيد الجدية، ويُخصم مبلغ الشحن من الإجمالي المطلوب عند الاستلام (تدفع للمندوب قيمة المنتجات فقط).</div>`
+        : '';
       html = `
         <div class="space-y-2.5 text-xs sm:text-sm text-slate-700 leading-relaxed">
           <div class="p-3 rounded-2xl bg-slate-50 border border-slate-200">
             <strong class="text-slate-900 block mb-1"><i class="fa-solid fa-truck text-brand ml-1.5"></i>مدة التوصيل:</strong>
-            القاهرة والجيزة خلال 24 - 48 ساعة عمل، وباقي المحافظات خلال 2 - 4 أيام عمل.
+            ${escapeHTML(estTime)}
           </div>
           <div class="p-3 rounded-2xl bg-slate-50 border border-slate-200">
             <strong class="text-slate-900 block mb-1"><i class="fa-solid fa-rotate-left text-emerald-600 ml-1.5"></i>سياسة الاستبدال والاسترجاع:</strong>
-            يمكنك استبدال المقاس أو إرجاع المنتج خلال 14 يوم من تاريخ الاستلام بشرط وجود المنتج بحالته الأصلية.
+            ${escapeHTML(retPolicy)}
           </div>
+          ${prepaidNote}
         </div>`;
     } else {
       html = `
@@ -2052,7 +2124,10 @@
    * ========================================================================= */
   async function quickAddToCart(productId) {
     const prod = state.products.find(p => p.id === productId);
-    if (!prod || prod.stock <= 0 || prod.inStock === false) return;
+    if (!prod || prod.stock <= 0 || prod.inStock === false) {
+      showToast('⚠️ عذراً، هذا المنتج غير متوفر حالياً', 'error');
+      return;
+    }
     // إذا كان للمنتج ألوان أو مقاسات متعددة، نفتح نافذة المنتج ليختار العميل مقاسه ولونه بدقة
     const hasChoices = (Array.isArray(prod.colors) && prod.colors.length > 0) || (Array.isArray(prod.sizes) && prod.sizes.length > 0);
     if (hasChoices) {
@@ -2060,18 +2135,22 @@
       showToast('👆 يرجى اختيار اللون والمقاس المناسب أولاً', 'info');
       return;
     }
-    await addItemToCart(prod, '', '', 1);
-    showToast(`تمت إضافة "${prod.name}" إلى السلة`);
+    const added = await addItemToCart(prod, '', '', 1);
+    if (added) {
+      showToast(`تمت إضافة "${prod.name}" إلى السلة`);
+    }
   }
 
   async function addCurrentProductToCart() {
     const prod = state.currentProduct;
     if (!prod) return;
-    if (prod.stock <= 0 || prod.inStock === false) {
-      showToast('هذا المنتج غير متوفر حالياً', 'error');
+    const effAvail = getAvailableStockForSelection(prod, state.pdSelectedColor, state.pdSelectedSize);
+    if (prod.stock <= 0 || prod.inStock === false || effAvail <= 0) {
+      showToast('⚠️ عذراً، هذا المنتج / المقاس غير متوفر حالياً بالمخزون', 'error');
       return;
     }
-    await addItemToCart(prod, state.pdSelectedColor, state.pdSelectedSize, state.pdSelectedTier);
+    const added = await addItemToCart(prod, state.pdSelectedColor, state.pdSelectedSize, state.pdSelectedTier);
+    if (!added) return;
     showToast('تمت الإضافة إلى سلة المشتريات بنجاح');
     openCartDrawer();
   }
@@ -2079,8 +2158,8 @@
   async function addItemToCart(prod, color, size, qty) {
     const avail = getAvailableStockForSelection(prod, color, size);
     if (avail <= 0) {
-      showToast('عذراً، هذا المقاس/اللون غير متوفر حالياً بالمخزون', 'error');
-      return;
+      showToast('⚠️ عذراً، هذا المقاس/اللون غير متوفر حالياً بالمخزون', 'error');
+      return false;
     }
     const key = `${prod.id}__${color}__${size}`;
     const existing = state.cart.find(c => c.key === key);
@@ -2107,10 +2186,11 @@
         color: color || '',
         size: size || '',
         qty: cappedQty,
-        unitPrice: prod.price
+        unitPrice: getEffectivePrice(prod)
       });
     }
     await saveCart();
+    return true;
   }
 
   function openCartDrawer() {
