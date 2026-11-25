@@ -2536,6 +2536,76 @@
     document.getElementById('track-order-modal').classList.remove('hidden');
   }
 
+  async function cancelAndDeleteCustomerOrder(orderId) {
+    if (!orderId) return;
+    if (!confirm(`هل أنت متأكد من إلغاء وحذف الطلب #${orderId}؟\nسيتم حذفه نهائياً وإعادة القطع للمخزون.`)) return;
+    const db = typeof getBayanDb === 'function' ? getBayanDb() : null;
+    const rawFs = (window.firebase && typeof window.firebase.firestore === 'function') ? window.firebase.firestore() : null;
+    if (!db) {
+      showToast('⚠️ تعذر الاتصال بالخادم حالياً', 'error');
+      return;
+    }
+    try {
+      const orderRef = db.collection('orders').doc(orderId);
+      if (rawFs && typeof rawFs.runTransaction === 'function') {
+        await rawFs.runTransaction(async (tx) => {
+          const snap = await tx.get(orderRef);
+          if (!snap.exists) throw new Error('الطلب غير موجود أو تم حذفه مسبقاً');
+          const ord = snap.data() || {};
+          if (!['new', 'pending', ''].includes(String(ord.status || 'new'))) {
+            throw new Error('⚠️ لا يمكن حذف الطلب بعد بدء التجهيز أو الشحن');
+          }
+          const items = Array.isArray(ord.items) ? ord.items : [];
+          if (!ord.stockRestored && items.length > 0) {
+            const grouped = new Map();
+            for (const it of items) {
+              if (!it || !it.productId) continue;
+              if (!grouped.has(it.productId)) grouped.set(it.productId, []);
+              grouped.get(it.productId).push(it);
+            }
+            const reads = [];
+            for (const [productId, prodItems] of grouped.entries()) {
+              const prodRef = db.collection('products').doc(productId);
+              const pSnap = await tx.get(prodRef);
+              reads.push({ prodRef, pSnap, prodItems });
+            }
+            for (const { prodRef, pSnap, prodItems } of reads) {
+              if (!pSnap.exists) continue;
+              const d = pSnap.data() || {};
+              let liveStock = Math.max(0, Number(d.stock ?? d.stockQty ?? 0));
+              const hasVariants = d.variantsStock && typeof d.variantsStock === 'object' && Object.keys(d.variantsStock).length > 0;
+              const vCopy = hasVariants ? { ...d.variantsStock } : null;
+              for (const it of prodItems) {
+                const q = Math.max(1, Number(it.qty) || 1);
+                const normSize = (it.size && it.size !== '-') ? String(it.size).trim() : 'موحد';
+                const normColor = (it.color && it.color !== '-') ? String(it.color).trim() : 'قياسي';
+                const exactKey = `${normSize}|${normColor}`;
+                if (hasVariants && vCopy[exactKey] !== undefined) {
+                  vCopy[exactKey] = Math.max(0, (Number(vCopy[exactKey]) || 0) + q);
+                }
+                liveStock += q;
+              }
+              const finalStock = hasVariants
+                ? Object.values(vCopy).reduce((s, val) => s + Math.max(0, Number(val) || 0), 0)
+                : liveStock;
+              const upd = { stock: finalStock, stockQty: finalStock, inStock: finalStock > 0, updatedAt: new Date().toISOString() };
+              if (hasVariants) upd.variantsStock = vCopy;
+              tx.set(prodRef, upd, { merge: true });
+            }
+          }
+          tx.delete(orderRef);
+        });
+      } else {
+        await orderRef.delete();
+      }
+      showToast(`🗑️ تم إلغاء وحذف الطلب #${orderId} وإعادة المخزون بنجاح`);
+      const form = document.querySelector('#track-order-modal form');
+      if (form) form.dispatchEvent(new Event('submit', { cancelable: true }));
+    } catch (err) {
+      showToast(err && err.message ? err.message : 'تعذر حذف الطلب حالياً', 'error');
+    }
+  }
+
   function closeTrackOrderModal() {
     document.getElementById('track-order-modal').classList.add('hidden');
   }
@@ -2662,6 +2732,14 @@
                   <span>الإجمالي النهائي:</span>
                   <span class="text-emerald-700">${formatEGP(ord.grandTotal ?? ord.total ?? 0)}</span>
                 </div>
+                ${['new', 'pending', ''].includes(String(ord.status || 'new')) ? `
+                <div class="pt-2.5 mt-2 border-t border-slate-200 flex justify-end">
+                  <button type="button" onclick="cancelAndDeleteCustomerOrder('${escapeHTML(ord.id)}')"
+                    class="px-3.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-extrabold transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-trash-can"></i>
+                    <span>إلغاء وحذف الطلب</span>
+                  </button>
+                </div>` : ''}
               </div>
             </div>
             </div>
@@ -2789,6 +2867,7 @@
     submitCartCheckout,
     closeOrderSuccessModal,
     openTrackOrderModal,
+    cancelAndDeleteCustomerOrder,
     closeTrackOrderModal,
     searchTrackOrder,
     toggleWishlist,
