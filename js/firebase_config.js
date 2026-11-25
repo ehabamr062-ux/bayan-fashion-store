@@ -23,6 +23,13 @@ function sanitizeShopId(rawId) {
     return clean.length >= 3 ? clean : '';
 }
 
+// 🌐 خريطة ربط الدومينات الخاصة بكود المحل (Custom Domains -> shopId)
+// أضف هنا أي دومين خاص لعميل في سطر واحد ليفتح متجره ولوحة تحكمه بدون ?shop=...
+const BAYAN_CUSTOM_DOMAINS = {
+    'missshoes.store': 'SHOP_F5Y8E',
+    'www.missshoes.store': 'SHOP_F5Y8E'
+};
+
 function getActiveShopId() {
     if (typeof window === 'undefined') return DEFAULT_SHOP_ID;
     if (window._bayanActiveShopId) return window._bayanActiveShopId;
@@ -36,6 +43,19 @@ function getActiveShopId() {
             try { sessionStorage.setItem('bayan_active_shop_id', shopId); } catch (_) { }
         }
     } catch (_) { }
+
+    // التحقق التلقائي من الدومين الخاص (Custom Domain) إذا لم يُمرر ?shop= في الرابط
+    if (!shopId) {
+        try {
+            const host = String(window.location.hostname || '').toLowerCase().trim();
+            const mapped = BAYAN_CUSTOM_DOMAINS[host] || BAYAN_CUSTOM_DOMAINS[host.replace(/^www\./, '')] || '';
+            const cleanMapped = sanitizeShopId(mapped);
+            if (cleanMapped) {
+                shopId = cleanMapped;
+                try { sessionStorage.setItem('bayan_active_shop_id', shopId); } catch (_) { }
+            }
+        } catch (_) { }
+    }
 
     if (!shopId) {
         try {
