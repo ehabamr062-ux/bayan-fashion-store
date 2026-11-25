@@ -555,6 +555,9 @@
           if (d.freeShippingThreshold !== undefined) {
             state.settings.freeShippingThreshold = Number(d.freeShippingThreshold);
           }
+          if (d.minOrderAmount !== undefined) {
+            state.settings.minOrderAmount = Math.max(0, Number(d.minOrderAmount) || 0);
+          }
           if (d.estimatedTime) state.settings.estimatedTime = String(d.estimatedTime);
           if (d.returnPolicyText !== undefined) state.settings.returnPolicyText = String(d.returnPolicyText || '');
           if (d.prepaidShippingMode) state.settings.prepaidShippingMode = String(d.prepaidShippingMode);
@@ -1919,6 +1922,11 @@
     }
 
     const calc = getQuickOrderCalculation();
+    const minOrderAmt = Math.max(0, Number(state.settings.minOrderAmount || 0));
+    if (minOrderAmt > 0 && (calc.subtotal - calc.totalDiscount) < minOrderAmt) {
+      showToast(`⚠️ عذراً، الحد الأدنى لإتمام الطلب في المتجر هو ${formatEGP(minOrderAmt)} (يمكنك إضافة منتجات أخرى للسلة لإكمال المبلغ)`, 'error');
+      return;
+    }
     const orderId = await generateNextOrderId();
     const nowIso = new Date().toISOString();
 
@@ -1986,6 +1994,11 @@
     const waNum = formatWhatsAppNumber(state.settings.whatsappNumber || '');
     if (!prod || !waNum) return;
     const calc = getQuickOrderCalculation();
+    const minOrderAmt = Math.max(0, Number(state.settings.minOrderAmount || 0));
+    if (minOrderAmt > 0 && (calc.subtotal - calc.totalDiscount) < minOrderAmt) {
+      showToast(`⚠️ عذراً، الحد الأدنى لإتمام الطلب في المتجر هو ${formatEGP(minOrderAmt)} (يمكنك إضافة منتجات أخرى للسلة لإكمال المبلغ)`, 'error');
+      return;
+    }
     const name = document.getElementById('qo-name').value.trim() || 'عميل جديد';
     const phone = document.getElementById('qo-phone').value.trim() || '-';
     const address = document.getElementById('qo-address').value.trim() || '-';
@@ -2386,6 +2399,13 @@
   async function submitCartCheckout(e) {
     e.preventDefault();
     if (state.submittingOrder || !state.cart.length) return;
+
+    const ccCalcPre = getCartCheckoutCalculation();
+    const minOrderAmt = Math.max(0, Number(state.settings.minOrderAmount || 0));
+    if (minOrderAmt > 0 && (ccCalcPre.subtotal - ccCalcPre.couponDiscount) < minOrderAmt) {
+      showToast(`⚠️ عذراً، الحد الأدنى لإتمام الطلب في المتجر هو ${formatEGP(minOrderAmt)} — أضف منتجات أخرى للسلة لإكمال المبلغ`, 'error');
+      return;
+    }
 
     const name = document.getElementById('cc-name').value.trim();
     const phone1 = document.getElementById('cc-phone').value.trim();

@@ -122,7 +122,7 @@
         if (typeof showFastSaveToast === 'function') showFastSaveToast(`🗑️ تم حذف القسم «${name}» بنجاح!`);
     };
 
-    // حقن زر "📂 إدارة الأقسام" ديناميكياً بجانب زر "🗂️ تصنيف سريع بالصور" بدون تعديل admin.html
+    // حقن زر "📂 إدارة الأقسام" + خانة "الحد الأدنى لقيمة الطلب في المتجر" ديناميكياً
     document.addEventListener('DOMContentLoaded', () => {
         const bvcBtn = Array.from(document.querySelectorAll('button')).find(b => (b.getAttribute('onclick') || '').includes('openBulkVisualCategorizer'));
         if (bvcBtn && !document.getElementById('btnOpenCategoriesManager')) {
@@ -136,5 +136,52 @@
             btn.onclick = () => window.openCategoriesManagerModal();
             bvcBtn.insertAdjacentElement('afterend', btn);
         }
+
+        // حقن خانة "🚫 الحد الأدنى لقيمة الطلب في المتجر (ج.م)" داخل فورم الشحن
+        const freeShipInp = document.getElementById('setFreeShippingThreshold');
+        if (freeShipInp && freeShipInp.parentElement && !document.getElementById('setMinOrderAmount')) {
+            const grp = document.createElement('div');
+            grp.className = 'form-group';
+            grp.style.cssText = 'background:#fff7ed;border:1.5px solid #fed7aa;border-radius:12px;padding:10px 12px;margin-top:8px;';
+            grp.innerHTML = `
+                <label style="font-size:0.84rem;font-weight:900;color:#9a3412;display:block;margin-bottom:4px;">🚫 الحد الأدنى لقيمة الطلب في المتجر (ج.م) — 0 يعني بدون حد أدنى:</label>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <input type="number" id="setMinOrderAmount" class="form-control" min="0" value="0" placeholder="مثلاً 1000" style="flex:1;font-weight:900;">
+                    <button type="button" onclick="saveMinOrderAmountSetting()" class="btn-primary-action" style="background:#ea580c;border-color:#c2410c;font-weight:900;white-space:nowrap;">💾 حفظ الحد الأدنى</button>
+                </div>
+                <small style="color:#9a3412;font-size:0.75rem;display:block;margin-top:4px;">إذا كتبت 1000 مثلاً، لن يتمكن أي عميل من إتمام الطلب (أو الطلب عبر واتساب) بمبلغ أقل من 1000 ج.م.</small>`;
+            freeShipInp.parentElement.insertAdjacentElement('afterend', grp);
+
+            // تحميل القيمة المحفوظة من Firestore
+            setTimeout(async () => {
+                try {
+                    const db = (typeof getBayanDb === 'function') ? getBayanDb() : null;
+                    if (db) {
+                        const doc = await db.collection('settings').doc('shipping').get();
+                        if (doc.exists && doc.data().minOrderAmount !== undefined) {
+                            const el = document.getElementById('setMinOrderAmount');
+                            if (el) el.value = Number(doc.data().minOrderAmount) || 0;
+                        }
+                    }
+                } catch (_) { }
+            }, 1500);
+        }
     });
+
+    window.saveMinOrderAmountSetting = async function () {
+        const val = Math.max(0, Number(document.getElementById('setMinOrderAmount')?.value || 0));
+        const db = (typeof getBayanDb === 'function') ? getBayanDb() : null;
+        if (!db) return alert('⚠️ جاري الاتصال بالسحابة');
+        try {
+            await db.collection('settings').doc('shipping').set({
+                minOrderAmount: val,
+                updatedAt: new Date().toISOString()
+            }, { merge: true });
+            if (typeof showFastSaveToast === 'function') {
+                showFastSaveToast(val > 0 ? `🚫 تم تفعيل الحد الأدنى للطلب (${val} ج.م) في المتجر فوراً!` : '✅ تم إلغاء الحد الأدنى للطلب في المتجر!');
+            }
+        } catch (err) {
+            alert('❌ خطأ في الحفظ: ' + err.message);
+        }
+    };
 })();
