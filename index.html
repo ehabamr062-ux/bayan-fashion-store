@@ -289,6 +289,13 @@
     <!-- Main Sticky Header (Mobile-First Balanced Layout) -->
     <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
       <div class="max-w-7xl mx-auto px-3 sm:px-6 h-16 sm:h-[72px] flex items-center justify-between gap-2 sm:gap-3">
+        <!-- Side Drawer Menu Trigger -->
+        <button type="button" onclick="if(typeof openStoreSideDrawer==='function') openStoreSideDrawer()"
+          class="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 flex items-center justify-center transition shrink-0"
+          title="القائمة والأقسام والتواصل" aria-label="فتح القائمة الجانبية">
+          <i class="fa-solid fa-bars text-lg"></i>
+        </button>
+
         <!-- Brand Logo -->
         <button onclick="resetStoreFilters()"
           class="flex items-center gap-2 sm:gap-2.5 text-right group min-w-0 flex-1 md:flex-initial">
@@ -1130,7 +1137,8 @@
 
   <!-- Multi-Tenant Firebase Config & Storefront Engine -->
   <script src="js/firebase_config.js"></script>
-  <script src="js/storefront.js?v=5.3.5"></script>
+  <script src="js/storefront.js?v=5.3.8"></script>
+  <script src="js/storefront_drawer.js?v=5.3.8"></script>
 </body>
 
 </html>

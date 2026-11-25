@@ -3455,6 +3455,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <script src="js/firebase_config.js"></script>
     <script src="js/admin_categories.js?v=5.3.7"></script>
+    <script src="js/admin_media_tools.js?v=5.3.8"></script>
 
     <!-- منطق وبرمجة لوحة التاجر -->
     <script>
@@ -5316,7 +5317,7 @@
                         <div class="img-preview-box">
                             <img src="${imgUrl}" alt="صورة ${idx + 1}" loading="lazy">
                         </div>
-                        <select class="gallery-color-select" onchange="imageColorsList[${idx}] = this.value" title="ربط هذه الصورة بلون محدد">
+                        <select class="gallery-color-select" onclick="event.stopPropagation()" onchange="imageColorsList[${idx}] = this.value" title="ربط هذه الصورة بلون محدد">
                             <option value="">بدون ربط بلون</option>
                             ${colorOptions}
                         </select>
@@ -5529,6 +5530,7 @@
                     colorPrices: finalColorPrices,
                     quantityOffers: finalQuantityOffers,
                     bogoOffer: finalBogoOffer,
+                    isNew: Boolean(document.getElementById('inpProdIsNew')?.checked),
                     description: desc,
                     updatedAt: new Date().toISOString()
                 };

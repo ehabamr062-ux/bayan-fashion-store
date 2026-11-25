@@ -1105,6 +1105,7 @@
             ${img2 !== img1 ? `<img src="${escapeHTML(img2)}" onerror="handleImgError(this, '${escapeHTML(prod.name)}')" alt="${escapeHTML(prod.name)}" class="img-secondary absolute inset-0 w-full h-full object-cover" loading="lazy" />` : ''}
 
             <div class="absolute top-2.5 right-2.5 flex flex-col gap-1.5 z-10">
+              ${prod.isNew ? `<span class="px-2.5 py-0.5 rounded-lg bg-rose-500 text-white text-[11px] font-black shadow">جديد</span>` : ''}
               ${discount > 0 ? `<span class="px-2 py-0.5 rounded-lg bg-brand text-white text-[11px] font-black shadow">خصم ${discount}%</span>` : ''}
               ${prod.featured ? `<span class="px-2 py-0.5 rounded-lg bg-slate-900/90 text-white text-[10px] font-bold">الأكثر مبيعاً</span>` : ''}
               ${outOfStock ? `<span class="px-2 py-0.5 rounded-lg bg-rose-700 text-white text-[10px] font-bold">نفذت الكمية</span>` : ''}
