@@ -2344,7 +2344,10 @@
     const threshold = Number(state.settings.freeShippingThreshold || 1500);
     const isFreeShipping = afterDisc >= threshold;
     const shippingFee = isFreeShipping ? 0 : Number(gov.fee);
-    return { subtotal, couponDiscount, shippingFee, total: afterDisc + shippingFee, govName: gov.name, isFreeShipping };
+    const isPrepaidMandatory = state.settings.prepaidShippingMode === 'mandatory' && shippingFee > 0;
+    const prepaidShipping = isPrepaidMandatory ? shippingFee : 0;
+    const codDueAmount = isPrepaidMandatory ? afterDisc : (afterDisc + shippingFee);
+    return { subtotal, couponDiscount, shippingFee, prepaidShipping, codDueAmount, isPrepaidMandatory, total: codDueAmount, govName: gov.name, isFreeShipping };
   }
 
   function recalcCartCheckoutSummary() {
@@ -2361,8 +2364,12 @@
     }
     document.getElementById('cc-sum-shipping').innerHTML = calc.isFreeShipping
       ? '<span class="text-emerald-600 font-black">مجاني 🎉</span>'
-      : formatEGP(calc.shippingFee);
-    document.getElementById('cc-sum-total').textContent = formatEGP(calc.total);
+      : (calc.isPrepaidMandatory
+        ? `<span class="text-amber-700 font-black">${formatEGP(calc.shippingFee)} (يُسدد مقدماً — مخصوم من الاستلام)</span>`
+        : formatEGP(calc.shippingFee));
+    document.getElementById('cc-sum-total').textContent = calc.isPrepaidMandatory
+      ? `${formatEGP(calc.codDueAmount)} (المطلوب عند الاستلام)`
+      : formatEGP(calc.total);
   }
 
   async function submitCartCheckout(e) {
