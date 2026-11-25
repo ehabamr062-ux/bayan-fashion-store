@@ -111,7 +111,7 @@
             camBtn.className = 'btn-card-action';
             camBtn.style.cssText = 'background:#059669; color:#ffffff; border-color:#059669; font-weight:900;';
             camBtn.innerHTML = '<span>📷 تصوير بالكاميرا مباشرة</span>';
-            camBtn.onclick = () => camInput.click();
+            camBtn.onclick = () => openLiveCameraModal(camInput);
 
             btnRow.appendChild(camInput);
             btnRow.appendChild(camBtn);
@@ -232,6 +232,96 @@
             wrappedOpenAdd._isNewHooked = true;
             window.openAddProductModal = wrappedOpenAdd;
         }
+    }
+
+    // نافذة الكاميرا الحية (تعمل على الكمبيوتر والموبايل معاً عبر WebRTC getUserMedia)
+    async function openLiveCameraModal(fallbackInput) {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            if (fallbackInput) fallbackInput.click();
+            return;
+        }
+
+        const old = document.getElementById('adminLiveCameraModal');
+        if (old) old.remove();
+
+        let currentStream = null;
+        let facingMode = 'environment';
+
+        const overlay = document.createElement('div');
+        overlay.id = 'adminLiveCameraModal';
+        overlay.style.cssText = 'position:fixed; inset:0; z-index:999999; background:rgba(2,6,23,0.88); backdrop-filter:blur(6px); display:flex; align-items:center; justify-content:center; padding:16px; direction:rtl; font-family:Cairo,sans-serif;';
+        overlay.innerHTML = `
+            <div style="background:#0f172a; border:1.5px solid #34d399; border-radius:22px; width:460px; max-width:96vw; overflow:hidden; box-shadow:0 25px 60px rgba(0,0,0,0.65); color:#fff;">
+                <div style="padding:14px 18px; background:linear-gradient(135deg,#064e3b,#047857); display:flex; align-items:center; justify-content:space-between;">
+                    <span style="font-weight:900; font-size:1rem;">📷 تصوير المنتج بالكاميرا مباشرة</span>
+                    <button type="button" id="closeLiveCamBtn" style="background:rgba(255,255,255,0.18); color:#fff; border:none; width:32px; height:32px; border-radius:10px; font-weight:900; cursor:pointer;">✕</button>
+                </div>
+                <div style="position:relative; background:#000; width:100%; aspect-ratio:1/1; display:flex; align-items:center; justify-content:center; overflow:hidden;">
+                    <video id="liveCamVideo" autoplay playsinline muted style="width:100%; height:100%; object-fit:cover;"></video>
+                    <div id="liveCamMsg" style="position:absolute; color:#a7f3d0; font-weight:800; font-size:0.86rem; text-align:center; padding:12px;">جاري تشغيل الكاميرا...</div>
+                </div>
+                <div style="padding:14px 18px; display:flex; gap:10px; justify-content:center; background:#0f172a;">
+                    <button type="button" id="switchLiveCamBtn" style="background:#1e293b; color:#e2e8f0; border:1px solid #334155; border-radius:12px; padding:10px 14px; font-weight:800; cursor:pointer; font-family:inherit;">🔄 قلب الكاميرا</button>
+                    <button type="button" id="captureLiveCamBtn" style="flex:1; background:linear-gradient(135deg,#10b981,#059669); color:#fff; border:none; border-radius:12px; padding:10px 18px; font-weight:900; font-size:0.95rem; cursor:pointer; font-family:inherit;">📸 التقاط وإضافة للمعرض</button>
+                </div>
+            </div>`;
+        document.body.appendChild(overlay);
+
+        const videoEl = overlay.querySelector('#liveCamVideo');
+        const msgEl = overlay.querySelector('#liveCamMsg');
+
+        function stopStream() {
+            if (currentStream) {
+                currentStream.getTracks().forEach(t => t.stop());
+                currentStream = null;
+            }
+        }
+
+        function closeModal() {
+            stopStream();
+            overlay.remove();
+        }
+
+        async function startCamera() {
+            stopStream();
+            if (msgEl) { msgEl.style.display = 'block'; msgEl.textContent = 'جاري تشغيل الكاميرا...'; }
+            try {
+                currentStream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: { ideal: facingMode }, width: { ideal: 1280 }, height: { ideal: 1280 } },
+                    audio: false
+                });
+                videoEl.srcObject = currentStream;
+                if (msgEl) msgEl.style.display = 'none';
+            } catch (err) {
+                console.warn('[AdminMediaTools] Camera error, using file input fallback:', err);
+                closeModal();
+                if (fallbackInput) fallbackInput.click();
+            }
+        }
+
+        overlay.querySelector('#closeLiveCamBtn').onclick = closeModal;
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
+        overlay.querySelector('#switchLiveCamBtn').onclick = () => {
+            facingMode = (facingMode === 'environment') ? 'user' : 'environment';
+            startCamera();
+        };
+        overlay.querySelector('#captureLiveCamBtn').onclick = () => {
+            if (!videoEl.videoWidth || !videoEl.videoHeight) return;
+            const canvas = document.createElement('canvas');
+            canvas.width = videoEl.videoWidth;
+            canvas.height = videoEl.videoHeight;
+            canvas.getContext('2d').drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+            canvas.toBlob((blob) => {
+                if (!blob) return;
+                const capturedFile = new File([blob], `camera_${Date.now()}.jpg`, { type: 'image/jpeg' });
+                closeModal();
+                if (typeof window.handleMultipleImagesUpload === 'function') {
+                    window.handleMultipleImagesUpload({ target: { files: [capturedFile], value: '' } });
+                }
+            }, 'image/jpeg', 0.92);
+        };
+
+        startCamera();
     }
 
     function boot() {
