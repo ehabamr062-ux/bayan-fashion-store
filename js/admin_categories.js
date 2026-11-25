@@ -184,4 +184,74 @@
             alert('❌ خطأ في الحفظ: ' + err.message);
         }
     };
+
+    // ⭐ ربط آراء العملاء (نص أو صورة) بمنتج محدد بالبحث (Task #7)
+    function injectTestimonialProductLinker() {
+        const testiNameInp = document.getElementById('inpTestiName');
+        if (!testiNameInp || document.getElementById('inpTestiLinkedProduct')) return;
+
+        const dl = document.createElement('datalist');
+        dl.id = 'bayanTestiProductsDatalist';
+        document.body.appendChild(dl);
+
+        const refreshProductsDatalist = () => {
+            const list = (typeof adminProductsList !== 'undefined' && Array.isArray(adminProductsList)) ? adminProductsList : [];
+            dl.innerHTML = list.map(p => {
+                const label = `${p.name || ''}${p.code ? ' [' + p.code + ']' : ''}`.trim();
+                return `<option value="${esc(label)}" data-id="${esc(p.firestoreId || p.id)}">`;
+            }).join('');
+        };
+
+        const wrap = document.createElement('div');
+        wrap.className = 'form-group';
+        wrap.style.cssText = 'margin-top:8px;background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:10px;padding:8px 10px;';
+        wrap.innerHTML = `
+            <label style="font-size:0.8rem;font-weight:900;color:#166534;display:block;margin-bottom:4px;">🔗 ربط الرأي بمنتج معين (اختياري — ابحث بالاسم أو الكود):</label>
+            <input type="text" id="inpTestiLinkedProduct" list="bayanTestiProductsDatalist" class="form-control"
+                placeholder="ابحث عن المنتج لربط التقييم به تلقائياً..." onfocus="window._refreshTestiProdList && window._refreshTestiProdList()">`;
+        testiNameInp.parentElement.insertAdjacentElement('afterend', wrap);
+        window._refreshTestiProdList = refreshProductsDatalist;
+        setTimeout(refreshProductsDatalist, 2000);
+
+        // ربط الحفظ التلقائي في reviews المنتج عند إضافة رأي نصي
+        const origSaveText = window.saveAdminTextTestimonial;
+        if (typeof origSaveText === 'function' && !origSaveText._bayanLinked) {
+            window.saveAdminTextTestimonial = function (e) {
+                const chosenLabel = (document.getElementById('inpTestiLinkedProduct')?.value || '').trim();
+                const name = (document.getElementById('inpTestiName')?.value || '').trim();
+                const text = (document.getElementById('inpTestiText')?.value || '').trim();
+                const rating = Number(document.getElementById('inpTestiRating')?.value || 5);
+                const list = (typeof adminProductsList !== 'undefined' && Array.isArray(adminProductsList)) ? adminProductsList : [];
+                const matchedProd = chosenLabel ? list.find(p => `${p.name || ''}${p.code ? ' [' + p.code + ']' : ''}`.trim() === chosenLabel || String(p.name || '').trim() === chosenLabel) : null;
+
+                origSaveText.call(this, e);
+
+                if (matchedProd && name && text) {
+                    const db = (typeof getBayanDb === 'function') ? getBayanDb() : null;
+                    const arrUnion = (window.firebase && firebase.firestore && firebase.firestore.FieldValue) ? firebase.firestore.FieldValue.arrayUnion : null;
+                    if (db && arrUnion) {
+                        const pid = matchedProd.firestoreId || matchedProd.id;
+                        db.collection('products').doc(pid).set({
+                            reviews: arrUnion({
+                                name,
+                                rating,
+                                comment: text,
+                                date: new Date().toLocaleDateString('ar-EG')
+                            }),
+                            updatedAt: new Date().toISOString()
+                        }, { merge: true }).then(() => {
+                            const inp = document.getElementById('inpTestiLinkedProduct');
+                            if (inp) inp.value = '';
+                            if (typeof showFastSaveToast === 'function') showFastSaveToast(`⭐ تم ربط التقييم بالمنتج «${matchedProd.name}» بنجاح!`);
+                        }).catch(console.warn);
+                    }
+                }
+            };
+            window.saveAdminTextTestimonial._bayanLinked = true;
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(injectTestimonialProductLinker, 600);
+    });
 })();
