@@ -570,6 +570,17 @@
       (err) => console.warn('Shipping listener warning:', err)
     );
 
+    // 2.5) Custom Categories from Admin Panel
+    db.collection('settings').doc('categories').onSnapshot(
+      (doc) => {
+        if (doc.exists && Array.isArray(doc.data().list)) {
+          state.customCategories = doc.data().list.map(c => String(c || '').trim()).filter(Boolean);
+          renderCategories();
+        }
+      },
+      () => { }
+    );
+
     // 3) Products — كاش محلي ذكي لمدة 5 دقائق لتوفير 90% من قراءات Firebase Firestore
     const CACHE_KEY = `bayan_store_prods_v2_${state.shopId}`;
     const CACHE_TTL_MS = 5 * 60 * 1000;
