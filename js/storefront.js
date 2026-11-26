@@ -856,6 +856,16 @@
     renderCategoryPills();
     renderProductsGrid();
     updateBadges();
+    if (!state._openedInitialProdParam && state.productsLoaded && state.products.length) {
+      state._openedInitialProdParam = true;
+      try {
+        const prodParam = new URLSearchParams(window.location.search || '').get('prod');
+        if (prodParam) {
+          const target = state.products.find(p => String(p.id) === prodParam || String(p.pos_id) === prodParam || String(p.code) === prodParam);
+          if (target) openProductDetail(target.id);
+        }
+      } catch (_) { }
+    }
   }
 
   function renderCategoryPills() {

@@ -137,10 +137,97 @@ function getBayanDb() {
     return bayanDb;
 }
 
+function isCustomDomainMapped() {
+    try {
+        const host = String(window.location.hostname || '').toLowerCase().trim();
+        const mapped = BAYAN_CUSTOM_DOMAINS[host] || BAYAN_CUSTOM_DOMAINS[host.replace(/^www\./, '')] || '';
+        return Boolean(sanitizeShopId(mapped));
+    } catch (_) {
+        return false;
+    }
+}
+
+function getStorefrontUrl(extraParams) {
+    const shopId = getActiveShopId();
+    let basePath = 'index.html';
+    try {
+        const curUrl = new URL(window.location.href);
+        curUrl.search = '';
+        curUrl.hash = '';
+        curUrl.pathname = curUrl.pathname.replace(/[^/]*$/, '') + 'index.html';
+        basePath = curUrl.toString();
+    } catch (_) { }
+
+    const qs = new URLSearchParams();
+    const hasExplicitShopInUrl = (() => {
+        try {
+            const sp = new URLSearchParams(window.location.search || '');
+            return Boolean(sanitizeShopId(sp.get('shop') || sp.get('shop_id') || ''));
+        } catch (_) { return false; }
+    })();
+
+    if (!isCustomDomainMapped() && (hasExplicitShopInUrl || shopId !== DEFAULT_SHOP_ID)) {
+        qs.set('shop', shopId);
+    }
+    if (extraParams && typeof extraParams === 'object') {
+        Object.keys(extraParams).forEach(k => {
+            if (extraParams[k] !== undefined && extraParams[k] !== null && String(extraParams[k]) !== '') {
+                qs.set(k, String(extraParams[k]));
+            }
+        });
+    }
+    const queryStr = qs.toString();
+    return queryStr ? `${basePath}?${queryStr}` : basePath;
+}
+
+function openActiveShopStorefront(e) {
+    const url = getStorefrontUrl();
+    if (e && e.currentTarget && e.currentTarget.tagName === 'A') {
+        e.currentTarget.href = url;
+    }
+    if (e && typeof e.preventDefault === 'function') {
+        e.preventDefault();
+    }
+    window.open(url, '_blank', 'noopener');
+    return false;
+}
+
+function syncAdminStorefrontLinks() {
+    try {
+        const isAdminPage = /admin\.html/i.test(window.location.pathname || '') || Boolean(document.getElementById('cloudLiveStatus'));
+        if (!isAdminPage) return;
+        const targetUrl = getStorefrontUrl();
+        document.querySelectorAll('a[href="index.html"], a[href^="index.html?"], #adminPreviewStoreLink, #homeVisitStoreLink').forEach(a => {
+            a.href = targetUrl;
+            if (!a._bayanStoreLinkHooked) {
+                a._bayanStoreLinkHooked = true;
+                a.addEventListener('click', (ev) => openActiveShopStorefront(ev));
+            }
+        });
+        const shopId = getActiveShopId();
+        const badge = document.getElementById('cloudLiveStatus');
+        if (badge && shopId && shopId !== DEFAULT_SHOP_ID) {
+            const spans = badge.querySelectorAll('span');
+            const labelSpan = spans[spans.length - 1];
+            if (labelSpan && !labelSpan.textContent.includes(shopId)) {
+                labelSpan.textContent = `متصل بـ Firebase • ${shopId}`;
+            }
+        }
+    } catch (_) { }
+}
+
 if (typeof window !== 'undefined') {
     window.getActiveShopId = getActiveShopId;
     window.getShopCollection = getShopCollection;
     window.getRawBayanDb = getRawBayanDb;
+    window.getStorefrontUrl = getStorefrontUrl;
+    window.openActiveShopStorefront = openActiveShopStorefront;
+    window.syncAdminStorefrontLinks = syncAdminStorefrontLinks;
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', syncAdminStorefrontLinks);
+    } else {
+        syncAdminStorefrontLinks();
+    }
 }
 
 // ==============================================================================
