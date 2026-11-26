@@ -6566,14 +6566,39 @@
                                     ` : ''}
                                 </div>
 
-                                <div style="font-size: 1.1rem; font-weight: 950; color: #0f172a;">
-                                    الإجمالي مع التوصيل: <span style="color: #059669;">${o.grandTotal} ج.م</span>
-                                </div>
+                                ${(() => {
+                                    const bd = resolveAdminOrderPrepaid(o);
+                                    if (bd.isPrepaid) {
+                                        return `
+                                            <div style="text-align:left; line-height:1.45;">
+                                                <div style="font-size:0.82rem; font-weight:800; color:#475569;">إجمالي الفاتورة شامل الشحن: <b>${bd.totalWithShip.toFixed(0)} ج.م</b> • <span style="color:#b45309;">💳 شحن مقدم -${bd.prepaidShip.toFixed(0)} ج.م</span></div>
+                                                <div style="font-size:1.08rem; font-weight:950; color:#0f172a;">المطلوب عند الاستلام: <span style="color:#059669;">${bd.codDue.toFixed(0)} ج.م</span></div>
+                                            </div>`;
+                                    }
+                                    return `
+                                        <div style="font-size: 1.1rem; font-weight: 950; color: #0f172a;">
+                                            الإجمالي مع التوصيل: <span style="color: #059669;">${o.grandTotal} ج.م</span>
+                                        </div>`;
+                                })()}
                             </div>
                         </div>
                     </div>
                 `;
             }).join('');
+        }
+
+        function resolveAdminOrderPrepaid(order) {
+            const items = Array.isArray(order && order.items) ? order.items : [];
+            const sub = Number(order && order.subtotal) || items.reduce((s, it) => s + ((Number(it.price || it.unitPrice) || 0) * (Number(it.qty) || 1)), 0);
+            const disc = Number(order && order.discountAmount) || 0;
+            const ship = Number(order && (order.deliveryFee ?? order.shippingFee)) || 0;
+            const netProd = Math.max(0, sub - disc);
+            const totalWithShip = Math.max(0, netProd + ship);
+            const grand = (order && order.grandTotal !== undefined && order.grandTotal !== null) ? Number(order.grandTotal) : totalWithShip;
+            const isPrepaid = Boolean((order && (order.isPrepaidShipping || Number(order.prepaidShipping || 0) > 0)) || (ship > 0 && Math.abs(grand - netProd) < 0.01 && totalWithShip > grand + 0.01));
+            const prepaidShip = isPrepaid ? (Number(order && order.prepaidShipping) > 0 ? Number(order.prepaidShipping) : ship) : 0;
+            const codDue = isPrepaid ? Math.max(0, totalWithShip - prepaidShip) : grand;
+            return { sub, disc, ship, totalWithShip, isPrepaid, prepaidShip, codDue };
         }
 
         function exportOrdersToCSV() {
@@ -8325,16 +8350,26 @@
                 </tr>
             ` : '';
 
-            const isFreeShipping = Number(order.deliveryFee || 0) === 0;
+            const invBd = resolveAdminOrderPrepaid(order);
+            const isFreeShipping = invBd.ship === 0;
             const shippingRow = `
                 <tr style="border-bottom: 1px dashed #cbd5e1;">
                     <td colspan="6" style="padding: 8px 14px; text-align: right; font-weight: 900; color: ${isFreeShipping ? '#059669' : '#b45309'};">
                         🚚 مصاريف الشحن والتوصيل للمحافظة:
                     </td>
                     <td style="padding: 8px 14px; text-align: left; font-weight: 950; color: ${isFreeShipping ? '#059669' : '#b45309'};">
-                        ${isFreeShipping ? '0 ج.م (شحن مجاني 🎁)' : `+${Number(order.deliveryFee).toFixed(0)} ج.م`}
+                        ${isFreeShipping ? '0 ج.م (شحن مجاني 🎁)' : `+${invBd.ship.toFixed(0)} ج.م`}
                     </td>
                 </tr>
+                ${invBd.isPrepaid ? `
+                <tr style="border-bottom: 1px dashed #cbd5e1; background: #fafbfc;">
+                    <td colspan="6" style="padding: 8px 14px; text-align: right; font-weight: 900; color: #0f172a;">🧾 إجمالي الفاتورة شامل الشحن:</td>
+                    <td style="padding: 8px 14px; text-align: left; font-weight: 950; color: #0f172a;">${invBd.totalWithShip.toFixed(0)} ج.م</td>
+                </tr>
+                <tr style="border-bottom: 1px dashed #fde68a; background: #fffbeb;">
+                    <td colspan="6" style="padding: 8px 14px; text-align: right; font-weight: 900; color: #b45309;">💳 مدفوع مصاريف الشحن مقدماً (يُخصم من الاستلام):</td>
+                    <td style="padding: 8px 14px; text-align: left; font-weight: 950; color: #b45309;">-${invBd.prepaidShip.toFixed(0)} ج.م</td>
+                </tr>` : ''}
             `;
 
             const html = `
@@ -8773,9 +8808,9 @@
                                 <div class="grand-cod-card">
                                     <div>
                                         <div style="font-size: 13px; color: #cbd5e1; font-weight: 800;">المطلوب تحصيله كاش من العميل:</div>
-                                        <div style="font-size: 11px; color: #94a3b8; margin-top: 2px;">شامل البضاعة والشحن والتوصيل</div>
+                                        <div style="font-size: 11px; color: #94a3b8; margin-top: 2px;">${invBd.isPrepaid ? 'المتبقي عند الاستلام بعد خصم الشحن المقدم' : 'شامل البضاعة والشحن والتوصيل'}</div>
                                     </div>
-                                    <div class="grand-cod-val">${Number(order.grandTotal || 0).toFixed(0)} ج.م</div>
+                                    <div class="grand-cod-val">${invBd.codDue.toFixed(0)} ج.م</div>
                                 </div>
                             </div>
 
@@ -8856,7 +8891,8 @@
                 </div>
             ` : '';
 
-            const deliveryFee = Number(order.deliveryFee || 0);
+            const thBd = resolveAdminOrderPrepaid(order);
+            const deliveryFee = thBd.ship;
             const shippingText = deliveryFee === 0 ? '0 ج.م (شحن مجاني 🎁)' : `+${deliveryFee.toFixed(0)} ج.م`;
 
             const html = `
@@ -9079,11 +9115,20 @@
                             <span>مصاريف التوصيل:</span>
                             <span>${shippingText}</span>
                         </div>
+                        ${thBd.isPrepaid ? `
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 2px; font-weight: 900;">
+                            <span>إجمالي الفاتورة بالشحن:</span>
+                            <span>${thBd.totalWithShip.toFixed(0)} ج.م</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 2px; font-weight: 900;">
+                            <span>💳 مدفوع شحن مقدماً:</span>
+                            <span>-${thBd.prepaidShip.toFixed(0)} ج.م</span>
+                        </div>` : ''}
                     </div>
 
                     <div class="cod-box">
                         <div style="font-size: 11px; font-weight: 900;">المطلوب تحصيله نقداً عند الاستلام (COD):</div>
-                        <div class="cod-amount">${Number(order.grandTotal || 0).toFixed(0)} ج.م</div>
+                        <div class="cod-amount">${thBd.codDue.toFixed(0)} ج.م</div>
                     </div>
 
                     <div class="barcode-strip">

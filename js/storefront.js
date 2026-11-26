@@ -1992,9 +1992,10 @@
     const isPrepaidMandatory = state.settings.prepaidShippingMode === 'mandatory' && shippingFee > 0;
     const prepaidShipping = isPrepaidMandatory ? shippingFee : 0;
     const codDueAmount = isPrepaidMandatory ? afterDiscounts : (afterDiscounts + shippingFee);
+    const totalWithShipping = afterDiscounts + shippingFee;
     const total = codDueAmount;
 
-    return { qty: tier.qty, subtotal, tierDiscount, couponDiscount, totalDiscount, shippingFee, prepaidShipping, codDueAmount, isPrepaidMandatory, total, govName: gov.name, isFreeShipping };
+    return { qty: tier.qty, subtotal, tierDiscount, couponDiscount, totalDiscount, shippingFee, prepaidShipping, codDueAmount, totalWithShipping, isPrepaidMandatory, total, govName: gov.name, isFreeShipping };
   }
 
   function syncCustomPaymentMethodsUI() {
@@ -2292,6 +2293,10 @@
       couponType: state.pdAppliedCoupon ? (state.pdAppliedCoupon.type || 'fixed') : '',
       couponValue: state.pdAppliedCoupon ? Number(state.pdAppliedCoupon.value || 0) : 0,
       subtotal: calc.subtotal,
+      totalWithShipping: calc.totalWithShipping,
+      isPrepaidShipping: calc.isPrepaidMandatory,
+      prepaidShipping: calc.prepaidShipping,
+      codDueAmount: calc.codDueAmount,
       grandTotal: calc.total,
       paymentMethod,
       items: [{
@@ -2724,7 +2729,8 @@
     const isPrepaidMandatory = state.settings.prepaidShippingMode === 'mandatory' && shippingFee > 0;
     const prepaidShipping = isPrepaidMandatory ? shippingFee : 0;
     const codDueAmount = isPrepaidMandatory ? afterDisc : (afterDisc + shippingFee);
-    return { subtotal, couponDiscount, shippingFee, prepaidShipping, codDueAmount, isPrepaidMandatory, total: codDueAmount, govName: gov.name, isFreeShipping };
+    const totalWithShipping = afterDisc + shippingFee;
+    return { subtotal, couponDiscount, shippingFee, prepaidShipping, codDueAmount, totalWithShipping, isPrepaidMandatory, total: codDueAmount, govName: gov.name, isFreeShipping };
   }
 
   function recalcCartCheckoutSummary() {
@@ -2808,6 +2814,10 @@
       couponType: state.ccAppliedCoupon ? (state.ccAppliedCoupon.type || 'fixed') : '',
       couponValue: state.ccAppliedCoupon ? Number(state.ccAppliedCoupon.value || 0) : 0,
       subtotal: calc.subtotal,
+      totalWithShipping: calc.totalWithShipping,
+      isPrepaidShipping: calc.isPrepaidMandatory,
+      prepaidShipping: calc.prepaidShipping,
+      codDueAmount: calc.codDueAmount,
       grandTotal: calc.total,
       paymentMethod,
       items: state.cart.map(i => ({
@@ -2853,10 +2863,27 @@
   /* =========================================================================
    * 9. ORDER SUCCESS, TRACKING & WISHLIST MODALS
    * ========================================================================= */
+  function resolveStoreOrderPrepaid(order) {
+    const items = Array.isArray(order && order.items) ? order.items : [];
+    const sub = Number(order && order.subtotal) || items.reduce((s, it) => s + ((Number(it.unitPrice || it.price) || 0) * (Number(it.qty) || 1)), 0);
+    const disc = Number(order && order.discountAmount) || 0;
+    const ship = Number(order && (order.deliveryFee ?? order.shippingFee)) || 0;
+    const netProd = Math.max(0, sub - disc);
+    const totalWithShip = Math.max(0, netProd + ship);
+    const grand = (order && order.grandTotal !== undefined && order.grandTotal !== null) ? Number(order.grandTotal) : totalWithShip;
+    const isPrepaid = Boolean((order && (order.isPrepaidShipping || Number(order.prepaidShipping || 0) > 0)) || (ship > 0 && Math.abs(grand - netProd) < 0.01 && totalWithShip > grand + 0.01));
+    const prepaidShip = isPrepaid ? (Number(order && order.prepaidShipping) > 0 ? Number(order.prepaidShipping) : ship) : 0;
+    const codDue = isPrepaid ? Math.max(0, totalWithShip - prepaidShip) : grand;
+    return { sub, disc, ship, totalWithShip, isPrepaid, prepaidShip, codDue };
+  }
+
   function showOrderSuccessModal(order) {
+    const bd = resolveStoreOrderPrepaid(order);
     document.getElementById('success-order-id').textContent = order.id;
     document.getElementById('success-order-name').textContent = order.customerName;
-    document.getElementById('success-order-total').textContent = formatEGP(order.grandTotal);
+    document.getElementById('success-order-total').textContent = bd.isPrepaid
+      ? `${formatEGP(bd.codDue)} (المتبقي عند الاستلام • شحن مقدم -${formatEGP(bd.prepaidShip)})`
+      : formatEGP(order.grandTotal);
 
     const waNum = formatWhatsAppNumber(state.settings.whatsappNumber);
     const waLink = document.getElementById('success-wa-link');
@@ -2864,13 +2891,16 @@
       const itemsLines = (Array.isArray(order.items) ? order.items : []).map((it, idx) =>
         `${idx + 1}. ${it.name}${it.size ? ` (مقاس: ${it.size})` : ''}${it.color ? ` - لون: ${it.color}` : ''} × ${it.qty || 1}`
       ).join('\n');
+      const moneyLines = bd.isPrepaid
+        ? `🧾 إجمالي الفاتورة شامل الشحن: ${formatEGP(bd.totalWithShip)}\n💳 شحن مدفوع مقدماً: -${formatEGP(bd.prepaidShip)}\n💰 المطلوب عند الاستلام: ${formatEGP(bd.codDue)}`
+        : `💰 الإجمالي النهائي: ${formatEGP(order.grandTotal)}`;
       const msg = `مرحباً ${state.settings.storeName || 'المتجر'} 👋\n` +
         `أريد تأكيد طلبي الجديد رقم: #${order.orderNumber || order.id}\n` +
         `👤 الاسم: ${order.customerName}\n` +
         `📱 الموبايل: ${order.phone1 || ''}\n` +
         `📍 العنوان: ${order.city || ''} - ${order.address || ''}\n` +
         (itemsLines ? `📦 الأصناف:\n${itemsLines}\n` : '') +
-        `💰 الإجمالي النهائي: ${formatEGP(order.grandTotal)}`;
+        moneyLines;
       const waUrl = `https://wa.me/${waNum}?text=${encodeURIComponent(msg)}`;
       waLink.href = waUrl;
       waLink.classList.remove('hidden');
@@ -3084,10 +3114,23 @@
               <div class="pt-2 border-t border-slate-200 space-y-1 text-xs">
                 ${Number(ord.discountAmount || 0) > 0 ? `<div class="flex justify-between text-rose-600 font-bold"><span>الخصم:</span><span>-${formatEGP(ord.discountAmount)}</span></div>` : ''}
                 ${Number(ord.deliveryFee ?? ord.shippingFee ?? 0) > 0 ? `<div class="flex justify-between text-slate-500 font-bold"><span>الشحن:</span><span>${formatEGP(ord.deliveryFee ?? ord.shippingFee)}</span></div>` : ''}
-                <div class="flex justify-between text-sm font-black text-slate-950 pt-0.5">
-                  <span>الإجمالي النهائي:</span>
-                  <span class="text-emerald-700">${formatEGP(ord.grandTotal ?? ord.total ?? 0)}</span>
-                </div>
+                ${(() => {
+                  const bd = resolveStoreOrderPrepaid(ord);
+                  if (bd.isPrepaid) {
+                    return `
+                      <div class="flex justify-between text-slate-700 font-extrabold"><span>إجمالي الطلب شامل الشحن:</span><span>${formatEGP(bd.totalWithShip)}</span></div>
+                      <div class="flex justify-between text-amber-700 font-extrabold"><span>💳 مدفوع مصاريف الشحن مقدماً:</span><span>-${formatEGP(bd.prepaidShip)}</span></div>
+                      <div class="flex justify-between text-sm font-black text-slate-950 pt-0.5">
+                        <span>المطلوب عند الاستلام:</span>
+                        <span class="text-emerald-700">${formatEGP(bd.codDue)}</span>
+                      </div>`;
+                  }
+                  return `
+                    <div class="flex justify-between text-sm font-black text-slate-950 pt-0.5">
+                      <span>الإجمالي النهائي:</span>
+                      <span class="text-emerald-700">${formatEGP(ord.grandTotal ?? ord.total ?? 0)}</span>
+                    </div>`;
+                })()}
                 ${['new', 'pending', ''].includes(String(ord.status || 'new')) ? `
                 <div class="pt-2.5 mt-2 border-t border-slate-200 flex justify-end">
                   <button type="button" onclick="cancelAndDeleteCustomerOrder('${escapeHTML(ord.id)}')"
