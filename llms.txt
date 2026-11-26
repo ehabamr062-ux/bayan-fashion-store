@@ -1,12 +1,15 @@
-# Online Fashion Store
+# Bayan Fashion Store Platform
 
-> متجر إلكتروني للأزياء والموديلات العصرية مع شحن سريع لجميع محافظات مصر، معاينة قبل الاستلام، والدفع عند الاستلام.
+> منصة متاجر إلكترونية متعددة المتاجر (Multi-Tenant Storefront) للأزياء والأحذية والمنتجات العصرية في مصر مع شحن سريع لجميع المحافظات، معاينة قبل الاستلام، والدفع عند الاستلام (COD)، وتطبيق PWA تثبيتي.
 
 ## Key Pages
-- [Storefront](https://ehabamr062-ux.github.io/bayan-fashion-store/): Browse products, categories, offers, and place direct COD orders.
+- Storefront Home (`/` & `/index.html`): Browse live products, sizes, colors, new arrivals, flash offers, and place direct COD orders or cart checkout.
+- Order Tracking (`openTrackOrderModal`): Direct tracking by order number or mobile phone.
 
-## Features
-- Cash on Delivery (COD) with inspection before payment
+## Storefront Capabilities
+- Dynamic store branding & custom domain isolation (`missshoes.store` / `?shop=...`)
+- Cash on Delivery (COD) with pre-inspection option
+- Live stock per size and color variant
 - Fast shipping across all Egyptian governorates
-- 14-day easy size exchange policy
-- Direct order tracking by order number or phone
+- 14-day easy exchange and return policy
+- Progressive Web App (PWA) installable storefront

@@ -1,5 +1,10 @@
 User-agent: *
 Allow: /
+Allow: /index.html
+Allow: /icons/
 Disallow: /admin.html
+Disallow: /admin-manifest.json
+Disallow: /skotsh.html
 
+# ملاحظة لأصحاب الدومينات الخاصة: يتم تقديم https://<yourdomain>/sitemap.xml داخل Google Search Console
 Sitemap: https://ehabamr062-ux.github.io/bayan-fashion-store/sitemap.xml

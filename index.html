@@ -21,24 +21,29 @@
   <link id="bayanPwaManifest" rel="manifest" href="manifest.json?v=5.4.3" />
   <link rel="apple-touch-icon" sizes="192x192" href="icons/icon-192.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
-  <meta name="robots" content="index, follow" />
-  <meta name="description"
-    content="تسوق أحدث الأزياء والموديلات العصرية أونلاين مع شحن سريع لجميع محافظات مصر، معاينة قبل الاستلام، والدفع عند الاستلام." />
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+  <meta id="bayan-meta-desc" name="description"
+    content="تسوق أحدث الأزياء والأحذية والموديلات العصرية أونلاين مع شحن سريع لجميع محافظات مصر، معاينة قبل الاستلام، والدفع عند الاستلام." />
+  <meta name="keywords" content="متجر ملابس أونلاين, أحذية وكوتشيات, شنط, تسوق أونلاين مصر, الدفع عند الاستلام, أزياء عصرية" />
   <meta property="og:type" content="website" />
   <meta property="og:locale" content="ar_EG" />
-  <meta property="og:title" content="المتجر الإلكتروني | تسوق أونلاين" />
-  <meta property="og:description"
+  <meta id="bayan-og-title" property="og:title" content="المتجر الإلكتروني | تسوق أونلاين" />
+  <meta id="bayan-og-desc" property="og:description"
     content="تسوق أحدث الأزياء والموديلات العصرية أونلاين مع شحن سريع لجميع المحافظات ومعاينة قبل الاستلام." />
-  <meta property="og:url" content="https://ehabamr062-ux.github.io/bayan-fashion-store/" />
-  <meta property="og:image" content="https://ehabamr062-ux.github.io/bayan-fashion-store/og-cover.png" />
+  <meta id="bayan-og-url" property="og:url" content="" />
+  <meta id="bayan-og-image" property="og:image" content="icons/icon-512.png" />
   <meta name="twitter:card" content="summary_large_image" />
-  <link rel="canonical" href="https://ehabamr062-ux.github.io/bayan-fashion-store/" />
+  <meta id="bayan-tw-title" name="twitter:title" content="المتجر الإلكتروني | تسوق أونلاين" />
+  <meta id="bayan-tw-desc" name="twitter:description" content="تسوق أحدث الأزياء والموديلات العصرية أونلاين مع شحن سريع لجميع المحافظات ومعاينة قبل الاستلام." />
+  <meta id="bayan-tw-image" name="twitter:image" content="icons/icon-512.png" />
+  <link id="bayan-canonical" rel="canonical" href="" />
+  <link rel="sitemap" type="application/xml" title="Sitemap" href="sitemap.xml" />
 
   <!-- Structured Data (JSON-LD Schema for Google Rich Results) -->
-  <script type="application/ld+json">
+  <script id="bayan-jsonld" type="application/ld+json">
   {
     "@context": "https://schema.org",
-    "@type": "Store",
+    "@type": "ClothingStore",
     "name": "المتجر الإلكتروني",
     "url": "https://ehabamr062-ux.github.io/bayan-fashion-store/",
     "description": "تسوق أحدث الأزياء والموديلات العصرية أونلاين مع شحن سريع لجميع محافظات مصر ومعاينة قبل الاستلام.",
@@ -48,6 +53,31 @@
       "addressCountry": "EG"
     }
   }
+  </script>
+  <script>
+    // 🔍 ضبط فوري لرابط Canonical و OpenGraph حسب الدومين الفعلي (?shop= أو Custom Domain) قبل الفهرسة
+    (function () {
+      try {
+        var u = new URL(window.location.href);
+        var shop = u.searchParams.get('shop') || u.searchParams.get('shop_id') || '';
+        var prod = u.searchParams.get('prod') || '';
+        var host = (u.hostname || '').toLowerCase();
+        var isSharedHost = host.endsWith('github.io') || host === 'localhost' || host === '127.0.0.1';
+        var cleanUrl = new URL(u.origin + u.pathname);
+        if (isSharedHost && shop) cleanUrl.searchParams.set('shop', shop);
+        if (prod) cleanUrl.searchParams.set('prod', prod);
+        var finalHref = cleanUrl.toString();
+        var can = document.getElementById('bayan-canonical');
+        var ogU = document.getElementById('bayan-og-url');
+        var ogI = document.getElementById('bayan-og-image');
+        var twI = document.getElementById('bayan-tw-image');
+        if (can) can.setAttribute('href', finalHref);
+        if (ogU) ogU.setAttribute('content', finalHref);
+        var iconAbs = new URL('icons/icon-512.png', u.href).toString();
+        if (ogI) ogI.setAttribute('content', iconAbs);
+        if (twI) twI.setAttribute('content', iconAbs);
+      } catch (_) { }
+    })();
   </script>
   <title id="page-title">المتجر الإلكتروني | تسوق أونلاين</title>
 

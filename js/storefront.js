@@ -498,6 +498,151 @@
     } else if (ipaRow) {
       ipaRow.classList.add('hidden');
     }
+
+    syncDynamicSeoMetadata(state.currentProduct && !document.getElementById('product-detail-modal')?.classList.contains('hidden') ? state.currentProduct : null);
+  }
+
+  function buildCanonicalStoreUrl(extraProdId = '') {
+    try {
+      const u = new URL(window.location.href);
+      const host = (u.hostname || '').toLowerCase();
+      const isSharedHost = host.endsWith('github.io') || host === 'localhost' || host === '127.0.0.1';
+      const cleanUrl = new URL(u.origin + u.pathname);
+      if (isSharedHost && state.shopId && state.shopId !== 'SHOP_DEMO') {
+        cleanUrl.searchParams.set('shop', state.shopId);
+      }
+      if (extraProdId) {
+        cleanUrl.searchParams.set('prod', String(extraProdId));
+      }
+      return cleanUrl.toString();
+    } catch (_) {
+      return window.location.href;
+    }
+  }
+
+  function syncDynamicSeoMetadata(focusedProd = null) {
+    try {
+      const s = state.settings || {};
+      const storeName = (s.storeName || 'المتجر الإلكتروني').trim();
+      const tagline = (s.tagline || 'أزياء عصرية وشحن لجميع المحافظات').trim();
+      const baseDesc = (s.heroSubtitle || `${storeName} — ${tagline}. تسوق أحدث الموديلات مع المعاينة قبل الاستلام وشحن سريع لجميع محافظات مصر.`).trim();
+      const defaultLogo = (() => {
+        try { return new URL('icons/icon-512.png', window.location.href).toString(); } catch (_) { return 'icons/icon-512.png'; }
+      })();
+      const storeImg = (s.logoUrl && /^https?:\/\//i.test(s.logoUrl)) ? s.logoUrl : defaultLogo;
+
+      const setAttr = (id, attr, val) => {
+        const el = document.getElementById(id);
+        if (el && val) el.setAttribute(attr, val);
+      };
+
+      if (focusedProd) {
+        const prodTitle = `${focusedProd.name} | ${storeName}`;
+        const prodDesc = (focusedProd.description || `${focusedProd.name} (${focusedProd.category || 'أزياء'}) متوفر الآن في ${storeName} بسعر ${Number(focusedProd.price || 0)} ج.م مع شحن لجميع المحافظات.`).slice(0, 160);
+        const prodImg = (Array.isArray(focusedProd.images) && focusedProd.images[0] && /^https?:\/\//i.test(focusedProd.images[0]))
+          ? focusedProd.images[0]
+          : storeImg;
+        const prodUrl = buildCanonicalStoreUrl(focusedProd.id);
+
+        document.title = prodTitle;
+        setAttr('bayan-canonical', 'href', prodUrl);
+        setAttr('bayan-og-url', 'content', prodUrl);
+        setAttr('bayan-meta-desc', 'content', prodDesc);
+        setAttr('bayan-og-title', 'content', prodTitle);
+        setAttr('bayan-og-desc', 'content', prodDesc);
+        setAttr('bayan-og-image', 'content', prodImg);
+        setAttr('bayan-tw-title', 'content', prodTitle);
+        setAttr('bayan-tw-desc', 'content', prodDesc);
+        setAttr('bayan-tw-image', 'content', prodImg);
+
+        const avail = isProductAvailable(focusedProd) ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock';
+        const r = typeof getProductAvgRating === 'function' ? getProductAvgRating(focusedProd) : { count: 0, avg: 0 };
+        const productSchema = {
+          '@context': 'https://schema.org',
+          '@type': 'Product',
+          name: focusedProd.name,
+          description: prodDesc,
+          image: Array.isArray(focusedProd.images) && focusedProd.images.length ? focusedProd.images : [prodImg],
+          sku: focusedProd.code || focusedProd.id,
+          category: focusedProd.category || 'أزياء',
+          brand: { '@type': 'Brand', name: storeName },
+          offers: {
+            '@type': 'Offer',
+            url: prodUrl,
+            priceCurrency: 'EGP',
+            price: Number(focusedProd.price || 0),
+            availability: avail,
+            itemCondition: 'https://schema.org/NewCondition'
+          }
+        };
+        if (r.count > 0) {
+          productSchema.aggregateRating = {
+            '@type': 'AggregateRating',
+            ratingValue: Number(r.avg || 5),
+            reviewCount: Number(r.count)
+          };
+        }
+        const ldEl = document.getElementById('bayan-jsonld');
+        if (ldEl) ldEl.textContent = JSON.stringify(productSchema);
+        return;
+      }
+
+      const storeUrl = buildCanonicalStoreUrl('');
+      const pageTitle = `${storeName} | ${tagline}`;
+      document.title = pageTitle;
+      setAttr('bayan-canonical', 'href', storeUrl);
+      setAttr('bayan-og-url', 'content', storeUrl);
+      setAttr('bayan-meta-desc', 'content', baseDesc.slice(0, 160));
+      setAttr('bayan-og-title', 'content', pageTitle);
+      setAttr('bayan-og-desc', 'content', baseDesc.slice(0, 160));
+      setAttr('bayan-og-image', 'content', storeImg);
+      setAttr('bayan-tw-title', 'content', pageTitle);
+      setAttr('bayan-tw-desc', 'content', baseDesc.slice(0, 160));
+      setAttr('bayan-tw-image', 'content', storeImg);
+
+      const sameAs = [s.facebookUrl, s.instagramUrl, s.tiktokUrl, s.whatsappChannelUrl]
+        .filter(u => u && /^https?:\/\//i.test(u));
+
+      const visProds = typeof getStoreVisibleProducts === 'function' ? getStoreVisibleProducts().slice(0, 12) : [];
+      const storeNode = {
+        '@type': 'ClothingStore',
+        name: storeName,
+        description: baseDesc,
+        url: storeUrl,
+        image: storeImg,
+        priceRange: '$$',
+        address: { '@type': 'PostalAddress', addressCountry: 'EG' }
+      };
+      if (s.whatsappNumber) storeNode.telephone = s.whatsappNumber;
+      if (sameAs.length) storeNode.sameAs = sameAs;
+
+      const graph = [storeNode];
+      if (visProds.length) {
+        graph.push({
+          '@type': 'ItemList',
+          name: `منتجات ${storeName}`,
+          numberOfItems: visProds.length,
+          itemListElement: visProds.map((p, idx) => ({
+            '@type': 'ListItem',
+            position: idx + 1,
+            item: {
+              '@type': 'Product',
+              name: p.name,
+              url: buildCanonicalStoreUrl(p.id),
+              image: (Array.isArray(p.images) && p.images[0]) ? p.images[0] : storeImg,
+              offers: {
+                '@type': 'Offer',
+                priceCurrency: 'EGP',
+                price: Number(p.price || 0),
+                availability: isProductAvailable(p) ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock'
+              }
+            }
+          }))
+        });
+      }
+      const ldEl = document.getElementById('bayan-jsonld');
+      if (ldEl) ldEl.textContent = JSON.stringify({ '@context': 'https://schema.org', '@graph': graph });
+    } catch (_) { }
   }
 
   /* =========================================================================
@@ -1420,6 +1565,7 @@
         loadMoreWrap.innerHTML = '';
       }
     }
+    syncDynamicSeoMetadata(state.currentProduct && !document.getElementById('product-detail-modal')?.classList.contains('hidden') ? state.currentProduct : null);
   }
 
   function updateBadges() {
@@ -1521,6 +1667,7 @@
     modal.classList.remove('hidden');
     modal.scrollTop = 0;
     document.body.style.overflow = 'hidden';
+    syncDynamicSeoMetadata(prod);
   }
 
   function closeProductDetail() {
@@ -1531,6 +1678,7 @@
     } catch (_) { }
     document.getElementById('product-detail-modal').classList.add('hidden');
     document.body.style.overflow = '';
+    syncDynamicSeoMetadata(null);
   }
 
   function selectPdImage(url, btn) {
@@ -3115,22 +3263,22 @@
                 ${Number(ord.discountAmount || 0) > 0 ? `<div class="flex justify-between text-rose-600 font-bold"><span>الخصم:</span><span>-${formatEGP(ord.discountAmount)}</span></div>` : ''}
                 ${Number(ord.deliveryFee ?? ord.shippingFee ?? 0) > 0 ? `<div class="flex justify-between text-slate-500 font-bold"><span>الشحن:</span><span>${formatEGP(ord.deliveryFee ?? ord.shippingFee)}</span></div>` : ''}
                 ${(() => {
-                  const bd = resolveStoreOrderPrepaid(ord);
-                  if (bd.isPrepaid) {
-                    return `
+            const bd = resolveStoreOrderPrepaid(ord);
+            if (bd.isPrepaid) {
+              return `
                       <div class="flex justify-between text-slate-700 font-extrabold"><span>إجمالي الطلب شامل الشحن:</span><span>${formatEGP(bd.totalWithShip)}</span></div>
                       <div class="flex justify-between text-amber-700 font-extrabold"><span>💳 مدفوع مصاريف الشحن مقدماً:</span><span>-${formatEGP(bd.prepaidShip)}</span></div>
                       <div class="flex justify-between text-sm font-black text-slate-950 pt-0.5">
                         <span>المطلوب عند الاستلام:</span>
                         <span class="text-emerald-700">${formatEGP(bd.codDue)}</span>
                       </div>`;
-                  }
-                  return `
+            }
+            return `
                     <div class="flex justify-between text-sm font-black text-slate-950 pt-0.5">
                       <span>الإجمالي النهائي:</span>
                       <span class="text-emerald-700">${formatEGP(ord.grandTotal ?? ord.total ?? 0)}</span>
                     </div>`;
-                })()}
+          })()}
                 ${['new', 'pending', ''].includes(String(ord.status || 'new')) ? `
                 <div class="pt-2.5 mt-2 border-t border-slate-200 flex justify-end">
                   <button type="button" onclick="cancelAndDeleteCustomerOrder('${escapeHTML(ord.id)}')"
