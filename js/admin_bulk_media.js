@@ -1,7 +1,7 @@
 /**
  * =========================================================================
  * ⚡ استوديو الصور الجماعي + اللصق الذكي بالألوان (Gemini Paste) + فهرس فوري
- *    Bayan Store Merchant Admin - Bulk Studio & Smart Color Paste (v5.5.0)
+ *    Bayan Store Merchant Admin - Bulk Studio & Smart Color Paste (v5.5.1)
  * =========================================================================
  */
 (function (root) {
@@ -151,8 +151,94 @@
         return best.colName;
     }
 
+    /**
+     * 🎯 تقدير لون الخلفية ديناميكياً من الحواف + استخراج اللون السائد الحقيقي للمنتج فقط
+     */
+    function analyzeDominantProductRgb(px, size) {
+        // 1. أخذ عينات من حدود الخلفية (أعلى المنتصف، الحافة اليسرى/اليمنى بالأسفل) لتحديد لون استوديو Gemini مهما كانت درجته
+        const borderSamples = [];
+        const addBorderPx = (x, y) => {
+            const idx = (y * size + x) * 4;
+            if (px[idx + 3] >= 180) borderSamples.push([px[idx], px[idx + 1], px[idx + 2]]);
+        };
+        for (let i = 4; i < size - 4; i += 4) {
+            if (i > size * 0.25 && i < size * 0.70) addBorderPx(i, 3);
+            addBorderPx(3, i > size * 0.28 ? i : size - 5);
+            addBorderPx(size - 4, i > size * 0.28 ? i : size - 5);
+        }
+        let bgR = 245, bgG = 245, bgB = 245;
+        if (borderSamples.length > 0) {
+            const rs = borderSamples.map(p => p[0]).sort((a, b) => a - b);
+            const gs = borderSamples.map(p => p[1]).sort((a, b) => a - b);
+            const bs = borderSamples.map(p => p[2]).sort((a, b) => a - b);
+            const mid = Math.floor(borderSamples.length / 2);
+            bgR = rs[mid]; bgG = gs[mid]; bgB = bs[mid];
+        }
+
+        // 2. عزل بكسلات جسم المنتج نفسه (منطقة الوسط السفلي 36%..86% حيث جسم الشنطة/الحذاء، مع تجاهل اللوجو والظل الخفيف والخلفية)
+        const fgPixels = [];
+        for (let y = Math.floor(size * 0.30); y < Math.floor(size * 0.86); y++) {
+            for (let x = Math.floor(size * 0.20); x < Math.floor(size * 0.80); x++) {
+                if (x > size * 0.68 && y < size * 0.32) continue;
+                const idx = (y * size + x) * 4;
+                const r = px[idx], g = px[idx + 1], b = px[idx + 2], a = px[idx + 3];
+                if (a < 180) continue;
+
+                const bgDist = Math.sqrt((r - bgR) ** 2 + (g - bgG) ** 2 + (b - bgB) ** 2);
+                // أي بكسل قريب جداً من لون الخلفية المستخرج نستبعده تماماً
+                if (bgDist < 26) continue;
+                // استبعاد الأبيض النقي الخارجي
+                if (r > 240 && g > 240 && b > 240 && bgDist < 42) continue;
+
+                fgPixels.push([r, g, b]);
+            }
+        }
+
+        // احتياطي: لو المنتج أبيض جداً ومطابق للخلفية البيضاء، افحص المركز الداخلي الضيق
+        if (fgPixels.length < 25) {
+            const centerPx = [];
+            for (let y = Math.floor(size * 0.45); y < Math.floor(size * 0.72); y++) {
+                for (let x = Math.floor(size * 0.34); x < Math.floor(size * 0.66); x++) {
+                    const idx = (y * size + x) * 4;
+                    if (px[idx + 3] >= 180) centerPx.push([px[idx], px[idx + 1], px[idx + 2]]);
+                }
+            }
+            if (!centerPx.length) return [bgR, bgG, bgB];
+            const rs = centerPx.map(p => p[0]).sort((a, b) => a - b);
+            const gs = centerPx.map(p => p[1]).sort((a, b) => a - b);
+            const bs = centerPx.map(p => p[2]).sort((a, b) => a - b);
+            const m = Math.floor(centerPx.length / 2);
+            return [rs[m], gs[m], bs[m]];
+        }
+
+        // 3. تجميع البكسلات في سلات لونية دقيقة (Quantized 16-step Histogram) لاختيار اللون السائد الفعلي (وليس المتوسط المشوه!)
+        const buckets = new Map();
+        for (const [r, g, b] of fgPixels) {
+            const key = `${r >> 4},${g >> 4},${b >> 4}`;
+            let entry = buckets.get(key);
+            if (!entry) {
+                entry = { count: 0, sr: 0, sg: 0, sb: 0 };
+                buckets.set(key, entry);
+            }
+            entry.count++;
+            entry.sr += r; entry.sg += g; entry.sb += b;
+        }
+
+        let bestBucket = null;
+        for (const entry of buckets.values()) {
+            if (!bestBucket || entry.count > bestBucket.count) {
+                bestBucket = entry;
+            }
+        }
+        return [
+            Math.round(bestBucket.sr / bestBucket.count),
+            Math.round(bestBucket.sg / bestBucket.count),
+            Math.round(bestBucket.sb / bestBucket.count)
+        ];
+    }
+
     async function detectBestColorFromImageSource(src, candidateColors, filledColorsSet) {
-        if (!Array.isArray(candidateColors) || !candidateColors.length) return '';
+        if (!Array.isArray(candidateColors) || !candidateColors.length) return { color: '', rgb: null };
         const dataUrl = typeof src === 'string' ? src : await readBlobAsDataUrl(src);
         const img = await loadHtmlImage(dataUrl);
 
@@ -165,36 +251,9 @@
         ctx.drawImage(img, 0, 0, size, size);
         const px = ctx.getImageData(0, 0, size, size).data;
 
-        // تحليل منتصف الصورة مع تجاهل الخلفية البيضاء النقية وركن اللوجو أعلى اليمين
-        let sumR = 0, sumG = 0, sumB = 0, count = 0;
-        let lightNeutralSumR = 0, lightNeutralSumG = 0, lightNeutralSumB = 0, lightCount = 0;
-
-        for (let y = Math.floor(size * 0.15); y < Math.floor(size * 0.86); y++) {
-            for (let x = Math.floor(size * 0.14); x < Math.floor(size * 0.86); x++) {
-                if (x > size * 0.68 && y < size * 0.30) continue; // تجاهل ركن اللوجو أعلى اليمين
-                const idx = (y * size + x) * 4;
-                const r = px[idx], g = px[idx + 1], b = px[idx + 2], a = px[idx + 3];
-                if (a < 180) continue;
-
-                // تجاهل الخلفية البيضاء الخارجية
-                if (r > 236 && g > 236 && b > 236) {
-                    // احتفظ بالبكسلات القريبة من المركز الداخلي جداً تحسباً لكون المنتج نفسه أبيض بالكامل
-                    if (x > size * 0.32 && x < size * 0.68 && y > size * 0.32 && y < size * 0.68) {
-                        lightNeutralSumR += r; lightNeutralSumG += g; lightNeutralSumB += b; lightCount++;
-                    }
-                    continue;
-                }
-                sumR += r; sumG += g; sumB += b; count++;
-            }
-        }
-
-        const avgRgb = count >= 25
-            ? [Math.round(sumR / count), Math.round(sumG / count), Math.round(sumB / count)]
-            : (lightCount > 0
-                ? [Math.round(lightNeutralSumR / lightCount), Math.round(lightNeutralSumG / lightCount), Math.round(lightNeutralSumB / lightCount)]
-                : [242, 242, 242]);
-
-        return matchRgbToCandidateColor(avgRgb, candidateColors, filledColorsSet);
+        const dominantRgb = analyzeDominantProductRgb(px, size);
+        const matched = matchRgbToCandidateColor(dominantRgb, candidateColors, filledColorsSet);
+        return { color: matched, rgb: dominantRgb };
     }
 
     function normalizeText(str) {
@@ -1329,6 +1388,52 @@
         }
     }
 
+    async function extractImageInputsFromDataTransfer(dt) {
+        if (!dt) return [];
+        const out = [];
+        const files = Array.from(dt.files || []).filter(f => f && f.type && f.type.startsWith('image/'));
+        if (files.length) return files;
+
+        if (dt.items) {
+            for (const item of Array.from(dt.items)) {
+                if (item.kind === 'file' && item.type && item.type.startsWith('image/')) {
+                    const f = item.getAsFile();
+                    if (f) out.push(f);
+                }
+            }
+            if (out.length) return out;
+        }
+
+        // دعم سحب الصور مباشرة من نافذة Gemini أو المتصفح عبر text/html أو text/uri-list
+        let imgUrl = '';
+        try {
+            const html = dt.getData('text/html') || '';
+            const m = html.match(/<img[^>]+src=["']([^"']+)["']/i);
+            if (m && m[1]) imgUrl = m[1].replace(/&amp;/g, '&');
+            if (!imgUrl) {
+                const uriList = (dt.getData('text/uri-list') || '').trim().split(/\r?\n/)[0];
+                if (uriList && (/^data:image\//i.test(uriList) || /^https?:\/\//i.test(uriList))) {
+                    imgUrl = uriList;
+                }
+            }
+        } catch (_) { }
+
+        if (imgUrl) {
+            if (/^data:image\//i.test(imgUrl)) {
+                out.push(dataUrlToBlob(imgUrl));
+            } else {
+                try {
+                    const resp = await fetch(imgUrl);
+                    const blob = await resp.blob();
+                    if (blob && blob.size > 0) out.push(blob);
+                } catch (_) {
+                    out.push(imgUrl);
+                }
+            }
+        }
+        return out;
+    }
+
     async function handleIncomingPasteImage(blobOrFile, explicitColor = '__AUTO__') {
         const prod = getPasteModelProduct();
         if (!prod) {
@@ -1336,22 +1441,26 @@
             return;
         }
         const statusEl = document.getElementById('bmPasteStatusLine');
-        const target = explicitColor !== '__AUTO__' ? explicitColor : bulkState.pasteTargetColor;
+        const forceAuto = explicitColor === '__FORCE_AUTO__';
+        const target = forceAuto ? '__AUTO__' : (explicitColor !== '__AUTO__' ? explicitColor : bulkState.pasteTargetColor);
         let assignedColor = '';
+        let detectedRgb = null;
 
         try {
-            const previewUrl = await readBlobAsDataUrl(blobOrFile);
+            const previewUrl = typeof blobOrFile === 'string' ? blobOrFile : await readBlobAsDataUrl(blobOrFile);
             const colors = getPasteModelColors(prod);
 
             if (target && target !== '__AUTO__') {
                 assignedColor = target;
-            } else if (target === '') {
+            } else if (!forceAuto && target === '') {
                 assignedColor = '';
             } else if (colors.length > 0) {
                 const filledColors = new Set(
                     Object.keys(bulkState.pasteSlots).filter(k => k && bulkState.pasteSlots[k] && bulkState.pasteSlots[k].isNew)
                 );
-                assignedColor = await detectBestColorFromImageSource(previewUrl, colors, filledColors);
+                const detected = await detectBestColorFromImageSource(previewUrl, colors, filledColors);
+                assignedColor = detected.color || '';
+                detectedRgb = detected.rgb || null;
             }
 
             bulkState.pasteSlots[assignedColor] = {
@@ -1359,12 +1468,12 @@
                 source: blobOrFile,
                 isNew: true
             };
-            // نعيد الوضع تلقائياً للفرز الأوتوماتيك للصورة التالية عشان يلصق 7 صور متتالية بسرعة!
             bulkState.pasteTargetColor = '__AUTO__';
 
             if (statusEl) {
+                const rgbBadge = detectedRgb ? ` (RGB: ${detectedRgb.join(',')})` : '';
                 statusEl.textContent = assignedColor
-                    ? `🎨 تم استلام الصورة وفرزها تلقائياً في لون «${assignedColor}» ✅ — انسخ التالية واضغط Ctrl+V!`
+                    ? `🎨 تم استلام الصورة وفرزها تلقائياً في لون «${assignedColor}»${rgbBadge} ✅ — اسحب أو الصق التالية!`
                     : `👑 تم وضع الصورة في الخانة الرئيسية ✅`;
             }
             if (typeof root.showFastSaveToast === 'function' && assignedColor) {
@@ -1372,7 +1481,7 @@
             }
             renderPasteModelWorkspace();
         } catch (err) {
-            if (statusEl) statusEl.textContent = '❌ تعذر قراءة الصورة الملصوقة: ' + (err && err.message ? err.message : err);
+            if (statusEl) statusEl.textContent = '❌ تعذر قراءة الصورة المسحوبة/الملصوقة: ' + (err && err.message ? err.message : err);
         }
     }
 
@@ -1472,8 +1581,8 @@
                 <div style="background:#ffffff;border-radius:22px;width:96vw;max-width:1160px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 25px 60px rgba(0,0,0,0.45);">
                     <div style="padding:14px 20px;background:linear-gradient(135deg,#0f172a,#047857);color:#fff;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
                         <div>
-                            <div style="font-size:1.12rem;font-weight:900;">⚡ استوديو الصور واللصق السريع بالألوان (v5.5.0)</div>
-                            <div style="font-size:0.8rem;opacity:0.9;">انسخ صور Gemini مباشرة واطبع اللصق <code>Ctrl+V</code> — الفرز باللون والحفظ في ثوانٍ!</div>
+                            <div style="font-size:1.12rem;font-weight:900;">⚡ استوديو الصور واللصق السريع بالألوان (v5.5.1)</div>
+                            <div style="font-size:0.8rem;opacity:0.9;">اسحب أي صورة من Gemini للمربع الأزرق أو اضغط <code>Ctrl+V</code> — الفرز باللون والحفظ في ثوانٍ!</div>
                         </div>
                         <div style="display:flex;align-items:center;gap:8px;">
                             <button type="button" id="bmTabBtnPaste" onclick="window.BayanBulkMedia.switchTab('paste')" style="background:#059669;color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:10px;padding:7px 12px;font-weight:900;font-size:0.82rem;cursor:pointer;font-family:inherit;">📋 لصق سريع لموديل (Gemini)</button>
@@ -1621,6 +1730,11 @@
                 e.preventDefault();
                 if (bulkState.activeTab === 'batch' && e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) {
                     handleLocalFilesSelected(e.dataTransfer.files);
+                } else if (bulkState.activeTab === 'paste') {
+                    (async () => {
+                        const inputs = await extractImageInputsFromDataTransfer(e?.dataTransfer);
+                        for (const inp of inputs) await handleIncomingPasteImage(inp, '__FORCE_AUTO__');
+                    })();
                 }
             });
 
@@ -1649,6 +1763,7 @@
     root.BayanBulkMedia = {
         normalizeText,
         cleanAndCropTransparentBounds,
+        analyzeDominantProductRgb,
         matchRgbToCandidateColor,
         detectBestColorFromImageSource,
         searchIndexedProducts,
@@ -1715,16 +1830,18 @@
         onDropSmartZone: (e) => {
             e.preventDefault();
             e.stopPropagation();
-            const files = Array.from(e?.dataTransfer?.files || []).filter(f => f.type && f.type.startsWith('image/'));
             (async () => {
-                for (const f of files) await handleIncomingPasteImage(f, '__AUTO__');
+                const inputs = await extractImageInputsFromDataTransfer(e?.dataTransfer);
+                for (const inp of inputs) await handleIncomingPasteImage(inp, '__FORCE_AUTO__');
             })();
         },
         onDropOnColorCard: (e, col) => {
             e.preventDefault();
             e.stopPropagation();
-            const file = Array.from(e?.dataTransfer?.files || []).find(f => f.type && f.type.startsWith('image/'));
-            if (file) handleIncomingPasteImage(file, col);
+            (async () => {
+                const inputs = await extractImageInputsFromDataTransfer(e?.dataTransfer);
+                if (inputs[0]) await handleIncomingPasteImage(inputs[0], col);
+            })();
         },
         movePasteSlot: (fromCol, toCol) => {
             const slot = bulkState.pasteSlots[fromCol];
