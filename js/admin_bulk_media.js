@@ -1,7 +1,7 @@
 /**
  * =========================================================================
- * ⚡ استوديو الصور الجماعي + ختم اللوجو + فهرس بحث فوري O(1) بالأصناف والألوان
- *    Bayan Store Merchant Admin - Bulk Studio & Logo Stamper (v5.4.5)
+ * ⚡ استوديو الصور الجماعي + اللصق الذكي بالألوان (Gemini Paste) + فهرس فوري
+ *    Bayan Store Merchant Admin - Bulk Studio & Smart Color Paste (v5.5.0)
  * =========================================================================
  */
 (function (root) {
@@ -17,7 +17,12 @@
         logoDataUrl: '',
         isRunning: false,
         cancelRequested: false,
-        activePickerRowUid: null
+        activePickerRowUid: null,
+        activeTab: 'paste',
+        pasteModelId: '',
+        pasteTargetColor: '__AUTO__',
+        pasteExtraColors: [],
+        pasteSlots: {} // { [colorKey]: { previewUrl, source, isNew } }  ('' للمصورة الرئيسية)
     };
 
     const KNOWN_COLOR_ALIASES = {
@@ -45,7 +50,152 @@
         'تايجر': 'تايجر', 'نمر': 'تايجر', 'leopard': 'تايجر'
     };
 
-    const CORE_COLORS_LIST = ['اسود', 'ابيض', 'جملي', 'بني', 'بيج', 'كافيه', 'نبيتي', 'كحلي', 'رمادي', 'رصاصي', 'زيتي', 'احمر', 'ازرق', 'اخضر', 'كشمير', 'هافان', 'اوف وايت'];
+    const CORE_COLORS_LIST = ['اسود', 'ابيض', 'جملي', 'بني', 'بيج', 'كافيه', 'نبيتي', 'كحلي', 'رمادي', 'رصاصي', 'زيتي', 'احمر', 'ازرق', 'اخضر', 'كشمير', 'هافان', 'اوف وايت', 'وردي', 'فضي', 'سيلفر', 'جولد', 'موف', 'مستردة'];
+
+    const COLOR_RGB_PALETTE = {
+        'اسود': [24, 24, 28],
+        'ابيض': [245, 245, 245],
+        'اوف وايت': [236, 230, 215],
+        'بيج': [214, 194, 162],
+        'جملي': [186, 134, 82],
+        'هافان': [168, 112, 66],
+        'عسلي': [180, 125, 68],
+        'كافيه': [136, 101, 74],
+        'بني': [82, 52, 38],
+        'نبيتي': [118, 28, 42],
+        'احمر': [196, 36, 44],
+        'وردي': [224, 152, 168],
+        'بينك': [232, 140, 170],
+        'كشمير': [198, 132, 144],
+        'فوشيا': [204, 38, 132],
+        'سيلفر': [178, 182, 188],
+        'فضي': [178, 182, 188],
+        'رمادي': [128, 132, 138],
+        'رصاصي': [112, 116, 122],
+        'كحلي': [28, 42, 82],
+        'ازرق': [44, 102, 188],
+        'سماوي': [116, 178, 224],
+        'لبني': [132, 188, 228],
+        'زيتي': [84, 96, 52],
+        'اخضر': [42, 134, 72],
+        'موف': [128, 72, 158],
+        'اصفر': [228, 192, 48],
+        'مستردة': [204, 156, 46],
+        'برتقالي': [226, 116, 42],
+        'اورنج': [226, 116, 42],
+        'جولد': [208, 172, 86],
+        'ذهبي': [208, 172, 86]
+    };
+
+    function rgbToHsl(r, g, b) {
+        r /= 255; g /= 255; b /= 255;
+        const max = Math.max(r, g, b), min = Math.min(r, g, b);
+        let h = 0, s = 0;
+        const l = (max + min) / 2;
+        if (max !== min) {
+            const d = max - min;
+            s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+            switch (max) {
+                case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                case g: h = (b - r) / d + 2; break;
+                case b: h = (r - g) / d + 4; break;
+            }
+            h /= 6;
+        }
+        return { h: h * 360, s, l };
+    }
+
+    function getColorSwatchHex(colorName) {
+        const alias = KNOWN_COLOR_ALIASES[normalizeText(colorName)] || normalizeText(colorName);
+        const rgb = COLOR_RGB_PALETTE[alias];
+        if (!rgb) return '#94a3b8';
+        return `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
+    }
+
+    function matchRgbToCandidateColor(rgbTriple, candidateColors, filledColorsSet) {
+        if (!Array.isArray(candidateColors) || !candidateColors.length) return '';
+        const [r, g, b] = rgbTriple;
+        const hsl = rgbToHsl(r, g, b);
+
+        // حساب أقرب مسافة لونية في فضاء RGB+HSL الموزون
+        const scored = candidateColors.map((colName) => {
+            const canon = KNOWN_COLOR_ALIASES[normalizeText(colName)] || normalizeText(colName);
+            const ref = COLOR_RGB_PALETTE[canon];
+            if (!ref) return { colName, dist: 999999 };
+
+            const dr = r - ref[0];
+            const dg = g - ref[1];
+            const db = b - ref[2];
+            let dist = Math.sqrt(dr * dr * 0.30 + dg * dg * 0.59 + db * db * 0.11);
+
+            const refHsl = rgbToHsl(ref[0], ref[1], ref[2]);
+            // تعزيز فصل الأسود عن الكحلي والبني، والأبيض عن البيج/الفضي
+            if (hsl.s < 0.14 && refHsl.s < 0.18) {
+                dist *= 0.85;
+            } else if (hsl.s >= 0.18 && refHsl.s >= 0.18) {
+                const hDiff = Math.min(Math.abs(hsl.h - refHsl.h), 360 - Math.abs(hsl.h - refHsl.h));
+                dist += hDiff * 0.65;
+            } else if (Math.abs(hsl.s - refHsl.s) > 0.25) {
+                dist += 35;
+            }
+            return { colName, dist };
+        }).sort((a, b) => a.dist - b.dist);
+
+        if (!scored.length) return '';
+        const best = scored[0];
+        // تجنب الكتابة فوق لون ملصوق بالفعل لو هناك لون آخر قريب جداً وفارغ
+        if (filledColorsSet && filledColorsSet.has(best.colName)) {
+            const nextEmpty = scored.find(s => !filledColorsSet.has(s.colName) && s.dist <= best.dist + 48);
+            if (nextEmpty) return nextEmpty.colName;
+        }
+        return best.colName;
+    }
+
+    async function detectBestColorFromImageSource(src, candidateColors, filledColorsSet) {
+        if (!Array.isArray(candidateColors) || !candidateColors.length) return '';
+        const dataUrl = typeof src === 'string' ? src : await readBlobAsDataUrl(src);
+        const img = await loadHtmlImage(dataUrl);
+
+        const size = 96;
+        const c = document.createElement('canvas');
+        c.width = size; c.height = size;
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, size, size);
+        ctx.drawImage(img, 0, 0, size, size);
+        const px = ctx.getImageData(0, 0, size, size).data;
+
+        // تحليل منتصف الصورة مع تجاهل الخلفية البيضاء النقية وركن اللوجو أعلى اليمين
+        let sumR = 0, sumG = 0, sumB = 0, count = 0;
+        let lightNeutralSumR = 0, lightNeutralSumG = 0, lightNeutralSumB = 0, lightCount = 0;
+
+        for (let y = Math.floor(size * 0.15); y < Math.floor(size * 0.86); y++) {
+            for (let x = Math.floor(size * 0.14); x < Math.floor(size * 0.86); x++) {
+                if (x > size * 0.68 && y < size * 0.30) continue; // تجاهل ركن اللوجو أعلى اليمين
+                const idx = (y * size + x) * 4;
+                const r = px[idx], g = px[idx + 1], b = px[idx + 2], a = px[idx + 3];
+                if (a < 180) continue;
+
+                // تجاهل الخلفية البيضاء الخارجية
+                if (r > 236 && g > 236 && b > 236) {
+                    // احتفظ بالبكسلات القريبة من المركز الداخلي جداً تحسباً لكون المنتج نفسه أبيض بالكامل
+                    if (x > size * 0.32 && x < size * 0.68 && y > size * 0.32 && y < size * 0.68) {
+                        lightNeutralSumR += r; lightNeutralSumG += g; lightNeutralSumB += b; lightCount++;
+                    }
+                    continue;
+                }
+                sumR += r; sumG += g; sumB += b; count++;
+            }
+        }
+
+        const avgRgb = count >= 25
+            ? [Math.round(sumR / count), Math.round(sumG / count), Math.round(sumB / count)]
+            : (lightCount > 0
+                ? [Math.round(lightNeutralSumR / lightCount), Math.round(lightNeutralSumG / lightCount), Math.round(lightNeutralSumB / lightCount)]
+                : [242, 242, 242]);
+
+        return matchRgbToCandidateColor(avgRgb, candidateColors, filledColorsSet);
+    }
 
     function normalizeText(str) {
         return String(str || '')
@@ -991,6 +1141,319 @@
         }
     }
 
+    function extractProductSizes(prod) {
+        const sizes = new Set();
+        if (prod && Array.isArray(prod.sizes)) {
+            prod.sizes.forEach(s => { const c = String(s || '').trim(); if (c) sizes.add(c); });
+        }
+        if (prod && prod.variantsStock && typeof prod.variantsStock === 'object') {
+            Object.keys(prod.variantsStock).forEach(k => {
+                const sz = String(k.split('|')[0] || '').trim();
+                if (sz) sizes.add(sz);
+            });
+        }
+        return Array.from(sizes);
+    }
+
+    function getPasteModelProduct() {
+        if (!bulkState.pasteModelId) return null;
+        const idx = getOrBuildProductIndex(getProductsList());
+        return idx.byIdMap.get(String(bulkState.pasteModelId)) || null;
+    }
+
+    function getPasteModelColors(prod) {
+        if (!prod) return [];
+        return Array.from(new Set([...extractProductColors(prod), ...bulkState.pasteExtraColors]));
+    }
+
+    function switchStudioTab(tabName) {
+        bulkState.activeTab = tabName === 'batch' ? 'batch' : 'paste';
+        const pPanel = document.getElementById('bmTabPanelPaste');
+        const bPanel = document.getElementById('bmTabPanelBatch');
+        const pBtn = document.getElementById('bmTabBtnPaste');
+        const bBtn = document.getElementById('bmTabBtnBatch');
+        if (pPanel) pPanel.style.display = bulkState.activeTab === 'paste' ? 'flex' : 'none';
+        if (bPanel) bPanel.style.display = bulkState.activeTab === 'batch' ? 'flex' : 'none';
+        if (pBtn) {
+            pBtn.style.background = bulkState.activeTab === 'paste' ? '#059669' : '#e2e8f0';
+            pBtn.style.color = bulkState.activeTab === 'paste' ? '#ffffff' : '#0f172a';
+        }
+        if (bBtn) {
+            bBtn.style.background = bulkState.activeTab === 'batch' ? '#059669' : '#e2e8f0';
+            bBtn.style.color = bulkState.activeTab === 'batch' ? '#ffffff' : '#0f172a';
+        }
+    }
+
+    function openPasteModelByQuery(rawQuery) {
+        const q = (rawQuery != null ? rawQuery : (document.getElementById('bmPasteModelInp')?.value || '')).trim();
+        const products = getProductsList();
+        const matches = q ? searchIndexedProducts(q, products, { exactPreferred: true, limit: 10 }) : [];
+
+        const suggestBox = document.getElementById('bmPasteSuggestions');
+        if (!matches.length) {
+            if (suggestBox) suggestBox.innerHTML = `<span style="color:#b91c1c;font-weight:800;font-size:0.8rem;">⚠️ لم يتم العثور على موديل مطابق لـ "${escapeHtml(q)}"</span>`;
+            return;
+        }
+
+        if (matches.length > 1 && suggestBox) {
+            suggestBox.innerHTML = matches.slice(0, 6).map(m => {
+                const mid = m.firestoreId || m.id;
+                return `<button type="button" onclick="window.BayanBulkMedia.selectPasteModel('${escapeHtml(mid)}')" style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:8px;padding:4px 9px;font-size:0.78rem;font-weight:900;cursor:pointer;font-family:inherit;">📦 ${escapeHtml(m.name || mid)}</button>`;
+            }).join('');
+        } else if (suggestBox) {
+            suggestBox.innerHTML = '';
+        }
+
+        selectPasteModelById(matches[0].firestoreId || matches[0].id);
+    }
+
+    function selectPasteModelById(pid) {
+        bulkState.pasteModelId = String(pid || '');
+        bulkState.pasteExtraColors = [];
+        bulkState.pasteTargetColor = '__AUTO__';
+        bulkState.pasteSlots = {};
+
+        const prod = getPasteModelProduct();
+        if (prod) {
+            const cMap = (prod.colorImages && typeof prod.colorImages === 'object') ? prod.colorImages : {};
+            const mainImg = prod.image || (Array.isArray(prod.images) && prod.images[0]) || '';
+            if (mainImg) {
+                bulkState.pasteSlots[''] = { previewUrl: mainImg, source: mainImg, isNew: false };
+            }
+            Object.keys(cMap).forEach(col => {
+                if (cMap[col]) {
+                    bulkState.pasteSlots[col] = { previewUrl: cMap[col], source: cMap[col], isNew: false };
+                }
+            });
+        }
+        renderPasteModelWorkspace();
+    }
+
+    function renderPasteModelWorkspace() {
+        const infoEl = document.getElementById('bmPasteModelHeaderInfo');
+        const gridEl = document.getElementById('bmPasteColorGrid');
+        const saveBtn = document.getElementById('bmPasteSaveBtn');
+        const statusEl = document.getElementById('bmPasteStatusLine');
+        if (!gridEl) return;
+
+        const prod = getPasteModelProduct();
+        if (!prod) {
+            if (infoEl) infoEl.innerHTML = '<span style="color:#64748b;font-weight:800;">اكتب رقم الموديل فوق (مثلاً <code>201</code> أو <code>2</code>) واضغط Enter لعرض ألوانه ومقاساته فوراً.</span>';
+            gridEl.innerHTML = '';
+            if (saveBtn) {
+                saveBtn.disabled = true;
+                saveBtn.innerHTML = '<span>💾</span><span>حفظ الموديل في السحابة</span>';
+            }
+            return;
+        }
+
+        const colors = getPasteModelColors(prod);
+        const sizes = extractProductSizes(prod);
+        const newCount = Object.values(bulkState.pasteSlots).filter(s => s && s.isNew).length;
+
+        if (infoEl) {
+            infoEl.innerHTML = `
+                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+                    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                        <span style="background:#0f172a;color:#fff;padding:4px 10px;border-radius:8px;font-weight:900;">📦 موديل: ${escapeHtml(prod.name || prod.code)}</span>
+                        <span style="color:#059669;font-weight:900;">💵 ${prod.price || 0} ج.م</span>
+                        <span style="color:#334155;font-weight:800;font-size:0.8rem;">📏 المقاسات: <b>${escapeHtml(sizes.length ? sizes.join('، ') : 'موحد')}</b></span>
+                        <span style="color:#334155;font-weight:800;font-size:0.8rem;">🎨 الألوان: <b>${colors.length}</b></span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <input type="text" id="bmAddExtraColorInp" class="form-control" placeholder="+ لون جديد..." style="width:110px;padding:4px 8px;font-size:0.76rem;font-weight:800;" onkeydown="if(event.key==='Enter'){event.preventDefault();window.BayanBulkMedia.addExtraColor();}">
+                        <button type="button" onclick="window.BayanBulkMedia.addExtraColor()" style="background:#e2e8f0;border:none;border-radius:8px;padding:5px 9px;font-weight:900;font-size:0.76rem;cursor:pointer;">+ إضافة</button>
+                    </div>
+                </div>`;
+        }
+
+        const slotKeys = ['', ...colors];
+        gridEl.innerHTML = slotKeys.map((colKey) => {
+            const isMain = colKey === '';
+            const slot = bulkState.pasteSlots[colKey];
+            const isSelected = bulkState.pasteTargetColor === colKey;
+            const swatch = isMain ? '#059669' : getColorSwatchHex(colKey);
+
+            // جمع المقاسات المتاحة لهذا اللون من variantsStock
+            let colSizesHint = '';
+            if (!isMain && prod.variantsStock && typeof prod.variantsStock === 'object') {
+                const szList = [];
+                Object.keys(prod.variantsStock).forEach(k => {
+                    const pts = k.split('|');
+                    if (pts.length >= 2 && pts[1] && normalizeText(pts[1]) === normalizeText(colKey)) {
+                        szList.push(`${pts[0]}(${prod.variantsStock[k]})`);
+                    }
+                });
+                if (szList.length) colSizesHint = szList.slice(0, 4).join('، ');
+            }
+
+            const reassignHtml = !isMain && slot && slot.isNew
+                ? `<select onchange="window.BayanBulkMedia.movePasteSlot('${escapeHtml(colKey)}', this.value)" style="width:100%;font-size:0.72rem;font-weight:800;border:1px solid #cbd5e1;border-radius:6px;padding:2px 4px;margin-top:4px;">
+                    ${colors.map(c => `<option value="${escapeHtml(c)}"${c === colKey ? ' selected' : ''}>نقل إلى: ${escapeHtml(c)}</option>`).join('')}
+                    <option value="">نقل إلى: رئيسية 👑</option>
+                   </select>`
+                : '';
+
+            return `
+                <div ondragover="event.preventDefault()" ondrop="window.BayanBulkMedia.onDropOnColorCard(event, '${escapeHtml(colKey)}')"
+                    style="border:2px solid ${isSelected ? '#0284c7' : (slot && slot.isNew ? '#10b981' : '#cbd5e1')}; border-radius:14px; background:${slot && slot.isNew ? '#ecfdf5' : '#ffffff'}; padding:9px; display:flex; flex-direction:column; gap:6px; position:relative; transition:all 0.15s;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:5px;">
+                        <span style="display:flex;align-items:center;gap:6px;font-weight:900;font-size:0.84rem;color:#0f172a;">
+                            <span style="width:14px;height:14px;border-radius:999px;background:${swatch};border:1px solid rgba(0,0,0,0.2);display:inline-block;flex-shrink:0;"></span>
+                            <span>${isMain ? '👑 رئيسية' : escapeHtml(colKey)}</span>
+                        </span>
+                        ${slot && slot.isNew ? '<span style="background:#059669;color:#fff;font-size:0.66rem;font-weight:900;padding:2px 6px;border-radius:6px;">✨ جديد</span>' : (slot ? '<span style="background:#f1f5f9;color:#64748b;font-size:0.66rem;font-weight:800;padding:2px 6px;border-radius:6px;">سحابي</span>' : '<span style="color:#94a3b8;font-size:0.68rem;font-weight:800;">فارغ</span>')}
+                    </div>
+                    ${colSizesHint ? `<div style="font-size:0.68rem;color:#475569;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${escapeHtml(colSizesHint)}">📏 ${escapeHtml(colSizesHint)}</div>` : ''}
+                    <div onclick="window.BayanBulkMedia.armPasteSlot('${escapeHtml(colKey)}')" title="اضغط لتحديد هذا اللون للصق المباشر"
+                        style="aspect-ratio:1/1; background:#f8fafc; border:1.5px dashed ${isSelected ? '#0284c7' : '#cbd5e1'}; border-radius:10px; display:flex; align-items:center; justify-content:center; overflow:hidden; cursor:pointer;">
+                        ${slot ? `<img src="${escapeHtml(slot.previewUrl)}" style="width:100%;height:100%;object-fit:contain;background:#fff;">` : '<span style="font-size:0.75rem;color:#64748b;font-weight:800;text-align:center;padding:6px;">📋 الصق هنا<br>Ctrl+V</span>'}
+                    </div>
+                    <div style="display:flex;gap:4px;">
+                        <button type="button" onclick="window.BayanBulkMedia.pasteDirectToColor('${escapeHtml(colKey)}')"
+                            style="flex:1;background:${isSelected ? '#0284c7' : '#0f172a'};color:#fff;border:none;border-radius:7px;padding:5px 6px;font-size:0.73rem;font-weight:900;cursor:pointer;font-family:inherit;">
+                            📋 ${isSelected ? 'جاهز Ctrl+V' : 'لصق هنا'}
+                        </button>
+                        ${slot ? `<button type="button" onclick="window.BayanBulkMedia.clearPasteSlot('${escapeHtml(colKey)}')" style="background:#fee2e2;color:#b91c1c;border:none;border-radius:7px;padding:5px 8px;font-weight:900;font-size:0.74rem;cursor:pointer;" title="مسح">✕</button>` : ''}
+                    </div>
+                    ${reassignHtml}
+                </div>`;
+        }).join('');
+
+        if (saveBtn) {
+            saveBtn.disabled = newCount === 0 || bulkState.isRunning;
+            saveBtn.innerHTML = `<span>🚀</span><span>حفظ ومزامنة الموديل (${newCount} صورة جديدة)</span>`;
+        }
+        if (statusEl && !statusEl.textContent) {
+            statusEl.textContent = '✨ انسخ الصورة من Gemini واعمل Ctrl+V في أي مكان بالنافذة — هيفرزها في كارت اللون بتاعها أوتوماتيك!';
+        }
+    }
+
+    async function handleIncomingPasteImage(blobOrFile, explicitColor = '__AUTO__') {
+        const prod = getPasteModelProduct();
+        if (!prod) {
+            alert('⚠️ اكتب رقم الموديل (مثلاً 201) واضغط فتح الموديل أولاً!');
+            return;
+        }
+        const statusEl = document.getElementById('bmPasteStatusLine');
+        const target = explicitColor !== '__AUTO__' ? explicitColor : bulkState.pasteTargetColor;
+        let assignedColor = '';
+
+        try {
+            const previewUrl = await readBlobAsDataUrl(blobOrFile);
+            const colors = getPasteModelColors(prod);
+
+            if (target && target !== '__AUTO__') {
+                assignedColor = target;
+            } else if (target === '') {
+                assignedColor = '';
+            } else if (colors.length > 0) {
+                const filledColors = new Set(
+                    Object.keys(bulkState.pasteSlots).filter(k => k && bulkState.pasteSlots[k] && bulkState.pasteSlots[k].isNew)
+                );
+                assignedColor = await detectBestColorFromImageSource(previewUrl, colors, filledColors);
+            }
+
+            bulkState.pasteSlots[assignedColor] = {
+                previewUrl,
+                source: blobOrFile,
+                isNew: true
+            };
+            // نعيد الوضع تلقائياً للفرز الأوتوماتيك للصورة التالية عشان يلصق 7 صور متتالية بسرعة!
+            bulkState.pasteTargetColor = '__AUTO__';
+
+            if (statusEl) {
+                statusEl.textContent = assignedColor
+                    ? `🎨 تم استلام الصورة وفرزها تلقائياً في لون «${assignedColor}» ✅ — انسخ التالية واضغط Ctrl+V!`
+                    : `👑 تم وضع الصورة في الخانة الرئيسية ✅`;
+            }
+            if (typeof root.showFastSaveToast === 'function' && assignedColor) {
+                root.showFastSaveToast(`🎨 تم الفرز التلقائي للون: ${assignedColor}`);
+            }
+            renderPasteModelWorkspace();
+        } catch (err) {
+            if (statusEl) statusEl.textContent = '❌ تعذر قراءة الصورة الملصوقة: ' + (err && err.message ? err.message : err);
+        }
+    }
+
+    async function saveSmartPasteModel() {
+        const prod = getPasteModelProduct();
+        if (!prod || !prod.firestoreId) {
+            alert('⚠️ اختر موديلاً محفوظاً أولاً!');
+            return;
+        }
+        const db = (typeof root.getBayanDb === 'function') ? root.getBayanDb() : null;
+        if (!db) {
+            alert('⚠️ غير متصل بقاعدة البيانات حالياً');
+            return;
+        }
+        const newSlots = Object.keys(bulkState.pasteSlots)
+            .filter(k => bulkState.pasteSlots[k] && bulkState.pasteSlots[k].isNew)
+            .map(k => ({ color: k, slot: bulkState.pasteSlots[k] }));
+        if (!newSlots.length) {
+            alert('⚠️ قم بلصق صورة واحدة على الأقل قبل الحفظ!');
+            return;
+        }
+
+        const saveBtn = document.getElementById('bmPasteSaveBtn');
+        const statusEl = document.getElementById('bmPasteStatusLine');
+        const opts = getCurrentStudioOptions();
+        opts.removeBg = false; // صور Gemini جاهزة بالخلفية البيضاء ولا نبطئها بالـ AI
+        const tStart = Date.now();
+
+        bulkState.isRunning = true;
+        if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<span>⏳</span><span>جاري الحفظ في السحابة...</span>';
+        }
+
+        try {
+            const processedEntries = [];
+            for (let i = 0; i < newSlots.length; i++) {
+                const { color, slot } = newSlots[i];
+                if (statusEl) statusEl.textContent = `⚡ تجهيز (${i + 1}/${newSlots.length}): ${color || 'رئيسية'}...`;
+                const dataUrl = await processStudioImage(slot.source, opts);
+                processedEntries.push({ dataUrl, color });
+            }
+
+            if (statusEl) statusEl.textContent = `☁️ جاري حفظ الموديل «${prod.name}» بكل ألوانه في السحابة...`;
+            const merged = mergeProductMedia(prod, processedEntries, opts.mode);
+            await withTimeout(
+                db.collection('products').doc(prod.firestoreId).set(merged, { merge: true }),
+                25000,
+                'تأخر رد السحابة — تأكد من الاتصال'
+            );
+            Object.assign(prod, merged);
+            newSlots.forEach(({ color }) => {
+                if (bulkState.pasteSlots[color]) {
+                    bulkState.pasteSlots[color].isNew = false;
+                }
+            });
+
+            await updateChangedProductsInIdb([prod]);
+            if (typeof root.filterAdminProducts === 'function') root.filterAdminProducts();
+            if (typeof root.updateProductsStats === 'function') root.updateProductsStats();
+            if (root.BayanAdminVisibility && typeof root.BayanAdminVisibility.bumpCatalogVersionInCloud === 'function') {
+                root.BayanAdminVisibility.bumpCatalogVersionInCloud(true);
+            }
+
+            const secs = ((Date.now() - tStart) / 1000).toFixed(1);
+            if (statusEl) {
+                statusEl.textContent = `✅ تم حفظ الموديل #${prod.name} (${newSlots.length} صور جديدة) في ${secs} ثانية! اكتب رقم الموديل التالي مباشرة.`;
+            }
+            if (typeof root.showFastSaveToast === 'function') {
+                root.showFastSaveToast(`✅ تم حفظ الموديل #${prod.name} في ${secs} ثانية!`);
+            }
+        } catch (err) {
+            console.error('[SmartPaste] Save error:', err);
+            if (statusEl) statusEl.textContent = '❌ خطأ: ' + (err && err.message ? err.message : err);
+            alert('❌ تعذر حفظ الموديل: ' + (err && err.message ? err.message : err));
+        } finally {
+            bulkState.isRunning = false;
+            renderPasteModelWorkspace();
+        }
+    }
+
     function openBulkMediaStudioModal() {
         try {
             const savedLogo = localStorage.getItem(getShopLogoStorageKey()) || '';
@@ -1009,118 +1472,146 @@
                 <div style="background:#ffffff;border-radius:22px;width:96vw;max-width:1160px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 25px 60px rgba(0,0,0,0.45);">
                     <div style="padding:14px 20px;background:linear-gradient(135deg,#0f172a,#047857);color:#fff;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
                         <div>
-                            <div style="font-size:1.12rem;font-weight:900;">⚡ استوديو الصور الجماعي + فهرس بحث فوري (v5.4.7)</div>
-                            <div style="font-size:0.8rem;opacity:0.9;">ابحث برقم/اسم المنتج (مثلاً <code>2</code> يجلب <code>2</code> فقط فوراً) أو اسحب دفعة صور من جهازك!</div>
+                            <div style="font-size:1.12rem;font-weight:900;">⚡ استوديو الصور واللصق السريع بالألوان (v5.5.0)</div>
+                            <div style="font-size:0.8rem;opacity:0.9;">انسخ صور Gemini مباشرة واطبع اللصق <code>Ctrl+V</code> — الفرز باللون والحفظ في ثوانٍ!</div>
                         </div>
-                        <button type="button" onclick="document.getElementById('bayanBulkMediaStudioModal').style.display='none'" style="background:rgba(255,255,255,0.2);border:none;color:#fff;width:36px;height:36px;border-radius:10px;font-size:18px;font-weight:900;cursor:pointer;">✕</button>
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <button type="button" id="bmTabBtnPaste" onclick="window.BayanBulkMedia.switchTab('paste')" style="background:#059669;color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:10px;padding:7px 12px;font-weight:900;font-size:0.82rem;cursor:pointer;font-family:inherit;">📋 لصق سريع لموديل (Gemini)</button>
+                            <button type="button" id="bmTabBtnBatch" onclick="window.BayanBulkMedia.switchTab('batch')" style="background:#e2e8f0;color:#0f172a;border:none;border-radius:10px;padding:7px 12px;font-weight:900;font-size:0.82rem;cursor:pointer;font-family:inherit;">📂 رفع ملفات / سحب دفعة</button>
+                            <button type="button" onclick="document.getElementById('bayanBulkMediaStudioModal').style.display='none'" style="background:rgba(255,255,255,0.2);border:none;color:#fff;width:36px;height:36px;border-radius:10px;font-size:18px;font-weight:900;cursor:pointer;">✕</button>
+                        </div>
                     </div>
 
-                    <div style="padding:14px 18px;background:#f8fafc;border-bottom:1px solid #e2e8f0;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;align-items:start;">
-                        <!-- إعدادات اللوجو -->
-                        <div style="background:#ffffff;border:1.5px solid #cbd5e1;border-radius:14px;padding:12px;">
-                            <div style="font-weight:900;font-size:0.88rem;color:#0f172a;margin-bottom:8px;">🏷️ ١. لوجو المحل والختم التلقائي</div>
-                            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;">
-                                <div style="width:52px;height:52px;border-radius:12px;border:1.5px dashed #94a3b8;display:flex;align-items:center;justify-content:center;background:#f8fafc;overflow:hidden;">
-                                    <img id="bmLogoPreviewImg" style="width:100%;height:100%;object-fit:contain;display:none;">
-                                    <span id="bmLogoEmptyText" style="font-size:0.7rem;color:#64748b;font-weight:800;text-align:center;">بدون لوجو</span>
-                                </div>
-                                <label class="btn-primary-action" style="background:#0f172a;border-color:#0f172a;padding:7px 12px;font-size:0.8rem;cursor:pointer;margin:0;">
-                                    <span>🖼️ اختيار اللوجو</span>
-                                    <input type="file" accept="image/*" style="display:none;" onchange="window.BayanBulkMedia.handleLogoSelected(event)">
-                                </label>
-                                <button type="button" id="bmRemoveLogoBtn" onclick="window.BayanBulkMedia.clearLogo()" style="display:none;background:#fee2e2;color:#b91c1c;border:none;border-radius:8px;padding:6px 10px;font-weight:800;font-size:0.78rem;cursor:pointer;">حذف</button>
+                    <!-- إعدادات اللوجو والخلفية (مشتركة بين الوضعين؛ احذف اللوجو لحفظ الصور بدون لوجو) -->
+                    <div style="padding:10px 18px;background:#f8fafc;border-bottom:1px solid #e2e8f0;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;">
+                        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                            <div style="width:40px;height:40px;border-radius:10px;border:1.5px dashed #94a3b8;display:flex;align-items:center;justify-content:center;background:#fff;overflow:hidden;">
+                                <img id="bmLogoPreviewImg" style="width:100%;height:100%;object-fit:contain;display:none;">
+                                <span id="bmLogoEmptyText" style="font-size:0.64rem;color:#64748b;font-weight:800;">بدون</span>
                             </div>
-                            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;">
-                                <select id="bmLogoPos" class="filter-select" style="font-size:0.78rem;font-weight:800;" onchange="window.BayanBulkMedia.refreshPreview()">
-                                    <option value="top-right">↖️ أعلى اليمين</option>
-                                    <option value="top-left">↗️ أعلى اليسار</option>
-                                    <option value="bottom-right">↙️ أسفل اليمين</option>
-                                    <option value="bottom-left">↘️ أسفل اليسار</option>
-                                </select>
-                                <input type="number" id="bmLogoSizePct" class="form-control" value="18" min="8" max="35" title="حجم اللوجو %" style="font-size:0.78rem;font-weight:800;" onchange="window.BayanBulkMedia.refreshPreview()">
-                                <input type="number" id="bmLogoMarginPct" class="form-control" value="3.5" min="1" max="10" step="0.5" title="الهامش %" style="font-size:0.78rem;font-weight:800;" onchange="window.BayanBulkMedia.refreshPreview()">
-                            </div>
+                            <label class="btn-primary-action" style="background:#0f172a;border-color:#0f172a;padding:6px 10px;font-size:0.78rem;cursor:pointer;margin:0;">
+                                <span>🖼️ اختيار اللوجو</span>
+                                <input type="file" accept="image/*" style="display:none;" onchange="window.BayanBulkMedia.handleLogoSelected(event)">
+                            </label>
+                            <button type="button" id="bmRemoveLogoBtn" onclick="window.BayanBulkMedia.clearLogo()" style="display:none;background:#fee2e2;color:#b91c1c;border:none;border-radius:8px;padding:5px 9px;font-weight:800;font-size:0.76rem;cursor:pointer;">حذف اللوجو</button>
+                            <select id="bmLogoPos" class="filter-select" style="font-size:0.76rem;font-weight:800;padding:5px 8px;" onchange="window.BayanBulkMedia.refreshPreview()">
+                                <option value="top-right">↖️ أعلى اليمين</option>
+                                <option value="top-left">↗️ أعلى اليسار</option>
+                                <option value="bottom-right">↙️ أسفل اليمين</option>
+                                <option value="bottom-left">↘️ أسفل اليسار</option>
+                            </select>
+                            <input type="number" id="bmLogoSizePct" class="form-control" value="18" min="8" max="35" title="حجم اللوجو %" style="width:54px;font-size:0.76rem;padding:4px 6px;" onchange="window.BayanBulkMedia.refreshPreview()">
+                            <input type="number" id="bmLogoMarginPct" class="form-control" value="3.5" min="1" max="10" step="0.5" title="الهامش %" style="width:54px;font-size:0.76rem;padding:4px 6px;" onchange="window.BayanBulkMedia.refreshPreview()">
                         </div>
-
-                        <!-- إعدادات الخلفية ووضع الحفظ -->
-                        <div style="background:#ffffff;border:1.5px solid #cbd5e1;border-radius:14px;padding:12px;">
-                            <div style="font-weight:900;font-size:0.88rem;color:#0f172a;margin-bottom:8px;">🎨 ٢. الخلفية ونظام الربط</div>
-                            <label style="display:flex;align-items:center;gap:8px;font-weight:800;font-size:0.8rem;color:#0f172a;cursor:pointer;margin-bottom:6px;">
-                                <input type="checkbox" id="bmChkSquareWhite" checked style="width:17px;height:17px;accent-color:#059669;" onchange="window.BayanBulkMedia.refreshPreview()">
-                                <span>⬜ توحيد المقاس بمربع أبيض نقي (#FFFFFF)</span>
+                        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                            <label style="display:flex;align-items:center;gap:5px;font-weight:800;font-size:0.78rem;color:#0f172a;cursor:pointer;">
+                                <input type="checkbox" id="bmChkSquareWhite" checked style="accent-color:#059669;" onchange="window.BayanBulkMedia.refreshPreview()">
+                                <span>⬜ مربع أبيض</span>
                             </label>
-                            <label style="display:flex;align-items:center;gap:8px;font-weight:800;font-size:0.8rem;color:#047857;cursor:pointer;margin-bottom:8px;">
-                                <input type="checkbox" id="bmChkRemoveBg" style="width:17px;height:17px;accent-color:#059669;">
-                                <span>✨ تفريغ الخلفية بالـ AI (للصور غير البيضاء فقط)</span>
-                            </label>
-                            <select id="bmSaveMode" class="filter-select" style="width:100%;font-size:0.8rem;font-weight:800;">
-                                <option value="replace">🔄 تحديث/استبدال صور الصنف المختار (موصى به)</option>
-                                <option value="append">➕ إضافة فوق الصور الحالية (حتى 6 صور)</option>
+                            <select id="bmSaveMode" class="filter-select" style="font-size:0.78rem;font-weight:800;padding:5px 8px;">
+                                <option value="replace">🔄 تحديث/استبدال</option>
+                                <option value="append">➕ إضافة للمعرض</option>
                             </select>
                         </div>
+                    </div>
 
-                        <!-- جلب الصور + البحث المفهرس -->
-                        <div style="background:#ffffff;border:1.5px solid #cbd5e1;border-radius:14px;padding:12px;">
-                            <div style="font-weight:900;font-size:0.88rem;color:#0f172a;margin-bottom:8px;">📂 ٣. إضافة أو سحب دفعة الصور</div>
-                            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
-                                <label class="btn-primary-action" style="flex:1;justify-content:center;background:#059669;border-color:#047857;padding:8px 12px;font-size:0.82rem;cursor:pointer;margin:0;">
-                                    <span>📸 اختيار صور من الجهاز</span>
-                                    <input type="file" id="bmLocalFilesInp" accept="image/*" multiple style="display:none;" onchange="window.BayanBulkMedia.onFilesPicked(event)">
+                    <!-- التبويب الأول: اللصق السريع لموديل واحد بالألوان (Gemini Paste Board) -->
+                    <div id="bmTabPanelPaste" style="flex:1;display:flex;flex-direction:column;overflow:hidden;background:#ffffff;">
+                        <div style="padding:12px 18px;background:#f8fafc;border-bottom:1px solid #e2e8f0;display:flex;flex-direction:column;gap:8px;">
+                            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                                <input type="text" id="bmPasteModelInp" class="form-control" placeholder="اكتب رقم أو اسم الموديل (مثلاً 201 أو 2) واضغط Enter..." style="flex:1.5;min-width:220px;font-weight:900;font-size:0.95rem;border:2px solid #059669;" onkeydown="if(event.key==='Enter'){event.preventDefault();window.BayanBulkMedia.openPasteModel();}">
+                                <button type="button" onclick="window.BayanBulkMedia.openPasteModel()" class="btn-primary-action" style="background:#059669;border-color:#047857;font-weight:900;padding:9px 16px;">🔍 فتح ألوان الموديل</button>
+                                <button type="button" id="bmPasteClipboardBtn" onclick="window.BayanBulkMedia.pasteFromClipboardBtn()" class="btn-primary-action" style="background:#0284c7;border-color:#0369a1;font-weight:900;padding:9px 14px;">📋 لصق صورة من الحافظة</button>
+                                <button type="button" id="bmPasteSaveBtn" onclick="window.BayanBulkMedia.savePasteModel()" class="btn-primary-action" disabled style="background:linear-gradient(135deg,#0f172a,#047857);border-color:#047857;font-weight:900;padding:9px 18px;">💾 حفظ الموديل في السحابة</button>
+                            </div>
+                            <div id="bmPasteSuggestions" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+                            <div id="bmPasteModelHeaderInfo" style="padding:8px 12px;background:#ffffff;border:1px solid #cbd5e1;border-radius:12px;"></div>
+                        </div>
+
+                        <!-- صندوق اللصق التلقائي الفوري + شريط الحالة -->
+                        <div style="padding:10px 18px 4px;">
+                            <div id="bmSmartPasteDropZone" tabindex="0" onclick="this.focus()" ondragover="event.preventDefault();this.style.borderColor='#059669';" ondragleave="this.style.borderColor='#0284c7';" ondrop="window.BayanBulkMedia.onDropSmartZone(event)"
+                                style="border:2px dashed #0284c7; border-radius:14px; background:linear-gradient(135deg,#f0f9ff,#ecfdf5); padding:10px 16px; text-align:center; cursor:pointer;">
+                                <div style="font-weight:900;font-size:0.88rem;color:#0f172a;">🎯 انسخ أي صورة من Gemini واضغط <code>Ctrl + V</code> هنا — هيحلل لونها ويفلترها أوتوماتيك في الكارت الصحيح!</div>
+                                <div id="bmPasteStatusLine" style="font-size:0.78rem;font-weight:800;color:#0369a1;margin-top:3px;"></div>
+                            </div>
+                        </div>
+
+                        <!-- شبكة الألوان الأفقية للموديل -->
+                        <div id="bmPasteColorGrid" style="flex:1;overflow-y:auto;padding:10px 18px 18px;display:grid;grid-template-columns:repeat(auto-fill,minmax(152px,1fr));gap:10px;align-content:start;"></div>
+                    </div>
+
+                    <!-- التبويب الثاني: وضع رفع الملفات وسحب دفعة كاملة -->
+                    <div id="bmTabPanelBatch" style="flex:1;display:none;flex-direction:column;overflow:hidden;">
+                        <div style="padding:12px 18px;background:#f8fafc;border-bottom:1px solid #e2e8f0;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;align-items:start;">
+                            <div style="background:#ffffff;border:1.5px solid #cbd5e1;border-radius:14px;padding:12px;">
+                                <label style="display:flex;align-items:center;gap:8px;font-weight:800;font-size:0.8rem;color:#047857;cursor:pointer;margin-bottom:8px;">
+                                    <input type="checkbox" id="bmChkRemoveBg" style="width:17px;height:17px;accent-color:#059669;">
+                                    <span>✨ تفريغ الخلفية بالـ AI (للصور غير البيضاء فقط)</span>
                                 </label>
-                                <button type="button" onclick="window.BayanBulkMedia.clearList()" style="background:#f1f5f9;color:#334155;border:1px solid #cbd5e1;border-radius:10px;padding:8px 10px;font-weight:800;font-size:0.78rem;cursor:pointer;">تفريغ القائمة</button>
+                                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                                    <label class="btn-primary-action" style="flex:1;justify-content:center;background:#059669;border-color:#047857;padding:8px 12px;font-size:0.82rem;cursor:pointer;margin:0;">
+                                        <span>📸 اختيار صور من الجهاز</span>
+                                        <input type="file" id="bmLocalFilesInp" accept="image/*" multiple style="display:none;" onchange="window.BayanBulkMedia.onFilesPicked(event)">
+                                    </label>
+                                    <button type="button" onclick="window.BayanBulkMedia.clearList()" style="background:#f1f5f9;color:#334155;border:1px solid #cbd5e1;border-radius:10px;padding:8px 10px;font-weight:800;font-size:0.78rem;cursor:pointer;">تفريغ</button>
+                                </div>
                             </div>
-                            <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
-                                <input type="text" id="bmCloudFilterInput" class="form-control" placeholder="اكتب كود أو اسم (مثلاً 2)..." style="flex:1.4;min-width:110px;font-size:0.78rem;padding:6px 9px;font-weight:800;" onkeydown="if(event.key==='Enter'){event.preventDefault();window.BayanBulkMedia.loadFromStore(50);}">
-                                <input type="number" id="bmCloudOffsetInput" class="form-control" value="0" min="0" step="50" title="بداية الدفعة (0، 50، 100...)" style="width:62px;font-size:0.76rem;padding:6px;">
-                                <button type="button" onclick="window.BayanBulkMedia.loadFromStore(50)" style="background:#0284c7;color:#fff;border:none;border-radius:9px;padding:7px 11px;font-weight:900;font-size:0.78rem;cursor:pointer;">📥 سحب</button>
-                            </div>
-                            <label style="display:flex;align-items:center;gap:6px;margin-top:6px;font-size:0.74rem;font-weight:800;color:#475569;cursor:pointer;">
-                                <input type="checkbox" id="bmChkExactSearch" checked style="accent-color:#0284c7;">
-                                <span>🎯 تطابق تام بالاسم/الكود أولاً (<code>2</code> يجلب <code>2</code> فقط)</span>
-                            </label>
-                        </div>
-                    </div>
 
-                    <!-- شريط المعاينة والتقدم -->
-                    <div style="padding:10px 18px;background:#f1f5f9;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
-                        <div style="display:flex;align-items:center;gap:12px;">
-                            <div id="bmSamplePreviewBox" style="display:none;align-items:center;gap:8px;background:#fff;padding:4px 10px;border-radius:10px;border:1px solid #cbd5e1;">
-                                <img id="bmSamplePreviewImg" style="width:46px;height:46px;object-fit:contain;border-radius:6px;background:#fff;">
-                                <span style="font-size:0.76rem;font-weight:800;color:#047857;">معاينة الختم 👁️</span>
+                            <div style="background:#ffffff;border:1.5px solid #cbd5e1;border-radius:14px;padding:12px;">
+                                <div style="font-weight:900;font-size:0.84rem;color:#0f172a;margin-bottom:6px;">📥 سحب من منتجات المتجر الحالية</div>
+                                <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+                                    <input type="text" id="bmCloudFilterInput" class="form-control" placeholder="اكتب كود أو اسم (مثلاً 2)..." style="flex:1.4;min-width:110px;font-size:0.78rem;padding:6px 9px;font-weight:800;" onkeydown="if(event.key==='Enter'){event.preventDefault();window.BayanBulkMedia.loadFromStore(50);}">
+                                    <input type="number" id="bmCloudOffsetInput" class="form-control" value="0" min="0" step="50" title="بداية الدفعة (0، 50، 100...)" style="width:62px;font-size:0.76rem;padding:6px;">
+                                    <button type="button" onclick="window.BayanBulkMedia.loadFromStore(50)" style="background:#0284c7;color:#fff;border:none;border-radius:9px;padding:7px 11px;font-weight:900;font-size:0.78rem;cursor:pointer;">📥 سحب</button>
+                                </div>
+                                <label style="display:flex;align-items:center;gap:6px;margin-top:6px;font-size:0.74rem;font-weight:800;color:#475569;cursor:pointer;">
+                                    <input type="checkbox" id="bmChkExactSearch" checked style="accent-color:#0284c7;">
+                                    <span>🎯 تطابق تام بالاسم/الكود أولاً</span>
+                                </label>
                             </div>
-                            <div style="font-size:0.84rem;font-weight:800;color:#0f172a;">
-                                إجمالي الصور: <b id="bmTotalFilesCount">0</b> | متطابقة مع أصناف: <b id="bmMatchedFilesCount" style="color:#059669;">0</b>
+                        </div>
+
+                        <div style="padding:10px 18px;background:#f1f5f9;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+                            <div style="display:flex;align-items:center;gap:12px;">
+                                <div id="bmSamplePreviewBox" style="display:none;align-items:center;gap:8px;background:#fff;padding:4px 10px;border-radius:10px;border:1px solid #cbd5e1;">
+                                    <img id="bmSamplePreviewImg" style="width:46px;height:46px;object-fit:contain;border-radius:6px;background:#fff;">
+                                    <span style="font-size:0.76rem;font-weight:800;color:#047857;">معاينة الختم 👁️</span>
+                                </div>
+                                <div style="font-size:0.84rem;font-weight:800;color:#0f172a;">
+                                    إجمالي الصور: <b id="bmTotalFilesCount">0</b> | متطابقة مع أصناف: <b id="bmMatchedFilesCount" style="color:#059669;">0</b>
+                                </div>
+                            </div>
+                            <div style="display:flex;align-items:center;gap:10px;">
+                                <button type="button" id="bmStopUploadBtn" onclick="window.BayanBulkMedia.stopUpload()" style="display:none;background:#fee2e2;color:#b91c1c;border:1px solid #fecaca;border-radius:10px;padding:9px 14px;font-weight:900;cursor:pointer;">🛑 إيقاف</button>
+                                <button type="button" id="bmStartUploadBtn" onclick="window.BayanBulkMedia.startUpload()" class="btn-primary-action" disabled style="background:linear-gradient(135deg,#059669,#047857);border-color:#047857;font-weight:900;padding:9px 18px;">
+                                    <span>🚀</span><span>تجهيز وحفظ (0) صورة في السحابة</span>
+                                </button>
                             </div>
                         </div>
-                        <div style="display:flex;align-items:center;gap:10px;">
-                            <button type="button" id="bmStopUploadBtn" onclick="window.BayanBulkMedia.stopUpload()" style="display:none;background:#fee2e2;color:#b91c1c;border:1px solid #fecaca;border-radius:10px;padding:9px 14px;font-weight:900;cursor:pointer;">🛑 إيقاف</button>
-                            <button type="button" id="bmStartUploadBtn" onclick="window.BayanBulkMedia.startUpload()" class="btn-primary-action" disabled style="background:linear-gradient(135deg,#059669,#047857);border-color:#047857;font-weight:900;padding:9px 18px;">
-                                <span>🚀</span><span>تجهيز وحفظ (0) صورة في السحابة</span>
-                            </button>
-                        </div>
-                    </div>
 
-                    <div style="padding:0 18px;background:#ffffff;">
-                        <div style="height:6px;background:#e2e8f0;border-radius:999px;overflow:hidden;margin-top:8px;">
-                            <div id="bmProgressBar" style="height:100%;width:0%;background:linear-gradient(90deg,#10b981,#0284c7);transition:width 0.2s;"></div>
+                        <div style="padding:0 18px;background:#ffffff;">
+                            <div style="height:6px;background:#e2e8f0;border-radius:999px;overflow:hidden;margin-top:8px;">
+                                <div id="bmProgressBar" style="height:100%;width:0%;background:linear-gradient(90deg,#10b981,#0284c7);transition:width 0.2s;"></div>
+                            </div>
+                            <div id="bmProgressText" style="font-size:0.78rem;font-weight:800;color:#475569;margin:4px 0 6px;"></div>
                         </div>
-                        <div id="bmProgressText" style="font-size:0.78rem;font-weight:800;color:#475569;margin:4px 0 6px;"></div>
-                    </div>
 
-                    <div style="flex:1;overflow:auto;padding:0 18px 16px;">
-                        <table style="width:100%;border-collapse:collapse;font-size:0.82rem;">
-                            <thead style="position:sticky;top:0;background:#f8fafc;z-index:2;border-bottom:2px solid #cbd5e1;">
-                                <tr style="color:#334155;font-weight:900;text-align:right;">
-                                    <th style="padding:9px;text-align:center;">الصورة</th>
-                                    <th style="padding:9px;">اسم الملف / المصدر</th>
-                                    <th style="padding:9px;">الصنف المرتبط</th>
-                                    <th style="padding:9px;">اللون (إن وجد)</th>
-                                    <th style="padding:9px;text-align:center;">الحالة</th>
-                                    <th style="padding:9px;text-align:center;">حذف</th>
-                                </tr>
-                            </thead>
-                            <tbody id="bmItemsTableBody"></tbody>
-                        </table>
+                        <div style="flex:1;overflow:auto;padding:0 18px 16px;">
+                            <table style="width:100%;border-collapse:collapse;font-size:0.82rem;">
+                                <thead style="position:sticky;top:0;background:#f8fafc;z-index:2;border-bottom:2px solid #cbd5e1;">
+                                    <tr style="color:#334155;font-weight:900;text-align:right;">
+                                        <th style="padding:9px;text-align:center;">الصورة</th>
+                                        <th style="padding:9px;">اسم الملف / المصدر</th>
+                                        <th style="padding:9px;">الصنف المرتبط</th>
+                                        <th style="padding:9px;">اللون (إن وجد)</th>
+                                        <th style="padding:9px;text-align:center;">الحالة</th>
+                                        <th style="padding:9px;text-align:center;">حذف</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="bmItemsTableBody"></tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>`;
             document.body.appendChild(modal);
@@ -1128,28 +1619,125 @@
             modal.addEventListener('dragover', (e) => { e.preventDefault(); });
             modal.addEventListener('drop', (e) => {
                 e.preventDefault();
-                if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) {
+                if (bulkState.activeTab === 'batch' && e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) {
                     handleLocalFilesSelected(e.dataTransfer.files);
                 }
+            });
+
+            // مستمع اللصق العام Ctrl+V داخل النافذة المفتوحة
+            document.addEventListener('paste', (e) => {
+                const m = document.getElementById('bayanBulkMediaStudioModal');
+                if (!m || m.style.display === 'none' || bulkState.activeTab !== 'paste') return;
+                const items = (e.clipboardData && e.clipboardData.items) ? Array.from(e.clipboardData.items) : [];
+                const imgItem = items.find(it => it.type && it.type.startsWith('image/'));
+                if (!imgItem) return;
+                e.preventDefault();
+                const blob = imgItem.getAsFile();
+                if (blob) handleIncomingPasteImage(blob);
             });
         }
 
         modal.style.display = 'flex';
         updateLogoPreviewBox();
+        switchStudioTab(bulkState.activeTab || 'paste');
+        renderPasteModelWorkspace();
         renderBulkTable();
+        setTimeout(() => document.getElementById('bmPasteModelInp')?.focus(), 80);
     }
 
     root.openBulkMediaStudioModal = openBulkMediaStudioModal;
     root.BayanBulkMedia = {
         normalizeText,
         cleanAndCropTransparentBounds,
+        matchRgbToCandidateColor,
+        detectBestColorFromImageSource,
         searchIndexedProducts,
         getOrBuildProductIndex,
         parseFilenameInfo,
         extractProductColors,
+        extractProductSizes,
         mergeProductMedia,
         processStudioImage,
         openModal: openBulkMediaStudioModal,
+        switchTab: (tab) => switchStudioTab(tab),
+        openPasteModel: (q) => openPasteModelByQuery(q),
+        selectPasteModel: (pid) => selectPasteModelById(pid),
+        addExtraColor: () => {
+            const inp = document.getElementById('bmAddExtraColorInp');
+            const c = (inp?.value || '').trim();
+            if (!c) return;
+            if (!bulkState.pasteExtraColors.includes(c)) bulkState.pasteExtraColors.push(c);
+            if (inp) inp.value = '';
+            renderPasteModelWorkspace();
+        },
+        armPasteSlot: (col) => {
+            bulkState.pasteTargetColor = col;
+            renderPasteModelWorkspace();
+        },
+        pasteDirectToColor: async (col) => {
+            bulkState.pasteTargetColor = col;
+            renderPasteModelWorkspace();
+            if (navigator.clipboard && typeof navigator.clipboard.read === 'function') {
+                try {
+                    const clipItems = await navigator.clipboard.read();
+                    for (const ci of clipItems) {
+                        const imgType = ci.types.find(t => t.startsWith('image/'));
+                        if (imgType) {
+                            const blob = await ci.getType(imgType);
+                            await handleIncomingPasteImage(blob, col);
+                            return;
+                        }
+                    }
+                } catch (_) { }
+            }
+            const statusEl = document.getElementById('bmPasteStatusLine');
+            if (statusEl) statusEl.textContent = `📌 الخانة «${col || 'رئيسية'}» جاهزة الآن — اضغط Ctrl + V للصق الصورة فيها!`;
+        },
+        pasteFromClipboardBtn: async () => {
+            if (navigator.clipboard && typeof navigator.clipboard.read === 'function') {
+                try {
+                    const clipItems = await navigator.clipboard.read();
+                    for (const ci of clipItems) {
+                        const imgType = ci.types.find(t => t.startsWith('image/'));
+                        if (imgType) {
+                            const blob = await ci.getType(imgType);
+                            await handleIncomingPasteImage(blob, bulkState.pasteTargetColor);
+                            return;
+                        }
+                    }
+                    alert('⚠️ الحافظة لا تحتوي على صورة الآن — انسخ الصورة من Gemini أولاً');
+                    return;
+                } catch (_) { }
+            }
+            document.getElementById('bmSmartPasteDropZone')?.focus();
+            alert('ℹ️ اضغط Ctrl + V داخل الصندوق الأزرق للصق الصورة من الحافظة');
+        },
+        onDropSmartZone: (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const files = Array.from(e?.dataTransfer?.files || []).filter(f => f.type && f.type.startsWith('image/'));
+            (async () => {
+                for (const f of files) await handleIncomingPasteImage(f, '__AUTO__');
+            })();
+        },
+        onDropOnColorCard: (e, col) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const file = Array.from(e?.dataTransfer?.files || []).find(f => f.type && f.type.startsWith('image/'));
+            if (file) handleIncomingPasteImage(file, col);
+        },
+        movePasteSlot: (fromCol, toCol) => {
+            const slot = bulkState.pasteSlots[fromCol];
+            if (!slot || fromCol === toCol) return;
+            delete bulkState.pasteSlots[fromCol];
+            bulkState.pasteSlots[toCol] = slot;
+            renderPasteModelWorkspace();
+        },
+        clearPasteSlot: (col) => {
+            delete bulkState.pasteSlots[col];
+            renderPasteModelWorkspace();
+        },
+        savePasteModel: () => saveSmartPasteModel(),
         openRowPicker: (uid) => openRowProductPicker(uid),
         renderPickerResults: () => renderPickerResults(),
         pickProductForRow: (pid) => {

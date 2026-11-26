@@ -10,12 +10,12 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="لوحة التاجر">
-    <link id="bayanPwaManifest" rel="manifest" href="admin-manifest.json?v=5.4.8">
+    <link id="bayanPwaManifest" rel="manifest" href="admin-manifest.json?v=5.5.0">
     <link rel="apple-touch-icon" sizes="192x192" href="icons/admin-192.png">
     <link rel="icon" type="image/png" sizes="192x192" href="icons/admin-192.png">
-    <meta name="app-version" content="5.4.8">
+    <meta name="app-version" content="5.5.0">
     <meta name="robots" content="noindex, nofollow">
-    <title>لوحة إدارة متجر بيان للأزياء | Merchant Admin v5.4.8</title>
+    <title>لوحة إدارة متجر بيان للأزياء | Merchant Admin v5.5.0</title>
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1574,7 +1574,7 @@
             <div class="header-tools" style="display:flex; flex-wrap:wrap; align-items:center; gap:8px;">
                 <span id="adminVersionBadge"
                     style="display:inline-flex; align-items:center; padding:6px 11px; border-radius:10px; border:1px solid #cbd5e1; background:#f8fafc; color:#0f172a; font-family:monospace; font-weight:900; font-size:0.8rem;"
-                    title="إصدار لوحة التحكم الحالي">v5.4.8</span>
+                    title="إصدار لوحة التحكم الحالي">v5.5.0</span>
                 <button type="button" id="adminAudioToggleBtn" class="btn-header-link" onclick="toggleOrderAlertSound()"
                     title="تفعيل أو كتم جرس تنبيه الطلبات الجديدة"
                     style="display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:40px; padding:8px 15px; border-radius:12px; border:1px solid #b45309; background:linear-gradient(135deg, #f59e0b, #d97706); color:#ffffff; font-weight:800; font-size:0.85rem; white-space:nowrap; box-shadow:0 3px 10px rgba(217,119,6,0.35); cursor:pointer; transition:all 0.2s;">
@@ -3480,13 +3480,13 @@
     <!-- سكريبتات Firebase السحابية -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-    <script src="js/firebase_config.js?v=5.4.8"></script>
-    <script src="js/pwa_install.js?v=5.4.8"></script>
-    <script src="js/admin_categories.js?v=5.4.8"></script>
-    <script src="js/admin_media_tools.js?v=5.4.8"></script>
-    <script src="js/admin_bulk_media.js?v=5.4.8"></script>
-    <script src="js/admin_visibility.js?v=5.4.8"></script>
-    <script src="js/admin_crm_abandoned.js?v=5.4.8"></script>
+    <script src="js/firebase_config.js?v=5.5.0"></script>
+    <script src="js/pwa_install.js?v=5.5.0"></script>
+    <script src="js/admin_categories.js?v=5.5.0"></script>
+    <script src="js/admin_media_tools.js?v=5.5.0"></script>
+    <script src="js/admin_bulk_media.js?v=5.5.0"></script>
+    <script src="js/admin_visibility.js?v=5.5.0"></script>
+    <script src="js/admin_crm_abandoned.js?v=5.5.0"></script>
 
     <!-- منطق وبرمجة لوحة التاجر -->
     <script>
@@ -4560,16 +4560,19 @@
 
         function normalizeArabicSearchText(str) {
             return String(str ?? '')
+                .replace(/[\u0660-\u0669]/g, (d) => String(d.charCodeAt(0) - 0x0660))
+                .replace(/[\u06F0-\u06F9]/g, (d) => String(d.charCodeAt(0) - 0x06F0))
                 .toLowerCase()
                 .replace(/[أإآ]/g, 'ا')
                 .replace(/ة/g, 'ه')
                 .replace(/ى/g, 'ي')
-                .replace(/[\u064B-\u065F]/g, '')
+                .replace(/[\u064B-\u065F\u0670]/g, '')
                 .trim();
         }
 
         function buildProductSearchIndex(p) {
             if (!p) return '';
+            const variantsKeys = (p.variantsStock && typeof p.variantsStock === 'object') ? Object.keys(p.variantsStock).join(' ') : '';
             const parts = [
                 p.name,
                 p.code,
@@ -4582,11 +4585,28 @@
                 p.oldPrice,
                 p.description,
                 p.badge,
+                variantsKeys,
                 Array.isArray(p.sizes) ? p.sizes.join(' ') : '',
                 Array.isArray(p.colors) ? p.colors.map(c => (typeof c === 'object' ? c.name : c)).join(' ') : ''
             ];
             p._searchIndex = normalizeArabicSearchText(parts.join(' '));
+            p._normName = normalizeArabicSearchText(p.name);
+            p._normCode = normalizeArabicSearchText(p.code);
+            p._normBarcode = normalizeArabicSearchText(p.barcode);
             return p._searchIndex;
+        }
+
+        function scoreProductSearchMatch(p, qNorm) {
+            if (!qNorm) return 9;
+            if (!p._searchIndex) buildProductSearchIndex(p);
+            const nn = p._normName || '';
+            const nc = p._normCode || '';
+            const nb = p._normBarcode || '';
+            if (nn === qNorm || nc === qNorm || nb === qNorm) return 0;
+            if (nn.startsWith(qNorm) || nc.startsWith(qNorm) || nb.startsWith(qNorm)) return 1;
+            const tokens = nn.split(/\s+/);
+            if (tokens.some(t => t.startsWith(qNorm))) return 2;
+            return 3;
         }
 
         function handleAdminIndexedSearch(val) {
@@ -4693,27 +4713,36 @@
             }
 
             // 5. فلترة البحث النصي الشامل المفهرس (يدعم تعدد الكلمات والكود والباركود والمقاس واللون)
+            const normFullQuery = normalizeArabicSearchText(rawQuery);
             if (queryTokens.length > 0) {
                 filtered = filtered.filter(p => {
-                    const idxStr = p._searchIndex || buildProductSearchIndex(p);
+                    const idxStr = buildProductSearchIndex(p);
                     return queryTokens.every(tok => idxStr.includes(tok));
                 });
             }
 
-            // 6. الترتيب الذكي
-            if (sortBy === 'oldest') {
-                filtered.sort((a, b) => (new Date(a.createdAt || 0)) - (new Date(b.createdAt || 0)));
-            } else if (sortBy === 'price_asc') {
-                filtered.sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0));
-            } else if (sortBy === 'price_desc') {
-                filtered.sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0));
-            } else if (sortBy === 'stock_desc') {
-                filtered.sort((a, b) => getSnap(b).totalStock - getSnap(a).totalStock);
-            } else if (sortBy === 'stock_asc') {
-                filtered.sort((a, b) => getSnap(a).totalStock - getSnap(b).totalStock);
+            // 6. الترتيب الذكي (عند البحث، التطابق التام مثل 201 يظهر في القمة دائماً أولاً!)
+            const baseCompare = (a, b) => {
+                if (sortBy === 'oldest') return (new Date(a.createdAt || 0)) - (new Date(b.createdAt || 0));
+                if (sortBy === 'price_asc') return (Number(a.price) || 0) - (Number(b.price) || 0);
+                if (sortBy === 'price_desc') return (Number(b.price) || 0) - (Number(a.price) || 0);
+                if (sortBy === 'stock_desc') return getSnap(b).totalStock - getSnap(a).totalStock;
+                if (sortBy === 'stock_asc') return getSnap(a).totalStock - getSnap(b).totalStock;
+                return (new Date(b.createdAt || 0)) - (new Date(a.createdAt || 0));
+            };
+
+            if (normFullQuery) {
+                filtered.sort((a, b) => {
+                    const sa = scoreProductSearchMatch(a, normFullQuery);
+                    const sb = scoreProductSearchMatch(b, normFullQuery);
+                    if (sa !== sb) return sa - sb;
+                    const la = (a._normName || '').length;
+                    const lb = (b._normName || '').length;
+                    if (la !== lb) return la - lb;
+                    return baseCompare(a, b);
+                });
             } else {
-                // newest
-                filtered.sort((a, b) => (new Date(b.createdAt || 0)) - (new Date(a.createdAt || 0)));
+                filtered.sort(baseCompare);
             }
 
             // تحديث شريط الملخص
