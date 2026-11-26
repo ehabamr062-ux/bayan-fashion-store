@@ -344,6 +344,10 @@
       dailySoldCount: Number(data.dailySoldCount || 0),
       dailySoldDate: data.dailySoldDate || '',
       quantityOffers: Array.isArray(data.quantityOffers) ? data.quantityOffers : [],
+      bogoOffer: (data.bogoOffer && typeof data.bogoOffer === 'object') ? data.bogoOffer : null,
+      colorImages: (data.colorImages && typeof data.colorImages === 'object') ? data.colorImages : {},
+      sizePrices: (data.sizePrices && typeof data.sizePrices === 'object') ? data.sizePrices : (data.sizePricing && typeof data.sizePricing === 'object' ? data.sizePricing : {}),
+      colorPrices: (data.colorPrices && typeof data.colorPrices === 'object') ? data.colorPrices : (data.colorPricing && typeof data.colorPricing === 'object' ? data.colorPricing : {}),
       images: normalizeImages(data),
       colors,
       sizes,
@@ -1441,7 +1445,7 @@
     document.getElementById('pd-topbar-title').textContent = prod.name;
     document.getElementById('pd-category').textContent = prod.category;
     document.getElementById('pd-title').textContent = prod.name;
-    document.getElementById('pd-price').textContent = formatEGP(prod.price);
+    document.getElementById('pd-price').textContent = formatEGP(getEffectivePrice(prod, state.pdSelectedColor, state.pdSelectedSize));
 
     const oldEl = document.getElementById('pd-old-price');
     const discBadge = document.getElementById('pd-discount-badge');
@@ -1464,8 +1468,9 @@
       : `<span class="text-slate-400 font-semibold text-xs">لا توجد تقييمات بعد</span>`;
 
     const imgs = (prod.images && prod.images.length) ? prod.images : [''];
+    const colorLinkedImg = (state.pdSelectedColor && prod.colorImages && prod.colorImages[state.pdSelectedColor]) || '';
     const mainImg = document.getElementById('pd-main-img');
-    mainImg.src = imgs[0];
+    mainImg.src = colorLinkedImg || imgs[0];
     mainImg.onerror = () => handleImgError(mainImg, prod.name);
     mainImg.style.cursor = 'zoom-in';
     mainImg.title = 'اضغط لتكبير الصورة';
@@ -1679,12 +1684,24 @@
 
   function selectPdColor(name) {
     state.pdSelectedColor = name;
-    if (state.currentProduct) {
-      const visSizes = getVisibleSizesForProduct(state.currentProduct, name);
-      if (!visSizes.includes(state.pdSelectedSize) || getSizeStockTotal(state.currentProduct, state.pdSelectedSize, name) <= 0) {
-        const firstAvail = visSizes.find(sz => getSizeStockTotal(state.currentProduct, sz, name) > 0);
+    const prod = state.currentProduct;
+    if (prod) {
+      const visSizes = getVisibleSizesForProduct(prod, name);
+      if (!visSizes.includes(state.pdSelectedSize) || getSizeStockTotal(prod, state.pdSelectedSize, name) <= 0) {
+        const firstAvail = visSizes.find(sz => getSizeStockTotal(prod, sz, name) > 0);
         if (firstAvail) state.pdSelectedSize = firstAvail;
         else if (visSizes.length) state.pdSelectedSize = visSizes[0];
+      }
+      const linkedImg = (prod.colorImages && prod.colorImages[name]) || '';
+      const mainImg = document.getElementById('pd-main-img');
+      if (mainImg && linkedImg) {
+        mainImg.src = linkedImg;
+        mainImg.onerror = () => handleImgError(mainImg, prod.name);
+        mainImg.onclick = () => openProductImageLightbox(mainImg.src, prod.name || '');
+      }
+      const priceEl = document.getElementById('pd-price');
+      if (priceEl) {
+        priceEl.textContent = formatEGP(getEffectivePrice(prod, state.pdSelectedColor, state.pdSelectedSize));
       }
     }
     renderPdVariants();
@@ -1695,6 +1712,12 @@
 
   function selectPdSize(sz) {
     state.pdSelectedSize = sz;
+    if (state.currentProduct) {
+      const priceEl = document.getElementById('pd-price');
+      if (priceEl) {
+        priceEl.textContent = formatEGP(getEffectivePrice(state.currentProduct, state.pdSelectedColor, state.pdSelectedSize));
+      }
+    }
     renderPdVariants();
     updatePdStockPill();
     renderPdOfferTiers();
@@ -1737,14 +1760,12 @@
     document.getElementById('pd-size-guide').classList.toggle('hidden');
   }
 
-  function getOfferTiers(prod) {
+  function getOfferTiers(prod, customUnitPrice) {
     const base = [{ qty: 1, title: 'قطعة واحدة', badge: '', discPct: 0, bundlePrice: null, freeShip: false }];
     if (!prod || prod.enableOffers === false) return base;
-    // ربط كامل 100% بعروض الكميات المحددة في لوحة التحكم (admin.html) — بدون أي خصم إجباري ثابت!
+    const unitPrice = Math.max(0, Number(customUnitPrice !== undefined ? customUnitPrice : prod.price) || 0);
+    // ربط كامل 100% بعروض الكميات + محرك BOGO المحددين في لوحة التحكم (admin.html)
     const customOffers = Array.isArray(prod.quantityOffers) ? prod.quantityOffers : [];
-    if (!customOffers.length) return base;
-
-    const unitPrice = Math.max(0, Number(prod.price) || 0);
     const dynamic = customOffers
       .filter(o => o && Number(o.qty) >= 2 && Number(o.bundlePrice) > 0)
       .sort((a, b) => Number(a.qty) - Number(b.qty))
@@ -1763,6 +1784,34 @@
           freeShip: Boolean(o.freeShip)
         };
       });
+
+    if (prod.bogoOffer && prod.bogoOffer.active && unitPrice > 0) {
+      const bType = prod.bogoOffer.type || 'free_second';
+      const bQty = bType === 'free_gift_3' ? 3 : 2;
+      if (!dynamic.some(d => d.qty === bQty)) {
+        let bp = unitPrice;
+        let defaultTitle = 'قطعتين (1+1 مجاناً)';
+        if (bType === 'percent_second') {
+          const pct = Math.min(100, Math.max(1, Number(prod.bogoOffer.value || 50)));
+          bp = Math.round(unitPrice + unitPrice * (1 - pct / 100));
+          defaultTitle = `قطعتين (خصم ${pct}% على الثانية)`;
+        } else if (bType === 'free_gift_3') {
+          bp = unitPrice * 2;
+          defaultTitle = '3 قطع (2+1 مجاناً)';
+        }
+        const rawTotal = unitPrice * bQty;
+        const discPct = rawTotal > 0 ? Math.max(0, Math.round(((rawTotal - bp) / rawTotal) * 100)) : 0;
+        dynamic.push({
+          qty: bQty,
+          title: defaultTitle,
+          badge: String(prod.bogoOffer.badge || '').trim(),
+          discPct,
+          bundlePrice: bp,
+          freeShip: false
+        });
+        dynamic.sort((a, b) => a.qty - b.qty);
+      }
+    }
     return [...base, ...dynamic];
   }
 
@@ -1773,14 +1822,15 @@
     if (state.pdSelectedTier > avail && avail > 0) {
       state.pdSelectedTier = 1;
     }
-    const tiers = getOfferTiers(prod);
+    const unitPrice = getEffectivePrice(prod, state.pdSelectedColor, state.pdSelectedSize);
+    const tiers = getOfferTiers(prod, unitPrice);
     if (!tiers.some(t => t.qty === state.pdSelectedTier)) {
       state.pdSelectedTier = 1;
     }
     const wrap = document.getElementById('pd-offer-tiers');
 
     wrap.innerHTML = tiers.map(t => {
-      const rawTotal = prod.price * t.qty;
+      const rawTotal = unitPrice * t.qty;
       const net = (t.bundlePrice != null && t.bundlePrice > 0) ? t.bundlePrice : (rawTotal - Math.round(rawTotal * (t.discPct / 100)));
       const disc = Math.max(0, rawTotal - net);
       const disabled = t.qty > avail;
@@ -1826,12 +1876,19 @@
     }
   }
 
-  function getEffectivePrice(prod) {
-    if (prod && prod.flashSale && prod.flashPrice > 0) {
+  function getEffectivePrice(prod, color = '', size = '') {
+    if (!prod) return 0;
+    if (prod.flashSale && prod.flashPrice > 0) {
       const exp = prod.flashExpire ? new Date(prod.flashExpire).getTime() : 0;
       if (!exp || exp > Date.now()) return prod.flashPrice;
     }
-    return Number(prod?.price || 0);
+    if (size && prod.sizePrices && Number(prod.sizePrices[size]) > 0) {
+      return Number(prod.sizePrices[size]);
+    }
+    if (color && prod.colorPrices && Number(prod.colorPrices[color]) > 0) {
+      return Number(prod.colorPrices[color]);
+    }
+    return Number(prod.price || 0);
   }
 
   function validateCoupon(code, subtotal) {
@@ -1862,7 +1919,7 @@
       return;
     }
 
-    const subtotal = getEffectivePrice(state.currentProduct) * state.pdSelectedTier;
+    const subtotal = getEffectivePrice(state.currentProduct, state.pdSelectedColor, state.pdSelectedSize) * state.pdSelectedTier;
     const res = validateCoupon(code, subtotal);
     if (!res.ok) {
       state.pdAppliedCoupon = null;
@@ -1878,10 +1935,10 @@
 
   function getQuickOrderCalculation() {
     const prod = state.currentProduct;
-    const tiers = getOfferTiers(prod);
+    const unitPrice = getEffectivePrice(prod, state.pdSelectedColor, state.pdSelectedSize);
+    const tiers = getOfferTiers(prod, unitPrice);
     const tier = tiers.find(t => t.qty === state.pdSelectedTier) || tiers[0];
 
-    const unitPrice = getEffectivePrice(prod);
     const subtotal = unitPrice * tier.qty;
     const afterTier = (tier.bundlePrice != null && tier.bundlePrice > 0)
       ? tier.bundlePrice
@@ -2213,13 +2270,13 @@
         code: prod.code || '',
         barcode: prod.barcode || '',
         name: prod.name,
-        image: (prod.images && prod.images[0]) || '',
+        image: (state.pdSelectedColor && prod.colorImages && prod.colorImages[state.pdSelectedColor]) || (prod.images && prod.images[0]) || '',
         size: state.pdSelectedSize || '',
         color: state.pdSelectedColor || '',
         qty: calc.qty,
-        price: prod.price,
-        unitPrice: prod.price,
-        total: prod.price * calc.qty
+        price: getEffectivePrice(prod, state.pdSelectedColor, state.pdSelectedSize),
+        unitPrice: getEffectivePrice(prod, state.pdSelectedColor, state.pdSelectedSize),
+        total: getEffectivePrice(prod, state.pdSelectedColor, state.pdSelectedSize) * calc.qty
       }]
     };
 
@@ -2456,11 +2513,11 @@
         code: prod.code || '',
         barcode: prod.barcode || '',
         name: prod.name,
-        image: (prod.images && prod.images[0]) || '',
+        image: (color && prod.colorImages && prod.colorImages[color]) || (prod.images && prod.images[0]) || '',
         color: color || '',
         size: size || '',
         qty: cappedQty,
-        unitPrice: getEffectivePrice(prod)
+        unitPrice: getEffectivePrice(prod, color, size)
       });
     }
     await saveCart();

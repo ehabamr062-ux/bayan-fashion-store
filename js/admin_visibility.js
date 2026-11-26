@@ -620,6 +620,12 @@
                             <div class="lbl">مقاسات نافذة (0)</div>
                         </div>
                     </div>
+
+                    <button type="button" onclick="exportVariantsStockReportCSV()"
+                        style="width:100%; margin-top:10px; padding:8px 10px; border-radius:10px; border:1px solid #cbd5e1; background:#f8fafc; color:#0f172a; font-family:inherit; font-size:0.77rem; font-weight:900; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">
+                        <span>📥</span>
+                        <span>تصدير كشف الأرصدة والنواقص (Excel)</span>
+                    </button>
                 </div>
 
             </div>
@@ -769,6 +775,48 @@
     window.setAdminColorFilter = function (val) {
         window.adminVisibilityFilters.selectedColor = val || 'all';
         if (typeof window.filterAdminProducts === 'function') window.filterAdminProducts();
+    };
+
+    window.exportVariantsStockReportCSV = function () {
+        const list = Array.isArray(window.adminProductsList) ? window.adminProductsList : [];
+        if (!list.length) {
+            alert('⚠️ لا توجد أصناف لتصديرها حالياً');
+            return;
+        }
+        const rows = [['اسم الصنف', 'الكود', 'القسم', 'السعر', 'الرصيد الإجمالي', 'حالة الصنف', 'المقاس', 'اللون', 'رصيد التركيبة', 'الحالة التفصيلية']];
+        const q = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+
+        list.forEach(p => {
+            const snap = getProductInventorySnapshot(p);
+            const statusLbl = snap.isFrozen ? 'مجمد' : (snap.isAvailable ? 'متوفر' : 'غير متوفر');
+            if (snap.hasVariantsStock) {
+                Object.entries(snap.variantsStock).forEach(([k, qty]) => {
+                    const parts = k.split('|');
+                    const sz = parts[0] || 'موحد';
+                    const col = parts[1] || 'قياسي';
+                    const vStat = (!snap.isFrozen && snap.isInStockFlag && qty > 0) ? (qty <= 3 ? 'حرج' : 'متوفر') : 'نفذ (0)';
+                    rows.push([p.name, p.code || p.id, p.categoryName || p.category, p.price, snap.totalStock, statusLbl, sz, col, qty, vStat]);
+                });
+            } else {
+                const sizesTxt = snap.sizes.map(s => s.name).join(' - ') || 'موحد';
+                const colorsTxt = snap.colors.map(c => c.name).join(' - ') || 'أساسي';
+                rows.push([p.name, p.code || p.id, p.categoryName || p.category, p.price, snap.totalStock, statusLbl, sizesTxt, colorsTxt, snap.totalStock, statusLbl]);
+            }
+        });
+
+        const csv = '\uFEFF' + rows.map(r => r.map(q).join(',')).join('\r\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `bayan_stock_variants_report_${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        if (typeof window.showFastSaveToast === 'function') {
+            window.showFastSaveToast('📥 تم تصدير كشف الأرصدة والمقاسات والألوان بنجاح!');
+        }
     };
 
     /* =========================================================================
