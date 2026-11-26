@@ -286,12 +286,12 @@
         }
 
         .nav-tab-btn:hover {
-            color: var(--primary);
+            color: var(--accent-emerald);
         }
 
         .nav-tab-btn.active {
-            color: var(--accent-blue);
-            border-bottom-color: var(--accent-blue);
+            color: var(--accent-emerald);
+            border-bottom-color: var(--accent-emerald);
         }
 
         .tab-badge {
@@ -304,8 +304,8 @@
         }
 
         .nav-tab-btn.active .tab-badge {
-            background: #0284c7;
-            color: white;
+            background: rgba(255, 255, 255, 0.24);
+            color: #ffffff;
         }
 
         /* المحتوى العام */
@@ -1399,16 +1399,21 @@
         }
 
         .nav-tab-btn:hover {
-            background: #eff6ff !important;
-            border-color: #93c5fd !important;
-            color: #1d4ed8 !important;
+            background: #ecfdf5 !important;
+            border-color: #6ee7b7 !important;
+            color: #047857 !important;
         }
 
         .nav-tab-btn.active {
-            background: linear-gradient(135deg, #0f172a, #1e293b) !important;
+            background: linear-gradient(135deg, #059669, #047857) !important;
             color: #ffffff !important;
-            border-color: #0f172a !important;
-            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.22) !important;
+            border-color: #047857 !important;
+            box-shadow: 0 4px 14px rgba(5, 150, 105, 0.28) !important;
+        }
+
+        .nav-tab-btn.active .tab-badge {
+            background: rgba(255, 255, 255, 0.24) !important;
+            color: #ffffff !important;
         }
 
         .admin-section {
@@ -1592,7 +1597,7 @@
                 <span>🏠 الشاشة الرئيسية (الداشبورد)</span>
             </button>
             <button class="nav-tab-btn" onclick="switchAdminTab('products', this)">
-                <span>🛍️ الأصناف والملابس</span>
+                <span>🛍️ الأصناف</span>
                 <span id="tabBadgeProducts" class="tab-badge">0</span>
             </button>
             <button class="nav-tab-btn" onclick="switchAdminTab('orders', this)">
