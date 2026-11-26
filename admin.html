@@ -10,12 +10,12 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="لوحة التاجر">
-    <link id="bayanPwaManifest" rel="manifest" href="admin-manifest.json?v=5.4.7">
+    <link id="bayanPwaManifest" rel="manifest" href="admin-manifest.json?v=5.4.8">
     <link rel="apple-touch-icon" sizes="192x192" href="icons/admin-192.png">
     <link rel="icon" type="image/png" sizes="192x192" href="icons/admin-192.png">
-    <meta name="app-version" content="5.4.7">
+    <meta name="app-version" content="5.4.8">
     <meta name="robots" content="noindex, nofollow">
-    <title>لوحة إدارة متجر بيان للأزياء | Merchant Admin v5.4.7</title>
+    <title>لوحة إدارة متجر بيان للأزياء | Merchant Admin v5.4.8</title>
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1574,7 +1574,7 @@
             <div class="header-tools" style="display:flex; flex-wrap:wrap; align-items:center; gap:8px;">
                 <span id="adminVersionBadge"
                     style="display:inline-flex; align-items:center; padding:6px 11px; border-radius:10px; border:1px solid #cbd5e1; background:#f8fafc; color:#0f172a; font-family:monospace; font-weight:900; font-size:0.8rem;"
-                    title="إصدار لوحة التحكم الحالي">v5.4.7</span>
+                    title="إصدار لوحة التحكم الحالي">v5.4.8</span>
                 <button type="button" id="adminAudioToggleBtn" class="btn-header-link" onclick="toggleOrderAlertSound()"
                     title="تفعيل أو كتم جرس تنبيه الطلبات الجديدة"
                     style="display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:40px; padding:8px 15px; border-radius:12px; border:1px solid #b45309; background:linear-gradient(135deg, #f59e0b, #d97706); color:#ffffff; font-weight:800; font-size:0.85rem; white-space:nowrap; box-shadow:0 3px 10px rgba(217,119,6,0.35); cursor:pointer; transition:all 0.2s;">
@@ -3480,13 +3480,13 @@
     <!-- سكريبتات Firebase السحابية -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-    <script src="js/firebase_config.js?v=5.4.7"></script>
-    <script src="js/pwa_install.js?v=5.4.7"></script>
-    <script src="js/admin_categories.js?v=5.4.7"></script>
-    <script src="js/admin_media_tools.js?v=5.4.7"></script>
-    <script src="js/admin_bulk_media.js?v=5.4.7"></script>
-    <script src="js/admin_visibility.js?v=5.4.7"></script>
-    <script src="js/admin_crm_abandoned.js?v=5.4.7"></script>
+    <script src="js/firebase_config.js?v=5.4.8"></script>
+    <script src="js/pwa_install.js?v=5.4.8"></script>
+    <script src="js/admin_categories.js?v=5.4.8"></script>
+    <script src="js/admin_media_tools.js?v=5.4.8"></script>
+    <script src="js/admin_bulk_media.js?v=5.4.8"></script>
+    <script src="js/admin_visibility.js?v=5.4.8"></script>
+    <script src="js/admin_crm_abandoned.js?v=5.4.8"></script>
 
     <!-- منطق وبرمجة لوحة التاجر -->
     <script>
@@ -6577,19 +6577,19 @@
                                 </div>
 
                                 ${(() => {
-                                    const bd = resolveAdminOrderPrepaid(o);
-                                    if (bd.isPrepaid) {
-                                        return `
+                        const bd = resolveAdminOrderPrepaid(o);
+                        if (bd.isPrepaid) {
+                            return `
                                             <div style="text-align:left; line-height:1.45;">
                                                 <div style="font-size:0.82rem; font-weight:800; color:#475569;">إجمالي الفاتورة شامل الشحن: <b>${bd.totalWithShip.toFixed(0)} ج.م</b> • <span style="color:#b45309;">💳 شحن مقدم -${bd.prepaidShip.toFixed(0)} ج.م</span></div>
                                                 <div style="font-size:1.08rem; font-weight:950; color:#0f172a;">المطلوب عند الاستلام: <span style="color:#059669;">${bd.codDue.toFixed(0)} ج.م</span></div>
                                             </div>`;
-                                    }
-                                    return `
+                        }
+                        return `
                                         <div style="font-size: 1.1rem; font-weight: 950; color: #0f172a;">
                                             الإجمالي مع التوصيل: <span style="color: #059669;">${o.grandTotal} ج.م</span>
                                         </div>`;
-                                })()}
+                    })()}
                             </div>
                         </div>
                     </div>
@@ -9701,77 +9701,77 @@ ${itemsSummary}
             const db = (typeof getBayanDb === 'function') ? getBayanDb() : null;
             if (!db) return alert('⚠️ جاري الاتصال بالسحابة');
             const urlInput = document.getElementById('inpTestiImgUrl').value.trim();
-                    const fileInput = document.getElementById('inpTestiImgFile');
-                    const caption = document.getElementById('inpTestiCaption').value.trim();
+            const fileInput = document.getElementById('inpTestiImgFile');
+            const caption = document.getElementById('inpTestiCaption').value.trim();
 
-                    const saveDoc = (imageUrl) => {
-                        if (!imageUrl) return alert('يرجى إدخال رابط الصورة أو اختيار ملف صورة');
-                        db.collection('testimonials').add({
-                            type: 'image',
-                            imageUrl,
-                            caption,
-                            createdAt: Date.now()
-                        }).then(() => {
-                            document.getElementById('inpTestiImgUrl').value = '';
-                            if (fileInput) fileInput.value = '';
-                            document.getElementById('inpTestiCaption').value = '';
-                            showFastSaveToast('🖼️ تم حفظ صورة رأي العميل بنجاح!');
-                        }).catch(err => alert('خطأ في الحفظ: ' + err.message));
-                    };
+            const saveDoc = (imageUrl) => {
+                if (!imageUrl) return alert('يرجى إدخال رابط الصورة أو اختيار ملف صورة');
+                db.collection('testimonials').add({
+                    type: 'image',
+                    imageUrl,
+                    caption,
+                    createdAt: Date.now()
+                }).then(() => {
+                    document.getElementById('inpTestiImgUrl').value = '';
+                    if (fileInput) fileInput.value = '';
+                    document.getElementById('inpTestiCaption').value = '';
+                    showFastSaveToast('🖼️ تم حفظ صورة رأي العميل بنجاح!');
+                }).catch(err => alert('خطأ في الحفظ: ' + err.message));
+            };
 
-                    if (fileInput && fileInput.files && fileInput.files[0]) {
-                        const reader = new FileReader();
-                        reader.onload = async (ev) => {
-                            const compressed = await compressImageDataUrl(ev.target.result, 600, 0.72);
-                            saveDoc(compressed);
-                        };
-                        reader.readAsDataURL(fileInput.files[0]);
-                    } else {
-                        saveDoc(urlInput);
+            if (fileInput && fileInput.files && fileInput.files[0]) {
+                const reader = new FileReader();
+                reader.onload = async (ev) => {
+                    const compressed = await compressImageDataUrl(ev.target.result, 600, 0.72);
+                    saveDoc(compressed);
+                };
+                reader.readAsDataURL(fileInput.files[0]);
+            } else {
+                saveDoc(urlInput);
+            }
+        }
+
+        function deleteAdminTestimonial(docId) {
+            if (!confirm('هل تريد حذف هذا الرأي؟')) return;
+            const db = (typeof getBayanDb === 'function') ? getBayanDb() : null;
+            if (!db) return;
+            db.collection('testimonials').doc(docId).delete().catch(e => alert('خطأ في الحذف: ' + e.message));
+        }
+
+        // بدء التشغيل
+        document.addEventListener('DOMContentLoaded', () => {
+            checkAuthSession();
+            setupGalleryDragAndDrop();
+
+            // اختصارات لوحة المفاتيح السريعة الفائقة لزيادة سرعة العمل
+            document.addEventListener('keydown', (e) => {
+                const prodModal = document.getElementById('productModal');
+                const isProdModalOpen = prodModal && prodModal.classList.contains('open');
+
+                if (isProdModalOpen) {
+                    if (e.key === 'Escape') {
+                        closeProductModal();
+                    } else if (e.ctrlKey && e.shiftKey && e.key === 'Enter') {
+                        e.preventDefault();
+                        saveProductItem(e, true);
+                    } else if (e.ctrlKey && e.key === 'Enter') {
+                        e.preventDefault();
+                        saveProductItem(e, false);
                     }
                 }
+            });
+        });
 
-                function deleteAdminTestimonial(docId) {
-                    if (!confirm('هل تريد حذف هذا الرأي؟')) return;
-                    const db = (typeof getBayanDb === 'function') ? getBayanDb() : null;
-                    if (!db) return;
-                    db.collection('testimonials').doc(docId).delete().catch(e => alert('خطأ في الحذف: ' + e.message));
-                }
-
-                // بدء التشغيل
-                document.addEventListener('DOMContentLoaded', () => {
-                    checkAuthSession();
-                    setupGalleryDragAndDrop();
-
-                    // اختصارات لوحة المفاتيح السريعة الفائقة لزيادة سرعة العمل
-                    document.addEventListener('keydown', (e) => {
-                        const prodModal = document.getElementById('productModal');
-                        const isProdModalOpen = prodModal && prodModal.classList.contains('open');
-
-                        if (isProdModalOpen) {
-                            if (e.key === 'Escape') {
-                                closeProductModal();
-                            } else if (e.ctrlKey && e.shiftKey && e.key === 'Enter') {
-                                e.preventDefault();
-                                saveProductItem(e, true);
-                            } else if (e.ctrlKey && e.key === 'Enter') {
-                                e.preventDefault();
-                                saveProductItem(e, false);
-                            }
-                        }
-                    });
-                });
-
-                // 🗂️ أداة التصنيف السريع بالصور (Bulk Visual Categorizer) لتصنيف 500+ منتج بالصور في ثوانٍ
-                window._bvcSelectedIds = new Set();
-                function openBulkVisualCategorizer() {
-                    window._bvcSelectedIds = new Set();
-                    let modal = document.getElementById('bayanVisualCategorizerModal');
-                    if (!modal) {
-                        modal = document.createElement('div');
-                        modal.id = 'bayanVisualCategorizerModal';
-                        modal.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(15,23,42,0.82);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:14px;direction:rtl;';
-                        modal.innerHTML = `
+        // 🗂️ أداة التصنيف السريع بالصور (Bulk Visual Categorizer) لتصنيف 500+ منتج بالصور في ثوانٍ
+        window._bvcSelectedIds = new Set();
+        function openBulkVisualCategorizer() {
+            window._bvcSelectedIds = new Set();
+            let modal = document.getElementById('bayanVisualCategorizerModal');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'bayanVisualCategorizerModal';
+                modal.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(15,23,42,0.82);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:14px;direction:rtl;';
+                modal.innerHTML = `
                     <div style="background:#fff;border-radius:20px;width:96vw;max-width:1100px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 25px 60px rgba(0,0,0,0.45);">
                         <div style="padding:16px 20px;background:linear-gradient(135deg,#4c1d95,#6d28d9);color:#fff;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
                             <div>
@@ -9794,26 +9794,26 @@ ${itemsSummary}
                         </div>
                         <div id="bvcGridBody" style="padding:16px;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:12px;flex:1;"></div>
                     </div>`;
-                        document.body.appendChild(modal);
-                    }
-                    modal.style.display = 'flex';
-                    renderBulkVisualCategorizerGrid();
-                }
+                document.body.appendChild(modal);
+            }
+            modal.style.display = 'flex';
+            renderBulkVisualCategorizerGrid();
+        }
 
-                function renderBulkVisualCategorizerGrid() {
-                    const grid = document.getElementById('bvcGridBody');
-                    if (!grid) return;
-                    const q = (document.getElementById('bvcFilterInput')?.value || '').trim().toLowerCase();
-                    const list = (typeof adminProductsList !== 'undefined' ? adminProductsList : []).filter(p => {
-                        if (!q) return true;
-                        return String(p.name || '').toLowerCase().includes(q) || String(p.code || '').toLowerCase().includes(q) || String(p.category || '').toLowerCase().includes(q);
-                    });
-                    document.getElementById('bvcCountBadge').textContent = window._bvcSelectedIds.size;
-                    grid.innerHTML = list.map(p => {
-                        const pid = p.firestoreId || p.id;
-                        const sel = window._bvcSelectedIds.has(pid);
-                        const img = p.image || (Array.isArray(p.images) && p.images[0]) || '';
-                        return `
+        function renderBulkVisualCategorizerGrid() {
+            const grid = document.getElementById('bvcGridBody');
+            if (!grid) return;
+            const q = (document.getElementById('bvcFilterInput')?.value || '').trim().toLowerCase();
+            const list = (typeof adminProductsList !== 'undefined' ? adminProductsList : []).filter(p => {
+                if (!q) return true;
+                return String(p.name || '').toLowerCase().includes(q) || String(p.code || '').toLowerCase().includes(q) || String(p.category || '').toLowerCase().includes(q);
+            });
+            document.getElementById('bvcCountBadge').textContent = window._bvcSelectedIds.size;
+            grid.innerHTML = list.map(p => {
+                const pid = p.firestoreId || p.id;
+                const sel = window._bvcSelectedIds.has(pid);
+                const img = p.image || (Array.isArray(p.images) && p.images[0]) || '';
+                return `
                     <div onclick="toggleBvcProduct('${escapeAdminHtml(pid)}')"
                         style="cursor:pointer;border-radius:14px;overflow:hidden;border:3px solid ${sel ? '#059669' : '#e2e8f0'};background:${sel ? '#ecfdf5' : '#fff'};transition:all 0.15s;position:relative;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
                         ${sel ? '<div style="position:absolute;top:6px;left:6px;background:#059669;color:#fff;width:24px;height:24px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;">✓</div>' : ''}
@@ -9825,37 +9825,37 @@ ${itemsSummary}
                             <div style="font-size:0.72rem;color:#64748b;margin-top:2px;">القسم: <b>${escapeAdminHtml(p.category || 'عام')}</b></div>
                         </div>
                     </div>`;
-                    }).join('');
-                }
+            }).join('');
+        }
 
-                function toggleBvcProduct(pid) {
-                    if (window._bvcSelectedIds.has(pid)) window._bvcSelectedIds.delete(pid);
-                    else window._bvcSelectedIds.add(pid);
-                    renderBulkVisualCategorizerGrid();
-                }
+        function toggleBvcProduct(pid) {
+            if (window._bvcSelectedIds.has(pid)) window._bvcSelectedIds.delete(pid);
+            else window._bvcSelectedIds.add(pid);
+            renderBulkVisualCategorizerGrid();
+        }
 
-                async function applyBulkVisualCategorizer() {
-                    const cat = (document.getElementById('bvcTargetCategory')?.value || '').trim();
-                    if (!cat) { alert('⚠️ يرجى كتابة أو اختيار اسم القسم أولاً!'); return; }
-                    if (window._bvcSelectedIds.size === 0) { alert('⚠️ يرجى تحديد منتج واحد على الأقل بالضغط على صورته!'); return; }
-                    const db = (typeof getBayanDb === 'function') ? getBayanDb() : null;
-                    if (!db) { alert('⚠️ غير متصل بقاعدة البيانات حالياً'); return; }
-                    try {
-                        const ids = Array.from(window._bvcSelectedIds);
-                        for (let i = 0; i < ids.length; i += 20) {
-                            const chunk = ids.slice(i, i + 20);
-                            await Promise.all(chunk.map(id =>
-                                db.collection('products').doc(id).set({ category: cat, categoryName: cat, updatedAt: new Date().toISOString() }, { merge: true })
-                            ));
-                        }
-                        window._bvcSelectedIds.clear();
-                        renderBulkVisualCategorizerGrid();
-                        if (typeof showFastSaveToast === 'function') showFastSaveToast(`✅ تم تصنيف (${ids.length}) منتج داخل قسم «${cat}» بنجاح!`);
-                        else alert(`✅ تم تصنيف (${ids.length}) منتج داخل قسم «${cat}» بنجاح!`);
-                    } catch (err) {
-                        alert('❌ حدث خطأ أثناء التصنيف: ' + err.message);
-                    }
+        async function applyBulkVisualCategorizer() {
+            const cat = (document.getElementById('bvcTargetCategory')?.value || '').trim();
+            if (!cat) { alert('⚠️ يرجى كتابة أو اختيار اسم القسم أولاً!'); return; }
+            if (window._bvcSelectedIds.size === 0) { alert('⚠️ يرجى تحديد منتج واحد على الأقل بالضغط على صورته!'); return; }
+            const db = (typeof getBayanDb === 'function') ? getBayanDb() : null;
+            if (!db) { alert('⚠️ غير متصل بقاعدة البيانات حالياً'); return; }
+            try {
+                const ids = Array.from(window._bvcSelectedIds);
+                for (let i = 0; i < ids.length; i += 20) {
+                    const chunk = ids.slice(i, i + 20);
+                    await Promise.all(chunk.map(id =>
+                        db.collection('products').doc(id).set({ category: cat, categoryName: cat, updatedAt: new Date().toISOString() }, { merge: true })
+                    ));
                 }
+                window._bvcSelectedIds.clear();
+                renderBulkVisualCategorizerGrid();
+                if (typeof showFastSaveToast === 'function') showFastSaveToast(`✅ تم تصنيف (${ids.length}) منتج داخل قسم «${cat}» بنجاح!`);
+                else alert(`✅ تم تصنيف (${ids.length}) منتج داخل قسم «${cat}» بنجاح!`);
+            } catch (err) {
+                alert('❌ حدث خطأ أثناء التصنيف: ' + err.message);
+            }
+        }
     </script>
 </body>
 

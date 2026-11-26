@@ -1694,27 +1694,43 @@
     btn.classList.remove('border-slate-200', 'opacity-75');
   }
 
+  function closeProductImageLightbox() {
+    const lb = document.getElementById('bayan-img-lightbox');
+    if (lb) {
+      lb.style.display = 'none';
+      lb.classList.add('hidden');
+    }
+  }
+
   function openProductImageLightbox(imgSrc, caption) {
     if (!imgSrc) return;
     let lb = document.getElementById('bayan-img-lightbox');
     if (!lb) {
       lb = document.createElement('div');
       lb.id = 'bayan-img-lightbox';
-      lb.style.cssText = 'position:fixed;inset:0;z-index:999999;background:rgba(15,23,42,0.92);backdrop-filter:blur(6px);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;';
-      lb.onclick = (e) => { if (e.target === lb) lb.classList.add('hidden'); };
+      lb.style.cssText = 'position:fixed;inset:0;z-index:999999;background:rgba(15,23,42,0.92);backdrop-filter:blur(6px);display:none;flex-direction:column;align-items:center;justify-content:center;padding:16px;';
+      lb.onclick = (e) => { if (e.target === lb) closeProductImageLightbox(); };
       lb.innerHTML = `
-        <button type="button" onclick="document.getElementById('bayan-img-lightbox').classList.add('hidden')"
-          style="position:fixed;top:18px;left:18px;width:44px;height:44px;border-radius:999px;border:1px solid rgba(255,255,255,0.25);background:rgba(255,255,255,0.14);color:#fff;font-size:20px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+        <button id="bayan-img-lightbox-close" type="button" aria-label="إغلاق الصورة"
+          style="position:fixed;top:18px;left:18px;width:44px;height:44px;border-radius:999px;border:1px solid rgba(255,255,255,0.25);background:rgba(255,255,255,0.14);color:#fff;font-size:20px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:1000000;">✕</button>
         <img id="bayan-img-lightbox-pic" src="" alt="" style="max-width:94vw;max-height:82vh;object-fit:contain;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.6);background:#fff;" />
         <div id="bayan-img-lightbox-cap" style="color:#f8fafc;font-weight:800;font-size:14px;margin-top:12px;text-align:center;"></div>
       `;
       document.body.appendChild(lb);
+      const closeBtn = document.getElementById('bayan-img-lightbox-close');
+      if (closeBtn) closeBtn.addEventListener('click', (e) => { e.stopPropagation(); closeProductImageLightbox(); });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && lb && lb.style.display !== 'none') {
+          closeProductImageLightbox();
+        }
+      });
     }
     const pic = document.getElementById('bayan-img-lightbox-pic');
     const cap = document.getElementById('bayan-img-lightbox-cap');
     if (pic) pic.src = imgSrc;
     if (cap) cap.textContent = caption || '';
     lb.classList.remove('hidden');
+    lb.style.display = 'flex';
   }
 
   function resolveArabicColorHex(name, explicitHex) {
