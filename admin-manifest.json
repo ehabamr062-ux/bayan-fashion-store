@@ -1,0 +1,28 @@
+{
+  "id": "bayan-fashion-merchant-admin",
+  "name": "لوحة تحكم التاجر | بَيَان ستور",
+  "short_name": "لوحة التاجر",
+  "description": "لوحة إدارة متجر بيان للأزياء — الطلبات الحية، الأصناف، العملاء، والسلات المتروكة.",
+  "start_url": "./admin.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f8fafc",
+  "theme_color": "#059669",
+  "dir": "rtl",
+  "lang": "ar",
+  "icons": [
+    {
+      "src": "./icons/admin-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icons/admin-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

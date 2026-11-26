@@ -1,0 +1,28 @@
+{
+  "id": "bayan-fashion-storefront",
+  "name": "المتجر الإلكتروني | تسوق أونلاين",
+  "short_name": "المتجر",
+  "description": "تسوق أحدث الأزياء والموديلات العصرية أونلاين مع تتبع الطلبات والدفع عند الاستلام.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f8fafc",
+  "theme_color": "#059669",
+  "dir": "rtl",
+  "lang": "ar",
+  "icons": [
+    {
+      "src": "./icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

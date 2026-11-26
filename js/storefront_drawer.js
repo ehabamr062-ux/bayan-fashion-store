@@ -138,7 +138,12 @@
                     </div>
                 </div>
 
-                <div style="padding:14px 18px; border-top:1px solid #e2e8f0; background:#f8fafc;">
+                <div style="padding:14px 18px; border-top:1px solid #e2e8f0; background:#f8fafc; display:flex; flex-direction:column; gap:8px;">
+                    <button type="button" id="bayanDrawerPwaBtn" onclick="closeStoreSideDrawer(); if(window.BayanPWA) window.BayanPWA.triggerInstall();"
+                        style="display:none; width:100%; padding:11px; border-radius:12px; border:none; background:linear-gradient(135deg,#059669,#047857); color:#ffffff; font-weight:900; font-size:0.88rem; cursor:pointer; align-items:center; justify-content:center; gap:8px;">
+                        <i class="fa-solid fa-mobile-screen-button"></i>
+                        <span>تثبيت تطبيق المتجر على الموبايل</span>
+                    </button>
                     <button type="button" onclick="closeStoreSideDrawer(); if(typeof openTrackOrderModal==='function') openTrackOrderModal();"
                         style="width:100%; padding:11px; border-radius:12px; border:1.5px solid #cbd5e1; background:#ffffff; color:#0f172a; font-weight:900; font-size:0.88rem; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px;">
                         <i class="fa-solid fa-box-open"></i>
@@ -150,5 +155,8 @@
         wrap.addEventListener('click', (e) => { if (e.target === wrap) window.closeStoreSideDrawer(); });
         document.body.style.overflow = 'hidden';
         document.body.appendChild(wrap);
+        if (window.BayanPWA && typeof window.BayanPWA.refreshButtons === 'function') {
+            window.BayanPWA.refreshButtons();
+        }
     };
 })();

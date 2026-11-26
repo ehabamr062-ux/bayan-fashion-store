@@ -379,6 +379,11 @@
       }
     } catch (_) { }
     updateBadges();
+    try {
+      if (window.BayanAbandonedCartTracker && typeof window.BayanAbandonedCartTracker.onCartUpdated === 'function') {
+        window.BayanAbandonedCartTracker.onCartUpdated(state.cart);
+      }
+    } catch (_) { }
   }
 
   async function saveWishlist() {
@@ -400,6 +405,11 @@
 
     document.documentElement.style.setProperty('--brand-color', s.accentColor || '#e11d48');
     document.title = `${name} | المتجر الإلكتروني`;
+    try {
+      if (window.BayanPWA && typeof window.BayanPWA.setStoreMeta === 'function' && name !== 'المتجر الإلكتروني') {
+        window.BayanPWA.setStoreMeta({ name });
+      }
+    } catch (_) { }
 
     const setText = (id, val) => {
       const el = document.getElementById(id);
@@ -737,6 +747,11 @@
           }
         });
         state.coupons = list;
+        try {
+          if (window.BayanAbandonedCartTracker && typeof window.BayanAbandonedCartTracker.onCouponsReady === 'function') {
+            window.BayanAbandonedCartTracker.onCouponsReady();
+          }
+        } catch (_) { }
       },
       (err) => console.warn('Coupons listener warning:', err)
     );
@@ -1509,6 +1524,11 @@
   }
 
   function closeProductDetail() {
+    try {
+      if (window.BayanAbandonedCartTracker && typeof window.BayanAbandonedCartTracker.onModalClosed === 'function') {
+        window.BayanAbandonedCartTracker.onModalClosed();
+      }
+    } catch (_) { }
     document.getElementById('product-detail-modal').classList.add('hidden');
     document.body.style.overflow = '';
   }
@@ -2297,6 +2317,9 @@
     try {
       saveCustomerProfile({ name, phone1, phone2, address, govId: document.getElementById('qo-gov').value });
       await saveOrderToFirestore(order);
+      if (window.BayanAbandonedCartTracker && typeof window.BayanAbandonedCartTracker.markOrderCompleted === 'function') {
+        await window.BayanAbandonedCartTracker.markOrderCompleted(order);
+      }
       closeProductDetail();
       document.getElementById('pd-quick-order-form').reset();
       showOrderSuccessModal(order);
@@ -2541,6 +2564,11 @@
   }
 
   function closeCartDrawer() {
+    try {
+      if (window.BayanAbandonedCartTracker && typeof window.BayanAbandonedCartTracker.onModalClosed === 'function') {
+        window.BayanAbandonedCartTracker.onModalClosed();
+      }
+    } catch (_) { }
     document.getElementById('cart-drawer-overlay').classList.add('hidden');
     if (document.getElementById('product-detail-modal').classList.contains('hidden')) {
       document.body.style.overflow = '';
@@ -2646,6 +2674,11 @@
   }
 
   function closeCartCheckoutModal() {
+    try {
+      if (window.BayanAbandonedCartTracker && typeof window.BayanAbandonedCartTracker.onModalClosed === 'function') {
+        window.BayanAbandonedCartTracker.onModalClosed();
+      }
+    } catch (_) { }
     document.getElementById('cart-checkout-modal').classList.add('hidden');
   }
 
@@ -2800,6 +2833,9 @@
     try {
       saveCustomerProfile({ name, phone1, phone2, address, govId: document.getElementById('cc-gov').value });
       await saveOrderToFirestore(order);
+      if (window.BayanAbandonedCartTracker && typeof window.BayanAbandonedCartTracker.markOrderCompleted === 'function') {
+        await window.BayanAbandonedCartTracker.markOrderCompleted(order);
+      }
       state.cart = [];
       await saveCart();
       closeCartCheckoutModal();
@@ -3142,7 +3178,73 @@
     await loadLocalState();
     updateBadges();
     initFirestoreListeners();
+    try {
+      if (window.BayanAbandonedCartTracker && typeof window.BayanAbandonedCartTracker.onStorefrontReady === 'function') {
+        window.BayanAbandonedCartTracker.onStorefrontReady();
+      }
+    } catch (_) { }
   }
+
+  window.BayanStorefrontBridge = {
+    getCart: () => state.cart,
+    getCustomerProfile: () => state.customerProfile,
+    getSettings: () => state.settings,
+    getQuickOrderDraftItem: () => {
+      const prod = state.currentProduct;
+      if (!prod) return null;
+      const unitPrice = getEffectivePrice(prod, state.pdSelectedColor, state.pdSelectedSize);
+      return {
+        productId: prod.id,
+        code: prod.code || '',
+        name: prod.name || 'منتج',
+        image: (state.pdSelectedColor && prod.colorImages && prod.colorImages[state.pdSelectedColor]) || (prod.images && prod.images[0]) || '',
+        color: state.pdSelectedColor || '',
+        size: state.pdSelectedSize || '',
+        qty: Math.max(1, Number(state.pdSelectedTier) || 1),
+        unitPrice
+      };
+    },
+    applyRecoveryCoupon: (code) => {
+      const cleanCode = String(code || '').trim().toUpperCase();
+      if (!cleanCode) return true;
+      const inp = document.getElementById('cc-coupon-input');
+      if (inp) inp.value = cleanCode;
+      if (!state.coupons || !state.coupons.length) return false;
+      applyCartCoupon();
+      return Boolean(state.ccAppliedCoupon);
+    },
+    restoreAbandonedCart: async (data, couponCode) => {
+      if (!data || !Array.isArray(data.items) || !data.items.length) return;
+      state.cart = data.items.map(it => ({
+        key: `${it.productId || it.name}__${it.color || ''}__${it.size || ''}`,
+        productId: it.productId || '',
+        pos_id: it.pos_id || '',
+        code: it.code || '',
+        barcode: it.barcode || '',
+        name: it.name || 'منتج',
+        image: it.image || '',
+        color: it.color || '',
+        size: it.size || '',
+        qty: Math.max(1, Number(it.qty) || 1),
+        unitPrice: Math.max(0, Number(it.unitPrice) || 0)
+      }));
+      if (data.customerName || data.phone1 || data.address) {
+        saveCustomerProfile({
+          name: data.customerName || '',
+          phone1: data.phone1 || '',
+          phone2: data.phone2 || '',
+          address: data.address || '',
+          govId: data.govId || ''
+        });
+      }
+      await saveCart();
+      openCartCheckoutModal();
+      if (couponCode) {
+        window.BayanStorefrontBridge.applyRecoveryCoupon(couponCode);
+      }
+      showToast('🎉 أهلاً بك مرة أخرى! تم استرجاع سلتك لتكملة الطلب بسهولة', 'success');
+    }
+  };
 
   // Expose handlers for inline HTML attributes
   Object.assign(window, {
