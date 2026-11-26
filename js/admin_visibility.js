@@ -280,37 +280,82 @@
     }
 
     /* =========================================================================
-     * 1. حقن الشريط الجانبي الكامل بجانب الأصناف (Sidebar + Layout CSS)
+     * 1. حقن زر التحكم المركزي والنافذة المنبثقة في المنتصف (Center Control Modal)
      * ========================================================================= */
-    function injectSidebarLayoutAndStyles() {
+    window.openVisibilityControlModal = function () {
+        const modal = document.getElementById('bayanVisibilityControlModal');
+        if (!modal) return;
+        renderVisibilitySidebarState();
+        refreshDynamicFilterDropdowns(window.adminProductsList || []);
+        modal.style.display = 'flex';
+    };
+
+    window.closeVisibilityControlModal = function () {
+        const modal = document.getElementById('bayanVisibilityControlModal');
+        if (modal) modal.style.display = 'none';
+    };
+
+    function injectVisibilityModalAndTrigger() {
         if (!document.getElementById('adminVisibilityStyles')) {
             const style = document.createElement('style');
             style.id = 'adminVisibilityStyles';
             style.textContent = `
-                .admin-products-workspace {
-                    display: flex;
-                    gap: 18px;
-                    align-items: flex-start;
+                .vis-modal-overlay {
+                    position: fixed;
+                    inset: 0;
+                    z-index: 10040;
+                    background: rgba(15, 23, 42, 0.72);
+                    backdrop-filter: blur(5px);
+                    display: none;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 14px;
+                    direction: rtl;
                 }
-                .admin-products-sidebar {
-                    width: 315px;
-                    flex-shrink: 0;
-                    position: sticky;
-                    top: 78px;
+                .vis-modal-card {
+                    background: #ffffff;
+                    border-radius: 22px;
+                    width: 96vw;
+                    max-width: 820px;
+                    max-height: 90vh;
                     display: flex;
                     flex-direction: column;
-                    gap: 14px;
-                    z-index: 20;
+                    overflow: hidden;
+                    box-shadow: 0 25px 65px rgba(15, 23, 42, 0.42);
+                    border: 1.5px solid #cbd5e1;
                 }
-                .admin-products-main-col {
-                    flex: 1;
-                    min-width: 0;
+                .vis-modal-head {
+                    padding: 15px 20px;
+                    background: linear-gradient(135deg, #065f46, #047857);
+                    color: #ffffff;
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 10px;
+                }
+                .vis-modal-body {
+                    padding: 18px;
+                    overflow-y: auto;
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                    gap: 16px;
+                    background: #f8fafc;
+                }
+                .vis-modal-foot {
+                    padding: 12px 20px;
+                    background: #ffffff;
+                    border-top: 1px solid #e2e8f0;
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    flex-wrap: wrap;
+                    gap: 10px;
                 }
                 .vis-side-card {
                     background: #ffffff;
                     border: 1.5px solid #e2e8f0;
                     border-radius: 16px;
-                    padding: 14px;
+                    padding: 15px;
                     box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
                 }
                 .vis-side-card.store-live-card {
@@ -318,7 +363,7 @@
                     background: linear-gradient(180deg, #f0fdf4 0%, #ffffff 32%);
                 }
                 .vis-side-title {
-                    font-size: 0.92rem;
+                    font-size: 0.94rem;
                     font-weight: 950;
                     color: #0f172a;
                     display: flex;
@@ -330,7 +375,7 @@
                     border-bottom: 1px dashed #cbd5e1;
                 }
                 .vis-group-label {
-                    font-size: 0.77rem;
+                    font-size: 0.78rem;
                     font-weight: 900;
                     color: #475569;
                     margin-bottom: 5px;
@@ -349,10 +394,10 @@
                 .vis-seg-btn {
                     border: none;
                     background: transparent;
-                    padding: 6px 4px;
+                    padding: 7px 5px;
                     border-radius: 8px;
                     font-family: inherit;
-                    font-size: 0.74rem;
+                    font-size: 0.76rem;
                     font-weight: 800;
                     color: #475569;
                     cursor: pointer;
@@ -417,7 +462,7 @@
                     border: 1px solid #e2e8f0;
                     margin-bottom: 8px;
                     cursor: pointer;
-                    font-size: 0.77rem;
+                    font-size: 0.78rem;
                     font-weight: 800;
                     color: #0f172a;
                 }
@@ -478,166 +523,162 @@
                     font-size: 0.68rem;
                     font-weight: 950;
                 }
-                .vis-mobile-collapse-btn {
-                    display: none;
-                    width: 100%;
-                    padding: 10px 14px;
-                    border-radius: 12px;
-                    border: 1.5px solid #0284c7;
-                    background: #f0f9ff;
-                    color: #0369a1;
-                    font-weight: 900;
-                    font-size: 0.86rem;
-                    font-family: inherit;
-                    cursor: pointer;
-                    justify-content: space-between;
-                    align-items: center;
-                    margin-bottom: 10px;
-                }
-                @media (max-width: 980px) {
-                    .admin-products-workspace {
-                        flex-direction: column;
-                    }
-                    .admin-products-sidebar {
-                        width: 100%;
-                        position: static;
-                    }
-                    .vis-mobile-collapse-btn {
-                        display: flex;
-                    }
-                    .admin-products-sidebar.collapsed-mobile .vis-sidebar-body {
-                        display: none;
-                    }
-                }
             `;
             document.head.appendChild(style);
         }
 
-        const gridContainer = document.getElementById('adminProductsContainer');
-        if (!gridContainer || document.getElementById('adminProductsWorkspace')) return;
+        // 1. حقن مربع / زر التحكم داخل شريط الأدوات في تبويب الأصناف والملابس
+        const topRow = document.querySelector('#tabPanelProducts .filters-top-row');
+        if (topRow && !document.getElementById('btnOpenVisibilityControlModal')) {
+            const triggerBtn = document.createElement('button');
+            triggerBtn.type = 'button';
+            triggerBtn.id = 'btnOpenVisibilityControlModal';
+            triggerBtn.className = 'btn-primary-action';
+            triggerBtn.style.cssText = 'background:linear-gradient(135deg,#0f766e,#059669); border-color:#047857; padding:8px 14px; font-weight:900; box-shadow:0 3px 10px rgba(5,150,105,0.25);';
+            triggerBtn.title = 'فتح نافذة التحكم في الأرصدة وظهور وإخفاء المتوفر في المتجر واللوحة';
+            triggerBtn.onclick = () => window.openVisibilityControlModal();
+            triggerBtn.innerHTML = `
+                <span>🎛️</span>
+                <span>التحكم في الأرصدة وظهور المتوفر</span>
+                <span id="visTriggerStatusPill" style="background:rgba(255,255,255,0.22); color:#fff; padding:2px 8px; border-radius:999px; font-size:0.72rem; font-weight:900;">الكل</span>
+            `;
+            topRow.appendChild(triggerBtn);
+        }
 
-        const workspace = document.createElement('div');
-        workspace.id = 'adminProductsWorkspace';
-        workspace.className = 'admin-products-workspace';
-
-        const sidebar = document.createElement('aside');
-        sidebar.id = 'adminProductsSidebar';
-        sidebar.className = 'admin-products-sidebar';
-        sidebar.innerHTML = `
-            <button type="button" class="vis-mobile-collapse-btn" onclick="document.getElementById('adminProductsSidebar').classList.toggle('collapsed-mobile')">
-                <span>🎛️ لوحة التحكم في الأرصدة وظهور المتجر</span>
-                <span>فتح / طي ▾</span>
-            </button>
-            <div class="vis-sidebar-body" style="display:flex; flex-direction:column; gap:14px;">
-
-                <!-- 1. التحكم المباشر في المتجر الإلكتروني -->
-                <div class="vis-side-card store-live-card">
-                    <div class="vis-side-title">
-                        <span>🌐 ظهور المتجر (يسمّع فوراً)</span>
-                        <span style="font-size:0.68rem; background:#dcfce7; color:#166534; padding:2px 8px; border-radius:999px; font-weight:900;">● لايف ⚡</span>
-                    </div>
-
-                    <span class="vis-group-label">🛍️ عرض المنتجات في الموقع:</span>
-                    <div class="vis-seg-group" id="storeVisProductsGroup">
-                        <button type="button" class="vis-seg-btn" data-val="all" onclick="setStoreVisibilityField('productsMode', 'all')">الكل</button>
-                        <button type="button" class="vis-seg-btn" data-val="available" onclick="setStoreVisibilityField('productsMode', 'available')">المتوفر فقط</button>
-                        <button type="button" class="vis-seg-btn" data-val="unavailable" onclick="setStoreVisibilityField('productsMode', 'unavailable')">غير المتوفر</button>
-                    </div>
-
-                    <span class="vis-group-label">📏 عرض المقاسات في الموقع:</span>
-                    <div class="vis-seg-group" id="storeVisSizesGroup">
-                        <button type="button" class="vis-seg-btn" data-val="all" onclick="setStoreVisibilityField('sizesMode', 'all')">الكل</button>
-                        <button type="button" class="vis-seg-btn" data-val="available" onclick="setStoreVisibilityField('sizesMode', 'available')">المتوفرة فقط</button>
-                        <button type="button" class="vis-seg-btn" data-val="unavailable" onclick="setStoreVisibilityField('sizesMode', 'unavailable')">غير المتوفرة</button>
-                    </div>
-
-                    <span class="vis-group-label">🎨 عرض الألوان في الموقع:</span>
-                    <div class="vis-seg-group" id="storeVisColorsGroup">
-                        <button type="button" class="vis-seg-btn" data-val="all" onclick="setStoreVisibilityField('colorsMode', 'all')">الكل</button>
-                        <button type="button" class="vis-seg-btn" data-val="available" onclick="setStoreVisibilityField('colorsMode', 'available')">المتوفرة فقط</button>
-                        <button type="button" class="vis-seg-btn" data-val="unavailable" onclick="setStoreVisibilityField('colorsMode', 'unavailable')">غير المتوفرة</button>
-                    </div>
-
-                    <label class="vis-toggle-row">
-                        <span>🔢 إظهار أرقام الأرصدة للعملاء</span>
-                        <input type="checkbox" id="visToggleShowStockCounts" onchange="setStoreVisibilityField('showStockCounts', this.checked)">
-                    </label>
-
-                    <label class="vis-toggle-row" style="margin-bottom:0;">
-                        <span>🏷️ إظهار المقاسات والألوان على كارت المتجر</span>
-                        <input type="checkbox" id="visToggleShowCardVariants" onchange="setStoreVisibilityField('showCardVariants', this.checked)">
-                    </label>
-                </div>
-
-                <!-- 2. فلترة كل الأصناف والأرصدة والمقاسات في اللوحة -->
-                <div class="vis-side-card">
-                    <div class="vis-side-title">
-                        <span>🎛️ فلترة كل الأصناف باللوحة</span>
-                        <button type="button" onclick="resetProductFilters()" style="border:none; background:#f1f5f9; color:#334155; border-radius:6px; padding:3px 8px; font-size:0.7rem; font-weight:900; cursor:pointer;">إعادة ضبط</button>
-                    </div>
-
-                    <span class="vis-group-label">📦 فلتر حالة توفر الأصناف:</span>
-                    <div class="vis-seg-group" id="adminSideStockGroup">
-                        <button type="button" class="vis-seg-btn" data-val="all" onclick="setAdminSideStockMode('all')">الكل</button>
-                        <button type="button" class="vis-seg-btn" data-val="instock" onclick="setAdminSideStockMode('instock')">متوفر فقط</button>
-                        <button type="button" class="vis-seg-btn" data-val="outofstock" onclick="setAdminSideStockMode('outofstock')">غير متوفر</button>
-                    </div>
-
-                    <span class="vis-group-label">📏🎨 عرض المقاسات والألوان بالكروت:</span>
-                    <div class="vis-seg-group" id="adminSideVariantsViewGroup">
-                        <button type="button" class="vis-seg-btn" data-val="all" onclick="setAdminVariantsViewMode('all')">الكل</button>
-                        <button type="button" class="vis-seg-btn" data-val="available" onclick="setAdminVariantsViewMode('available')">المتوفرة فقط</button>
-                        <button type="button" class="vis-seg-btn" data-val="unavailable" onclick="setAdminVariantsViewMode('unavailable')">غير المتوفرة</button>
-                    </div>
-
-                    <span class="vis-group-label">⚠️ فلتر كفاءة أرصدة المقاسات:</span>
-                    <select id="adminSideVariantsHealth" class="form-control" style="padding:7px 10px; font-size:0.8rem; margin-bottom:10px;" onchange="setAdminVariantsHealthFilter(this.value)">
-                        <option value="all">كل الأصناف (بغض النظر عن النواقص)</option>
-                        <option value="partial_out">⚠️ أصناف بها مقاسات أو ألوان نافذة (0)</option>
-                        <option value="full_in">✅ أصناف مكتملة التوفر (كل المقاسات والألوان متاحة)</option>
-                    </select>
-
-                    <span class="vis-group-label">🎨 تصفية بلون معين:</span>
-                    <select id="adminColorFilter" class="form-control" style="padding:7px 10px; font-size:0.8rem;" onchange="setAdminColorFilter(this.value)">
-                        <option value="all">🎨 كل الألوان</option>
-                    </select>
-
-                    <div class="vis-mini-stats" id="adminSidebarStockStats">
-                        <div class="vis-mini-stat">
-                            <div class="num" id="sideStatTotalPieces" style="color:#0284c7;">0</div>
-                            <div class="lbl">إجمالي القطع بالمخزون</div>
+        // 2. إنشاء النافذة المنبثقة في منتصف الشاشة
+        if (!document.getElementById('bayanVisibilityControlModal')) {
+            const modal = document.createElement('div');
+            modal.id = 'bayanVisibilityControlModal';
+            modal.className = 'vis-modal-overlay';
+            modal.addEventListener('click', (ev) => {
+                if (ev.target === modal) window.closeVisibilityControlModal();
+            });
+            modal.innerHTML = `
+                <div class="vis-modal-card">
+                    <div class="vis-modal-head">
+                        <div>
+                            <div style="font-size:1.1rem; font-weight:950;">🎛️ التحكم في الأرصدة وظهور وإخفاء المتوفر</div>
+                            <div style="font-size:0.78rem; color:#d1fae5; font-weight:700;">إعدادات الظهور في المتجر الإلكتروني وفلترة الأرصدة والمقاسات والألوان بلوحة التحكم</div>
                         </div>
-                        <div class="vis-mini-stat">
-                            <div class="num" id="sideStatAvailableProds" style="color:#059669;">0</div>
-                            <div class="lbl">أصناف متوفرة</div>
+                        <button type="button" onclick="closeVisibilityControlModal()"
+                            style="background:rgba(255,255,255,0.2); border:none; color:#fff; width:36px; height:36px; border-radius:10px; font-size:18px; font-weight:900; cursor:pointer;">✕</button>
+                    </div>
+
+                    <div class="vis-modal-body">
+                        <!-- 1. التحكم المباشر في المتجر الإلكتروني -->
+                        <div class="vis-side-card store-live-card">
+                            <div class="vis-side-title">
+                                <span>🌐 ظهور المتجر (يسمّع فوراً)</span>
+                                <span style="font-size:0.68rem; background:#dcfce7; color:#166534; padding:2px 8px; border-radius:999px; font-weight:900;">● لايف ⚡</span>
+                            </div>
+
+                            <span class="vis-group-label">🛍️ عرض المنتجات في الموقع:</span>
+                            <div class="vis-seg-group" id="storeVisProductsGroup">
+                                <button type="button" class="vis-seg-btn" data-val="all" onclick="setStoreVisibilityField('productsMode', 'all')">الكل</button>
+                                <button type="button" class="vis-seg-btn" data-val="available" onclick="setStoreVisibilityField('productsMode', 'available')">المتوفر فقط</button>
+                                <button type="button" class="vis-seg-btn" data-val="unavailable" onclick="setStoreVisibilityField('productsMode', 'unavailable')">غير المتوفر</button>
+                            </div>
+
+                            <span class="vis-group-label">📏 عرض المقاسات في الموقع:</span>
+                            <div class="vis-seg-group" id="storeVisSizesGroup">
+                                <button type="button" class="vis-seg-btn" data-val="all" onclick="setStoreVisibilityField('sizesMode', 'all')">الكل</button>
+                                <button type="button" class="vis-seg-btn" data-val="available" onclick="setStoreVisibilityField('sizesMode', 'available')">المتوفرة فقط</button>
+                                <button type="button" class="vis-seg-btn" data-val="unavailable" onclick="setStoreVisibilityField('sizesMode', 'unavailable')">غير المتوفرة</button>
+                            </div>
+
+                            <span class="vis-group-label">🎨 عرض الألوان في الموقع:</span>
+                            <div class="vis-seg-group" id="storeVisColorsGroup">
+                                <button type="button" class="vis-seg-btn" data-val="all" onclick="setStoreVisibilityField('colorsMode', 'all')">الكل</button>
+                                <button type="button" class="vis-seg-btn" data-val="available" onclick="setStoreVisibilityField('colorsMode', 'available')">المتوفرة فقط</button>
+                                <button type="button" class="vis-seg-btn" data-val="unavailable" onclick="setStoreVisibilityField('colorsMode', 'unavailable')">غير المتوفرة</button>
+                            </div>
+
+                            <label class="vis-toggle-row">
+                                <span>🔢 إظهار أرقام الأرصدة للعملاء</span>
+                                <input type="checkbox" id="visToggleShowStockCounts" onchange="setStoreVisibilityField('showStockCounts', this.checked)">
+                            </label>
+
+                            <label class="vis-toggle-row" style="margin-bottom:0;">
+                                <span>🏷️ إظهار المقاسات والألوان على كارت المتجر</span>
+                                <input type="checkbox" id="visToggleShowCardVariants" onchange="setStoreVisibilityField('showCardVariants', this.checked)">
+                            </label>
                         </div>
-                        <div class="vis-mini-stat">
-                            <div class="num" id="sideStatAvailSizes" style="color:#16a34a;">0</div>
-                            <div class="lbl">مقاسات متوفرة</div>
-                        </div>
-                        <div class="vis-mini-stat">
-                            <div class="num" id="sideStatOutSizes" style="color:#dc2626;">0</div>
-                            <div class="lbl">مقاسات نافذة (0)</div>
+
+                        <!-- 2. فلترة كل الأصناف والأرصدة والمقاسات في اللوحة -->
+                        <div class="vis-side-card">
+                            <div class="vis-side-title">
+                                <span>🎛️ فلترة كل الأصناف باللوحة</span>
+                                <button type="button" onclick="resetProductFilters()" style="border:none; background:#f1f5f9; color:#334155; border-radius:6px; padding:3px 8px; font-size:0.7rem; font-weight:900; cursor:pointer;">إعادة ضبط</button>
+                            </div>
+
+                            <span class="vis-group-label">📦 فلتر حالة توفر الأصناف:</span>
+                            <div class="vis-seg-group" id="adminSideStockGroup">
+                                <button type="button" class="vis-seg-btn" data-val="all" onclick="setAdminSideStockMode('all')">الكل</button>
+                                <button type="button" class="vis-seg-btn" data-val="instock" onclick="setAdminSideStockMode('instock')">متوفر فقط</button>
+                                <button type="button" class="vis-seg-btn" data-val="outofstock" onclick="setAdminSideStockMode('outofstock')">غير متوفر</button>
+                            </div>
+
+                            <span class="vis-group-label">📏🎨 عرض المقاسات والألوان بالكروت:</span>
+                            <div class="vis-seg-group" id="adminSideVariantsViewGroup">
+                                <button type="button" class="vis-seg-btn" data-val="all" onclick="setAdminVariantsViewMode('all')">الكل</button>
+                                <button type="button" class="vis-seg-btn" data-val="available" onclick="setAdminVariantsViewMode('available')">المتوفرة فقط</button>
+                                <button type="button" class="vis-seg-btn" data-val="unavailable" onclick="setAdminVariantsViewMode('unavailable')">غير المتوفرة</button>
+                            </div>
+
+                            <span class="vis-group-label">⚠️ فلتر كفاءة أرصدة المقاسات:</span>
+                            <select id="adminSideVariantsHealth" class="form-control" style="padding:7px 10px; font-size:0.8rem; margin-bottom:10px;" onchange="setAdminVariantsHealthFilter(this.value)">
+                                <option value="all">كل الأصناف (بغض النظر عن النواقص)</option>
+                                <option value="partial_out">⚠️ أصناف بها مقاسات أو ألوان نافذة (0)</option>
+                                <option value="full_in">✅ أصناف مكتملة التوفر (كل المقاسات والألوان متاحة)</option>
+                            </select>
+
+                            <span class="vis-group-label">🎨 تصفية بلون معين:</span>
+                            <select id="adminColorFilter" class="form-control" style="padding:7px 10px; font-size:0.8rem;" onchange="setAdminColorFilter(this.value)">
+                                <option value="all">🎨 كل الألوان</option>
+                            </select>
+
+                            <div class="vis-mini-stats" id="adminSidebarStockStats">
+                                <div class="vis-mini-stat">
+                                    <div class="num" id="sideStatTotalPieces" style="color:#0284c7;">0</div>
+                                    <div class="lbl">إجمالي القطع بالمخزون</div>
+                                </div>
+                                <div class="vis-mini-stat">
+                                    <div class="num" id="sideStatAvailableProds" style="color:#059669;">0</div>
+                                    <div class="lbl">أصناف متوفرة</div>
+                                </div>
+                                <div class="vis-mini-stat">
+                                    <div class="num" id="sideStatAvailSizes" style="color:#16a34a;">0</div>
+                                    <div class="lbl">مقاسات متوفرة</div>
+                                </div>
+                                <div class="vis-mini-stat">
+                                    <div class="num" id="sideStatOutSizes" style="color:#dc2626;">0</div>
+                                    <div class="lbl">مقاسات نافذة (0)</div>
+                                </div>
+                            </div>
+
+                            <button type="button" onclick="exportVariantsStockReportCSV()"
+                                style="width:100%; margin-top:10px; padding:8px 10px; border-radius:10px; border:1px solid #cbd5e1; background:#f8fafc; color:#0f172a; font-family:inherit; font-size:0.77rem; font-weight:900; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">
+                                <span>📥</span>
+                                <span>تصدير كشف الأرصدة والنواقص (Excel)</span>
+                            </button>
                         </div>
                     </div>
 
-                    <button type="button" onclick="exportVariantsStockReportCSV()"
-                        style="width:100%; margin-top:10px; padding:8px 10px; border-radius:10px; border:1px solid #cbd5e1; background:#f8fafc; color:#0f172a; font-family:inherit; font-size:0.77rem; font-weight:900; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">
-                        <span>📥</span>
-                        <span>تصدير كشف الأرصدة والنواقص (Excel)</span>
-                    </button>
-                </div>
+                    <div class="vis-modal-foot">
+                        <span style="font-size:0.78rem; color:#047857; font-weight:800;">⚡ أي اختيار يتم حفظه ومزامنته مع المتجر الإلكتروني لحظياً دون إعادة تحميل</span>
+                        <button type="button" onclick="closeVisibilityControlModal()" class="btn-primary-action" style="background:#059669; border-color:#047857; padding:8px 22px;">
+                            <span>✅ تم وإغلاق</span>
+                        </button>
+                    </div>
+                </div>`;
+            document.body.appendChild(modal);
 
-            </div>
-        `;
-
-        const mainCol = document.createElement('div');
-        mainCol.className = 'admin-products-main-col';
-
-        gridContainer.parentElement.insertBefore(workspace, gridContainer);
-        workspace.appendChild(sidebar);
-        workspace.appendChild(mainCol);
-        mainCol.appendChild(gridContainer);
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && modal.style.display === 'flex') {
+                    window.closeVisibilityControlModal();
+                }
+            });
+        }
 
         renderVisibilitySidebarState();
     }
@@ -677,6 +718,12 @@
 
         const colorSel = document.getElementById('adminColorFilter');
         if (colorSel) colorSel.value = window.adminVisibilityFilters.selectedColor || 'all';
+
+        const pill = document.getElementById('visTriggerStatusPill');
+        if (pill) {
+            const pLbl = cfg.productsMode === 'available' ? 'المتوفر 🟢' : (cfg.productsMode === 'unavailable' ? 'النافذ 🔴' : 'الكل');
+            pill.textContent = pLbl;
+        }
     }
 
     function refreshDynamicFilterDropdowns(productsList) {
@@ -1246,7 +1293,7 @@
     // ربط التهيئة عند تحميل DOM
     loadLocalVisibilityConfig();
     document.addEventListener('DOMContentLoaded', () => {
-        injectSidebarLayoutAndStyles();
+        injectVisibilityModalAndTrigger();
         injectVariantStockMatrixIntoProductModal();
         listenToStoreVisibilitySettings();
         // إعادة تحديث المصفوفة عند تعديل المقاسات أو الألوان المخصصة في المودال
