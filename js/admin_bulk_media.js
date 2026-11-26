@@ -356,6 +356,82 @@
         });
     }
 
+    /**
+     * 🧹 تنظيف بقايا الألفا الشفافة وقص الهوامش الفارغة حول المنتج وتوسيطه بالحجم الكامل
+     */
+    function cleanAndCropTransparentBounds(img) {
+        const w = img.width;
+        const h = img.height;
+        const tmp = document.createElement('canvas');
+        tmp.width = w;
+        tmp.height = h;
+        const tctx = tmp.getContext('2d');
+        tctx.drawImage(img, 0, 0);
+
+        const imgData = tctx.getImageData(0, 0, w, h);
+        const d = imgData.data;
+
+        // 1. إزالة الهالات الشفافة المسببة للبقع الرمادية/الزرقاء على الخلفية البيضاء
+        let minX = w, minY = h, maxX = -1, maxY = -1;
+        let solidCount = 0;
+        for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+                const i = (y * w + x) * 4;
+                const a = d[i + 3];
+                if (a < 135) {
+                    d[i + 3] = 0;
+                } else {
+                    if (a < 220) {
+                        d[i + 3] = Math.min(255, Math.round(((a - 135) / 85) * 255));
+                    }
+                    solidCount++;
+                }
+            }
+        }
+
+        // 2. إيجاد حدود الكتلة الحقيقية مع تجاهل النقاط الشاردة الصغيرة على الأطراف (row/col density >= 2px)
+        const rowHits = new Int32Array(h);
+        const colHits = new Int32Array(w);
+        for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+                if (d[(y * w + x) * 4 + 3] > 160) {
+                    rowHits[y]++;
+                    colHits[x]++;
+                }
+            }
+        }
+        const minDense = Math.max(2, Math.round(Math.min(w, h) * 0.01));
+        for (let y = 0; y < h; y++) {
+            if (rowHits[y] >= minDense) {
+                if (y < minY) minY = y;
+                if (y > maxY) maxY = y;
+            }
+        }
+        for (let x = 0; x < w; x++) {
+            if (colHits[x] >= minDense) {
+                if (x < minX) minX = x;
+                if (x > maxX) maxX = x;
+            }
+        }
+
+        tctx.putImageData(imgData, 0, 0);
+
+        if (solidCount < 100 || maxX <= minX || maxY <= minY) {
+            return { canvas: tmp, sx: 0, sy: 0, sw: w, sh: h };
+        }
+
+        // هامش صغير 2% حول حدود المنتج المقصوص
+        const bw = maxX - minX + 1;
+        const bh = maxY - minY + 1;
+        const padX = Math.round(bw * 0.02);
+        const padY = Math.round(bh * 0.02);
+        const sx = Math.max(0, minX - padX);
+        const sy = Math.max(0, minY - padY);
+        const sw = Math.min(w - sx, bw + padX * 2);
+        const sh = Math.min(h - sy, bh + padY * 2);
+        return { canvas: tmp, sx, sy, sw, sh };
+    }
+
     async function processStudioImage(sourceInput, opts = {}) {
         const size = opts.size || 640;
         const quality = opts.quality || 0.78;
@@ -371,6 +447,7 @@
             ? sourceInput
             : await readBlobAsDataUrl(sourceInput);
 
+        let bgRemoved = false;
         if (removeBg) {
             try {
                 const lib = await loadBgRemovalLib(onStatus);
@@ -379,11 +456,11 @@
                     const bgInput = (typeof workingSrc === 'string' && workingSrc.startsWith('data:'))
                         ? dataUrlToBlob(workingSrc)
                         : sourceInput;
-                    if (onStatus) onStatus('✨ جاري تفريغ الخلفية بالـ AI (تحميل النموذج أول مرة قد يأخذ ~30 ثانية)...');
+                    if (onStatus) onStatus('✨ جاري تفريغ الخلفية بالـ AI...');
                     const transparentBlob = await withTimeout(
                         removeFn(bgInput, {
                             model: 'small',
-                            output: { format: 'image/png', quality: 0.9 },
+                            output: { format: 'image/png', quality: 0.92 },
                             progress: (key, current, total) => {
                                 if (onStatus && total > 0) {
                                     const pct = Math.min(100, Math.round((current / total) * 100));
@@ -392,9 +469,10 @@
                             }
                         }),
                         60000,
-                        'انتهت مهلة تفريغ الـ AI، تم استخدام الصورة الأصلية بسرعة'
+                        'انتهت مهلة تفريغ الـ AI'
                     );
                     workingSrc = await readBlobAsDataUrl(transparentBlob);
+                    bgRemoved = true;
                 }
             } catch (e) {
                 bgRemovalLibPromise = null;
@@ -406,13 +484,24 @@
         const prodImg = await loadHtmlImage(workingSrc);
         const canvas = document.createElement('canvas');
 
+        let drawSource = prodImg;
+        let sx = 0, sy = 0, sw = prodImg.width, sh = prodImg.height;
+        if (bgRemoved) {
+            const cleaned = cleanAndCropTransparentBounds(prodImg);
+            drawSource = cleaned.canvas;
+            sx = cleaned.sx;
+            sy = cleaned.sy;
+            sw = cleaned.sw;
+            sh = cleaned.sh;
+        }
+
         if (squareWhiteBg) {
             canvas.width = size;
             canvas.height = size;
         } else {
-            const scale = prodImg.width > size ? (size / prodImg.width) : 1;
-            canvas.width = Math.max(1, Math.round(prodImg.width * scale));
-            canvas.height = Math.max(1, Math.round(prodImg.height * scale));
+            const scale = sw > size ? (size / sw) : 1;
+            canvas.width = Math.max(1, Math.round(sw * scale));
+            canvas.height = Math.max(1, Math.round(sh * scale));
         }
 
         const ctx = canvas.getContext('2d');
@@ -422,16 +511,18 @@
         ctx.imageSmoothingQuality = 'high';
 
         if (squareWhiteBg) {
-            const padRatio = 0.06;
+            const padRatio = 0.08;
             const maxDim = size * (1 - padRatio * 2);
-            const scale = Math.min(maxDim / prodImg.width, maxDim / prodImg.height);
-            const drawW = prodImg.width * scale;
-            const drawH = prodImg.height * scale;
+            const scale = Math.min(maxDim / sw, maxDim / sh);
+            const drawW = sw * scale;
+            const drawH = sh * scale;
             const x = (canvas.width - drawW) / 2;
             const y = (canvas.height - drawH) / 2;
-            ctx.drawImage(prodImg, x, y, drawW, drawH);
+            ctx.filter = bgRemoved ? 'contrast(1.06) saturate(1.06) brightness(1.02)' : 'none';
+            ctx.drawImage(drawSource, sx, sy, sw, sh, x, y, drawW, drawH);
+            ctx.filter = 'none';
         } else {
-            ctx.drawImage(prodImg, 0, 0, canvas.width, canvas.height);
+            ctx.drawImage(drawSource, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
         }
 
         if (logoDataUrl) {
@@ -918,7 +1009,7 @@
                 <div style="background:#ffffff;border-radius:22px;width:96vw;max-width:1160px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 25px 60px rgba(0,0,0,0.45);">
                     <div style="padding:14px 20px;background:linear-gradient(135deg,#0f172a,#047857);color:#fff;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
                         <div>
-                            <div style="font-size:1.12rem;font-weight:900;">⚡ استوديو الصور الجماعي + فهرس بحث فوري (v5.4.6)</div>
+                            <div style="font-size:1.12rem;font-weight:900;">⚡ استوديو الصور الجماعي + فهرس بحث فوري (v5.4.7)</div>
                             <div style="font-size:0.8rem;opacity:0.9;">ابحث برقم/اسم المنتج (مثلاً <code>2</code> يجلب <code>2</code> فقط فوراً) أو اسحب دفعة صور من جهازك!</div>
                         </div>
                         <button type="button" onclick="document.getElementById('bayanBulkMediaStudioModal').style.display='none'" style="background:rgba(255,255,255,0.2);border:none;color:#fff;width:36px;height:36px;border-radius:10px;font-size:18px;font-weight:900;cursor:pointer;">✕</button>
@@ -1051,6 +1142,7 @@
     root.openBulkMediaStudioModal = openBulkMediaStudioModal;
     root.BayanBulkMedia = {
         normalizeText,
+        cleanAndCropTransparentBounds,
         searchIndexedProducts,
         getOrBuildProductIndex,
         parseFilenameInfo,
