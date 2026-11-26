@@ -52,7 +52,16 @@
       facebookUrl: '',
       instagramUrl: '',
       tiktokUrl: '',
-      whatsappChannelUrl: ''
+      whatsappChannelUrl: '',
+      showStockCountToCustomers: true
+    },
+    visibility: {
+      productsMode: 'all',
+      sizesMode: 'all',
+      colorsMode: 'all',
+      showStockCounts: true,
+      showCardVariants: true,
+      catalogVersion: 0
     },
     shippingRates: [...DEFAULT_SHIPPING_RATES],
     products: [],
@@ -329,6 +338,7 @@
       active: data.active !== false,
       isFrozen: data.isFrozen === true,
       featured: Boolean(data.featured),
+      isNew: Boolean(data.isNew),
       enableOffers: data.enableOffers !== false,
       dailySalesLimit: Number(data.dailySalesLimit || 0),
       dailySoldCount: Number(data.dailySoldCount || 0),
@@ -567,42 +577,44 @@
           }
           if (d.showStockCountToCustomers !== undefined) {
             state.settings.showStockCountToCustomers = d.showStockCountToCustomers !== false;
+            renderStorefront();
+            if (state.currentProduct && !document.getElementById('product-detail-modal').classList.contains('hidden')) {
+              renderPdVariants();
+              updatePdStockPill();
+            }
           }
         }
       },
       (err) => console.warn('Shipping listener warning:', err)
     );
 
-    // 2.5) Custom Categories from Admin Panel
-    db.collection('settings').doc('categories').onSnapshot(
-      (doc) => {
-        if (doc.exists && Array.isArray(doc.data().list)) {
-          state.customCategories = doc.data().list.map(c => String(c || '').trim()).filter(Boolean);
-          renderCategories();
-        }
-      },
-      () => { }
-    );
-
-    // 3) Products — كاش محلي ذكي لمدة 5 دقائق لتوفير 90% من قراءات Firebase Firestore
-    const CACHE_KEY = `bayan_store_prods_v2_${state.shopId}`;
-    const CACHE_TTL_MS = 5 * 60 * 1000;
-    let servedFromFreshCache = false;
+    // 2.2) Visibility & Live Availability Control from Admin Panel (يسمّع فوراً في المتجر)
+    const VIS_CACHE_KEY = `bayan_store_visibility_${state.shopId}`;
     try {
-      const rawCache = localStorage.getItem(CACHE_KEY);
-      if (rawCache) {
-        const parsed = JSON.parse(rawCache);
-        if (parsed && Array.isArray(parsed.items) && (Date.now() - Number(parsed.ts || 0)) < CACHE_TTL_MS) {
-          state.products = parsed.items;
-          state.productsLoaded = true;
-          servedFromFreshCache = true;
-          renderStorefront();
+      const rawVis = localStorage.getItem(VIS_CACHE_KEY);
+      if (rawVis) {
+        const pv = JSON.parse(rawVis);
+        if (pv && typeof pv === 'object') {
+          state.visibility = {
+            productsMode: ['all', 'available', 'unavailable'].includes(pv.productsMode) ? pv.productsMode : 'all',
+            sizesMode: ['all', 'available', 'unavailable'].includes(pv.sizesMode) ? pv.sizesMode : 'all',
+            colorsMode: ['all', 'available', 'unavailable'].includes(pv.colorsMode) ? pv.colorsMode : 'all',
+            showStockCounts: pv.showStockCounts !== false,
+            showCardVariants: pv.showCardVariants !== false,
+            catalogVersion: Number(pv.catalogVersion || 0)
+          };
+          state.settings.showStockCountToCustomers = state.visibility.showStockCounts !== false;
         }
       }
     } catch (_) { }
 
-    if (!servedFromFreshCache) {
-      db.collection('products').get().then((snap) => {
+    const CACHE_KEY = `bayan_store_prods_v2_${state.shopId}`;
+    const CACHE_TTL_MS = 5 * 60 * 1000;
+    let lastLoadedCacheTs = 0;
+
+    async function fetchLiveProductsFromFirestore() {
+      try {
+        const snap = await db.collection('products').get();
         const list = [];
         snap.forEach((doc) => {
           const prod = normalizeProduct(doc.id, doc.data() || {});
@@ -612,15 +624,94 @@
         });
         state.products = list;
         state.productsLoaded = true;
+        lastLoadedCacheTs = Date.now();
         try {
-          localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), items: list }));
+          localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: lastLoadedCacheTs, items: list }));
         } catch (_) { }
         renderStorefront();
-      }).catch((err) => {
+        if (state.currentProduct && !document.getElementById('product-detail-modal').classList.contains('hidden')) {
+          const freshProd = state.products.find(p => p.id === state.currentProduct.id);
+          if (freshProd) {
+            state.currentProduct = freshProd;
+            ensureValidPdSelection(freshProd);
+            renderPdVariants();
+            updatePdStockPill();
+            renderPdOfferTiers();
+            recalcQuickOrderSummary();
+          }
+        }
+      } catch (err) {
         console.warn('Products fetch warning:', err);
         state.productsLoaded = true;
         renderStorefront();
-      });
+      }
+    }
+
+    db.collection('settings').doc('visibility').onSnapshot(
+      (doc) => {
+        if (!doc.exists) return;
+        const d = doc.data() || {};
+        const nextVis = {
+          productsMode: ['all', 'available', 'unavailable'].includes(d.productsMode) ? d.productsMode : 'all',
+          sizesMode: ['all', 'available', 'unavailable'].includes(d.sizesMode) ? d.sizesMode : 'all',
+          colorsMode: ['all', 'available', 'unavailable'].includes(d.colorsMode) ? d.colorsMode : 'all',
+          showStockCounts: d.showStockCounts !== false,
+          showCardVariants: d.showCardVariants !== false,
+          catalogVersion: Number(d.catalogVersion || 0)
+        };
+        state.visibility = nextVis;
+        state.settings.showStockCountToCustomers = nextVis.showStockCounts !== false;
+        try { localStorage.setItem(VIS_CACHE_KEY, JSON.stringify(nextVis)); } catch (_) { }
+
+        if (nextVis.catalogVersion > 0 && lastLoadedCacheTs > 0 && nextVis.catalogVersion > lastLoadedCacheTs) {
+          fetchLiveProductsFromFirestore();
+          return;
+        }
+        renderStorefront();
+        if (state.currentProduct && !document.getElementById('product-detail-modal').classList.contains('hidden')) {
+          ensureValidPdSelection(state.currentProduct);
+          renderPdVariants();
+          updatePdStockPill();
+          renderPdOfferTiers();
+          recalcQuickOrderSummary();
+        }
+      },
+      () => { }
+    );
+
+    // 2.5) Custom Categories from Admin Panel
+    db.collection('settings').doc('categories').onSnapshot(
+      (doc) => {
+        if (doc.exists && Array.isArray(doc.data().list)) {
+          state.customCategories = doc.data().list.map(c => String(c || '').trim()).filter(Boolean);
+          renderCategoryPills();
+        }
+      },
+      () => { }
+    );
+
+    // 3) Products — كاش محلي ذكي لمدة 5 دقائق لتوفير 90% من قراءات Firebase Firestore
+    let servedFromFreshCache = false;
+    try {
+      const rawCache = localStorage.getItem(CACHE_KEY);
+      if (rawCache) {
+        const parsed = JSON.parse(rawCache);
+        if (parsed && Array.isArray(parsed.items)) {
+          lastLoadedCacheTs = Number(parsed.ts || 0);
+          const visVer = Number(state.visibility.catalogVersion || 0);
+          const cacheStaleByAdmin = visVer > 0 && visVer > lastLoadedCacheTs;
+          if (!cacheStaleByAdmin && (Date.now() - lastLoadedCacheTs) < CACHE_TTL_MS) {
+            state.products = parsed.items;
+            state.productsLoaded = true;
+            servedFromFreshCache = true;
+            renderStorefront();
+          }
+        }
+      }
+    } catch (_) { }
+
+    if (!servedFromFreshCache) {
+      fetchLiveProductsFromFirestore();
     }
 
     // 4) Coupons
@@ -662,6 +753,101 @@
   /* =========================================================================
    * 5. STOREFRONT RENDERING (DYNAMIC CATEGORIES, SEARCH, SORT, GRID)
    * ========================================================================= */
+  function getEffectiveTotalStock(prod) {
+    if (!prod) return 0;
+    const vs = prod.variantsStock;
+    let total = Math.max(0, Number(prod.stock ?? 0));
+    if (vs && typeof vs === 'object' && Object.keys(vs).length > 0) {
+      total = Object.values(vs).reduce((sum, v) => sum + Math.max(0, Number(v) || 0), 0);
+    }
+    const dailyLimit = Math.max(0, Number(prod.dailySalesLimit || 0));
+    if (dailyLimit > 0) {
+      const todayISO = new Date().toISOString().slice(0, 10);
+      const soldToday = (prod.dailySoldDate === todayISO) ? Math.max(0, Number(prod.dailySoldCount || 0)) : 0;
+      total = Math.min(total, Math.max(0, dailyLimit - soldToday));
+    }
+    return total;
+  }
+
+  function isProductAvailable(prod) {
+    if (!prod || prod.active === false || prod.isFrozen === true || prod.inStock === false) return false;
+    return getEffectiveTotalStock(prod) > 0;
+  }
+
+  function getColorStockTotal(prod, colorName) {
+    if (!prod || prod.inStock === false || prod.active === false || prod.isFrozen === true) return 0;
+    const vs = prod.variantsStock;
+    if (vs && typeof vs === 'object' && Object.keys(vs).length > 0) {
+      const target = String(colorName || '').trim();
+      const matching = Object.keys(vs).filter(k => (String(k).split('|')[1] || '').trim() === target);
+      if (!matching.length) return 0;
+      return matching.reduce((s, k) => s + Math.max(0, Number(vs[k]) || 0), 0);
+    }
+    return getEffectiveTotalStock(prod);
+  }
+
+  function getSizeStockTotal(prod, sizeName, selectedColor = '') {
+    if (!prod || prod.inStock === false || prod.active === false || prod.isFrozen === true) return 0;
+    const vs = prod.variantsStock;
+    if (vs && typeof vs === 'object' && Object.keys(vs).length > 0) {
+      const targetSz = String(sizeName || '').trim();
+      const targetCol = String(selectedColor || '').trim();
+      const hasColors = Array.isArray(prod.colors) && prod.colors.length > 0;
+      const matching = Object.keys(vs).filter(k => {
+        const parts = String(k).split('|');
+        const kSz = (parts[0] || '').trim();
+        const kCol = (parts[1] || '').trim();
+        if (kSz !== targetSz) return false;
+        if (targetCol && hasColors) return kCol === targetCol;
+        return true;
+      });
+      if (!matching.length) return 0;
+      return matching.reduce((s, k) => s + Math.max(0, Number(vs[k]) || 0), 0);
+    }
+    return getEffectiveTotalStock(prod);
+  }
+
+  function getVisibleColorsForProduct(prod) {
+    const colors = Array.isArray(prod?.colors) ? prod.colors : [];
+    const mode = (state.visibility && state.visibility.colorsMode) || 'all';
+    if (mode === 'available') return colors.filter(c => getColorStockTotal(prod, c.name) > 0);
+    if (mode === 'unavailable') return colors.filter(c => getColorStockTotal(prod, c.name) <= 0);
+    return colors;
+  }
+
+  function getVisibleSizesForProduct(prod, selectedColor = '') {
+    const sizes = Array.isArray(prod?.sizes) ? prod.sizes : [];
+    const mode = (state.visibility && state.visibility.sizesMode) || 'all';
+    if (mode === 'available') return sizes.filter(sz => getSizeStockTotal(prod, sz, selectedColor) > 0);
+    if (mode === 'unavailable') return sizes.filter(sz => getSizeStockTotal(prod, sz, selectedColor) <= 0);
+    return sizes;
+  }
+
+  function getStoreVisibleProducts() {
+    const mode = (state.visibility && state.visibility.productsMode) || 'all';
+    if (mode === 'available') return state.products.filter(p => isProductAvailable(p));
+    if (mode === 'unavailable') return state.products.filter(p => !isProductAvailable(p));
+    return state.products;
+  }
+
+  function ensureValidPdSelection(prod) {
+    if (!prod) return;
+    const visColors = getVisibleColorsForProduct(prod);
+    if (!visColors.some(c => c.name === state.pdSelectedColor)) {
+      const availColor = visColors.find(c => getColorStockTotal(prod, c.name) > 0);
+      state.pdSelectedColor = (availColor || visColors[0])?.name || '';
+    }
+    const visSizes = getVisibleSizesForProduct(prod, state.pdSelectedColor);
+    if (!visSizes.some(sz => sz === state.pdSelectedSize) || getSizeStockTotal(prod, state.pdSelectedSize, state.pdSelectedColor) <= 0) {
+      const availSize = visSizes.find(sz => getSizeStockTotal(prod, sz, state.pdSelectedColor) > 0);
+      if (availSize) {
+        state.pdSelectedSize = availSize;
+      } else if (!visSizes.some(sz => sz === state.pdSelectedSize)) {
+        state.pdSelectedSize = visSizes[0] || '';
+      }
+    }
+  }
+
   function renderStorefront() {
     renderCategoryPills();
     renderProductsGrid();
@@ -671,8 +857,9 @@
   function renderCategoryPills() {
     const wrap = document.getElementById('category-pills');
     if (!wrap) return;
-    const uniqueCats = Array.from(new Set(state.products.map(p => (p.category || '').trim()).filter(Boolean)));
-    const hasNewProducts = state.products.some(p => Boolean(p.isNew));
+    const baseList = getStoreVisibleProducts();
+    const uniqueCats = Array.from(new Set(baseList.map(p => (p.category || '').trim()).filter(Boolean)));
+    const hasNewProducts = baseList.some(p => Boolean(p.isNew));
     const categories = hasNewProducts ? ['الكل', '🔥 وصل حديثاً', ...uniqueCats] : ['الكل', ...uniqueCats];
 
     if (!categories.includes(state.activeCategory)) {
@@ -879,7 +1066,7 @@
 
   function buildSmartCategoryTree() {
     const tree = new Map();
-    for (const p of state.products) {
+    for (const p of getStoreVisibleProducts()) {
       const c = classifyProductSmart(p);
       if (!tree.has(c.main)) {
         tree.set(c.main, { name: c.main, icon: c.icon, count: 0, subs: new Map() });
@@ -957,7 +1144,7 @@
         <div class="p-4 space-y-2.5 overflow-y-auto flex-1">
           <button type="button" onclick="selectSmartCategory('الكل', 'الكل')" class="w-full py-2.5 px-4 rounded-xl bg-slate-900 text-white text-xs font-black flex items-center justify-between cursor-pointer">
             <span>🛍️ عرض جميع المنتجات</span>
-            <span>${state.products.length} منتج</span>
+            <span>${getStoreVisibleProducts().length} منتج</span>
           </button>
           ${cardsHtml}
         </div>
@@ -1008,7 +1195,7 @@
 
     if (loader) loader.classList.add('hidden');
 
-    let list = [...state.products];
+    let list = [...getStoreVisibleProducts()];
 
     if (state.activeCategory === '🔥 وصل حديثاً') {
       list = list.filter(p => Boolean(p.isNew));
@@ -1046,7 +1233,7 @@
             else if (normCat.includes(tok)) score += 40;
             else score += 10;
           }
-          if (Number(p.stock || 0) > 0 && p.inStock !== false) score += 25;
+          if (isProductAvailable(p)) score += 25;
           searchScores.set(p.id, score);
           return true;
         });
@@ -1083,8 +1270,9 @@
       grid.classList.add('hidden');
       if (loadMoreWrap) loadMoreWrap.innerHTML = '';
       empty.classList.remove('hidden');
-      const isFiltered = state.products.length > 0 && (state.activeCategory !== 'الكل' || state.searchQuery);
-      document.getElementById('empty-products-title').textContent = isFiltered ? 'لا توجد منتجات مطابقة للبحث' : 'لا توجد منتجات منشورة حالياً';
+      const visibleBaseCount = getStoreVisibleProducts().length;
+      const isFiltered = visibleBaseCount > 0 && (state.activeCategory !== 'الكل' || state.searchQuery);
+      document.getElementById('empty-products-title').textContent = isFiltered ? 'لا توجد منتجات مطابقة للبحث' : 'لا توجد منتجات متوفرة للعرض حالياً';
       document.getElementById('empty-products-subtitle').textContent = isFiltered ? 'جرب تغيير الفلتر أو البحث بكلمة أخرى' : 'تابعنا قريباً لتصفح أحدث الموديلات والعروض';
       document.getElementById('empty-reset-btn').classList.toggle('hidden', !isFiltered);
       return;
@@ -1094,6 +1282,8 @@
     grid.classList.remove('hidden');
 
     const wishSet = new Set(state.wishlist.map(w => w.id));
+    const showCardVars = !state.visibility || state.visibility.showCardVariants !== false;
+    const showStockNums = state.settings.showStockCountToCustomers !== false && (!state.visibility || state.visibility.showStockCounts !== false);
 
     grid.innerHTML = visibleList.map(prod => {
       const discount = prod.oldPrice && prod.oldPrice > prod.price
@@ -1103,7 +1293,34 @@
       const img2 = (prod.images && prod.images[1]) || img1;
       const rating = getProductAvgRating(prod);
       const isWished = wishSet.has(prod.id);
-      const outOfStock = (prod.stock || 0) <= 0 || prod.inStock === false;
+      const outOfStock = !isProductAvailable(prod);
+      const effTotal = getEffectiveTotalStock(prod);
+
+      let cardVariantsHtml = '';
+      if (showCardVars) {
+        const visSizes = getVisibleSizesForProduct(prod, '');
+        const visColors = getVisibleColorsForProduct(prod);
+        const sizePills = visSizes.slice(0, 5).map(sz => {
+          const szAvail = getSizeStockTotal(prod, sz, '') > 0;
+          return `<span class="px-1.5 py-0.5 rounded text-[10px] font-extrabold border ${szAvail ? 'bg-slate-50 border-slate-200 text-slate-700' : 'bg-rose-50/70 border-rose-200 text-rose-400 line-through'}">${escapeHTML(sz)}</span>`;
+        }).join('');
+        const extraSz = visSizes.length > 5 ? `<span class="text-[10px] font-bold text-slate-400">+${visSizes.length - 5}</span>` : '';
+
+        const colorDots = visColors.slice(0, 6).map(c => {
+          const colHex = resolveArabicColorHex(c.name, c.hex) || '#64748b';
+          const colAvail = getColorStockTotal(prod, c.name) > 0;
+          return `<span title="${escapeHTML(c.name)}${colAvail ? '' : ' (نفذ)'}" class="w-3.5 h-3.5 rounded-full border ${colAvail ? 'border-slate-300' : 'border-rose-300 opacity-35'} inline-block shrink-0" style="background:${escapeHTML(colHex)}"></span>`;
+        }).join('');
+        const extraCol = visColors.length > 6 ? `<span class="text-[10px] font-bold text-slate-400">+${visColors.length - 6}</span>` : '';
+
+        if (visSizes.length || visColors.length) {
+          cardVariantsHtml = `
+            <div class="flex flex-wrap items-center justify-between gap-1.5 mb-2 min-h-[20px]">
+              ${visSizes.length ? `<div class="flex flex-wrap items-center gap-1">${sizePills}${extraSz}</div>` : ''}
+              ${visColors.length ? `<div class="flex items-center gap-1">${colorDots}${extraCol}</div>` : ''}
+            </div>`;
+        }
+      }
 
       return `
         <article class="product-card group bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 overflow-hidden shadow-xs hover:shadow-xl hover:border-slate-300 transition-all duration-300 flex flex-col">
@@ -1129,13 +1346,18 @@
               ${rating.count > 0 ? `<span class="flex items-center gap-0.5 text-amber-500 font-bold shrink-0"><i class="fa-solid fa-star text-[10px]"></i> ${rating.avg}</span>` : ''}
             </div>
 
-            <h3 onclick="openProductDetail('${escapeHTML(prod.id)}')" class="text-xs sm:text-sm font-extrabold text-slate-900 line-clamp-2 leading-snug cursor-pointer hover:text-brand transition mb-2 min-h-[36px] sm:min-h-[40px]">
+            <h3 onclick="openProductDetail('${escapeHTML(prod.id)}')" class="text-xs sm:text-sm font-extrabold text-slate-900 line-clamp-2 leading-snug cursor-pointer hover:text-brand transition mb-1.5 min-h-[36px] sm:min-h-[40px]">
               ${escapeHTML(prod.name)}
             </h3>
 
-            <div class="flex items-baseline gap-2 mt-auto mb-3">
-              <span class="text-sm sm:text-lg font-black text-brand">${formatEGP(prod.price)}</span>
-              ${prod.oldPrice > prod.price ? `<span class="text-[11px] sm:text-xs text-slate-400 line-through font-bold">${formatEGP(prod.oldPrice)}</span>` : ''}
+            ${cardVariantsHtml}
+
+            <div class="flex items-baseline justify-between gap-2 mt-auto mb-3">
+              <div class="flex items-baseline gap-2">
+                <span class="text-sm sm:text-lg font-black text-brand">${formatEGP(prod.price)}</span>
+                ${prod.oldPrice > prod.price ? `<span class="text-[11px] sm:text-xs text-slate-400 line-through font-bold">${formatEGP(prod.oldPrice)}</span>` : ''}
+              </div>
+              ${!outOfStock && showStockNums ? `<span class="text-[10px] font-extrabold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">متاح ${effTotal}</span>` : ''}
             </div>
 
             <div class="flex items-center gap-1.5">
@@ -1199,8 +1421,9 @@
     if (!prod) return;
 
     state.currentProduct = prod;
-    state.pdSelectedColor = (prod.colors && prod.colors[0]?.name) || '';
-    state.pdSelectedSize = (prod.sizes && prod.sizes[0]) || '';
+    state.pdSelectedColor = '';
+    state.pdSelectedSize = '';
+    ensureValidPdSelection(prod);
     state.pdSelectedTier = 1;
     state.pdActiveTab = 'desc';
     state.pdAppliedCoupon = null;
@@ -1359,55 +1582,66 @@
     const prod = state.currentProduct;
     if (!prod) return;
 
+    const showStockNums = state.settings.showStockCountToCustomers !== false && (!state.visibility || state.visibility.showStockCounts !== false);
+    const colorsMode = (state.visibility && state.visibility.colorsMode) || 'all';
+    const sizesMode = (state.visibility && state.visibility.sizesMode) || 'all';
+
     const colorsWrap = document.getElementById('pd-colors-wrap');
-    const colors = prod.colors || [];
-    if (!colors.length) {
+    const allColors = prod.colors || [];
+    const colors = getVisibleColorsForProduct(prod);
+    if (!allColors.length) {
       colorsWrap.classList.add('hidden');
+    } else if (!colors.length) {
+      colorsWrap.classList.remove('hidden');
+      document.getElementById('pd-selected-color-name').textContent = 'غير متاح';
+      document.getElementById('pd-colors-list').innerHTML = `<span class="text-xs font-bold text-rose-600 bg-rose-50 px-3 py-1.5 rounded-xl border border-rose-200">${colorsMode === 'available' ? 'لا توجد ألوان متوفرة حالياً' : 'جميع الألوان متوفرة'}</span>`;
     } else {
       colorsWrap.classList.remove('hidden');
       document.getElementById('pd-selected-color-name').textContent = state.pdSelectedColor;
       document.getElementById('pd-colors-list').innerHTML = colors.map(c => {
         const active = state.pdSelectedColor === c.name;
         const swatchHex = resolveArabicColorHex(c.name, c.hex);
+        const colStock = getColorStockTotal(prod, c.name);
+        const outOfCol = colStock <= 0;
         const dotHtml = swatchHex
           ? `<span class="w-4 h-4 rounded-full border ${active ? 'border-white/90' : 'border-slate-300'} shadow-inner shrink-0" style="background:${escapeHTML(swatchHex)}"></span>`
           : '';
+        const qtyBadge = (showStockNums && prod.variantsStock && Object.keys(prod.variantsStock).length > 0)
+          ? `<span class="text-[10px] font-black px-1.5 py-0.5 rounded ${active ? 'bg-white/20 text-white' : (outOfCol ? 'bg-rose-100 text-rose-600' : 'bg-slate-100 text-slate-600')}">${colStock}</span>`
+          : '';
         return `
-          <button type="button" onclick="selectPdColor('${escapeHTML(c.name)}')" class="flex items-center gap-2 px-3 py-1.5 rounded-xl border-2 text-xs font-bold transition ${active ? 'border-emerald-600 bg-emerald-600 text-white shadow-sm' : 'border-slate-200 bg-white text-slate-700 hover:border-emerald-400 hover:bg-emerald-50'
+          <button type="button" onclick="selectPdColor('${escapeHTML(c.name)}')" class="flex items-center gap-2 px-3 py-1.5 rounded-xl border-2 text-xs font-bold transition ${outOfCol && colorsMode === 'all' ? 'opacity-55 border-slate-200 bg-slate-50 text-slate-400' : (active ? 'border-emerald-600 bg-emerald-600 text-white shadow-sm' : 'border-slate-200 bg-white text-slate-700 hover:border-emerald-400 hover:bg-emerald-50')
           }">
             ${dotHtml}
-            <span>${escapeHTML(c.name)}</span>
+            <span class="${outOfCol && colorsMode === 'all' ? 'line-through' : ''}">${escapeHTML(c.name)}</span>
+            ${qtyBadge}
           </button>`;
       }).join('');
     }
 
     const sizesWrap = document.getElementById('pd-sizes-wrap');
-    const sizes = prod.sizes || [];
-    const vStock = prod.variantsStock && typeof prod.variantsStock === 'object' ? prod.variantsStock : null;
-    if (!sizes.length) {
+    const allSizes = prod.sizes || [];
+    const sizes = getVisibleSizesForProduct(prod, state.pdSelectedColor);
+    if (!allSizes.length) {
       sizesWrap.classList.add('hidden');
+    } else if (!sizes.length) {
+      sizesWrap.classList.remove('hidden');
+      document.getElementById('pd-selected-size-name').textContent = 'غير متاح';
+      document.getElementById('pd-sizes-list').innerHTML = `<span class="text-xs font-bold text-rose-600 bg-rose-50 px-3 py-1.5 rounded-xl border border-rose-200">${sizesMode === 'available' ? 'لا توجد مقاسات متوفرة لهذا اللون' : 'جميع المقاسات متوفرة'}</span>`;
     } else {
       sizesWrap.classList.remove('hidden');
       document.getElementById('pd-selected-size-name').textContent = state.pdSelectedSize;
       document.getElementById('pd-sizes-list').innerHTML = sizes.map(sz => {
         const active = state.pdSelectedSize === sz;
-        let outOfSz = false;
-        if (vStock && Object.keys(vStock).length > 0) {
-          const selectedColor = state.pdSelectedColor || '';
-          const keys = Object.keys(vStock).filter(k => {
-            const parts = k.split('|');
-            const kSize = (parts[0] || '').trim();
-            const kColor = (parts[1] || '').trim();
-            if (kSize !== sz) return false;
-            if (selectedColor && colors.length > 0) return kColor === selectedColor;
-            return true;
-          });
-          if (!keys.length || keys.every(k => Number(vStock[k] || 0) <= 0)) outOfSz = true;
-        }
+        const szStock = getSizeStockTotal(prod, sz, state.pdSelectedColor);
+        const outOfSz = szStock <= 0;
+        const qtyTag = (showStockNums && prod.variantsStock && Object.keys(prod.variantsStock).length > 0)
+          ? `<span class="mr-1 text-[10px] font-black ${outOfSz ? 'text-rose-400' : 'text-emerald-700'}">(${szStock})</span>`
+          : '';
         return `
           <button type="button" ${outOfSz ? 'disabled' : `onclick="selectPdSize('${escapeHTML(sz)}')"`} class="min-w-[46px] px-3 py-2 rounded-xl border-2 text-xs sm:text-sm font-extrabold transition ${outOfSz ? 'border-slate-100 bg-slate-100 text-slate-400 line-through cursor-not-allowed' : (active ? 'border-brand bg-rose-50 text-brand' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-400')
           }">
-            ${escapeHTML(sz)}
+            ${escapeHTML(sz)}${qtyTag}
           </button>`;
       }).join('');
     }
@@ -1417,7 +1651,7 @@
     const prod = state.currentProduct;
     const stockPill = document.getElementById('pd-stock-pill');
     if (!prod || !stockPill) return;
-    const showStockNum = state.settings.showStockCountToCustomers !== false;
+    const showStockNum = state.settings.showStockCountToCustomers !== false && (!state.visibility || state.visibility.showStockCounts !== false);
     const effAvailNow = getAvailableStockForSelection(prod, state.pdSelectedColor, state.pdSelectedSize);
     if (effAvailNow > 5) {
       stockPill.className = 'mr-auto px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-50 text-emerald-700';
@@ -1445,6 +1679,14 @@
 
   function selectPdColor(name) {
     state.pdSelectedColor = name;
+    if (state.currentProduct) {
+      const visSizes = getVisibleSizesForProduct(state.currentProduct, name);
+      if (!visSizes.includes(state.pdSelectedSize) || getSizeStockTotal(state.currentProduct, state.pdSelectedSize, name) <= 0) {
+        const firstAvail = visSizes.find(sz => getSizeStockTotal(state.currentProduct, sz, name) > 0);
+        if (firstAvail) state.pdSelectedSize = firstAvail;
+        else if (visSizes.length) state.pdSelectedSize = visSizes[0];
+      }
+    }
     renderPdVariants();
     updatePdStockPill();
     renderPdOfferTiers();
@@ -1460,7 +1702,7 @@
   }
 
   function getAvailableStockForSelection(prod, color, size) {
-    if (!prod) return 0;
+    if (!prod || prod.inStock === false || prod.active === false || prod.isFrozen === true) return 0;
     let avail = Math.max(0, Number(prod.stock ?? 0));
     const vs = prod.variantsStock;
     if (vs && typeof vs === 'object' && Object.keys(vs).length > 0) {
@@ -1885,6 +2127,9 @@
     try {
       localStorage.setItem(`bayan_store_prods_v2_${state.shopId}`, JSON.stringify({ ts: Date.now(), items: state.products }));
     } catch (_) { }
+    if (appliedUpdates.length > 0) {
+      renderStorefront();
+    }
     try {
       if (typeof BayanIDB !== 'undefined' && typeof BayanIDB.setOrder === 'function') {
         await BayanIDB.setOrder(orderPayload);
@@ -1906,7 +2151,7 @@
     if (state.submittingOrder) return;
     const prod = state.currentProduct;
     if (!prod) return;
-    if (prod.stock <= 0 || prod.inStock === false) {
+    if (!isProductAvailable(prod)) {
       showToast('عذراً، هذا المنتج غير متوفر حالياً بالمخزون', 'error');
       return;
     }
@@ -2153,7 +2398,7 @@
    * ========================================================================= */
   async function quickAddToCart(productId) {
     const prod = state.products.find(p => p.id === productId);
-    if (!prod || prod.stock <= 0 || prod.inStock === false) {
+    if (!prod || !isProductAvailable(prod)) {
       showToast('⚠️ عذراً، هذا المنتج غير متوفر حالياً', 'error');
       return;
     }
@@ -2174,7 +2419,7 @@
     const prod = state.currentProduct;
     if (!prod) return;
     const effAvail = getAvailableStockForSelection(prod, state.pdSelectedColor, state.pdSelectedSize);
-    if (prod.stock <= 0 || prod.inStock === false || effAvail <= 0) {
+    if (!isProductAvailable(prod) || effAvail <= 0) {
       showToast('⚠️ عذراً، هذا المنتج / المقاس غير متوفر حالياً بالمخزون', 'error');
       return;
     }

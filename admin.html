@@ -3456,6 +3456,7 @@
     <script src="js/firebase_config.js"></script>
     <script src="js/admin_categories.js?v=5.3.7"></script>
     <script src="js/admin_media_tools.js?v=5.3.9"></script>
+    <script src="js/admin_visibility.js?v=5.4.0"></script>
 
     <!-- منطق وبرمجة لوحة التاجر -->
     <script>
@@ -3866,8 +3867,11 @@
             if (elNetProfit) elNetProfit.textContent = `${netProfit.toLocaleString('ar-EG')} ج.م`;
 
             // الموديلات النشطة والنواقص
-            const activeProdsCount = adminProductsList.filter(p => p.inStock !== false && p.isFrozen !== true && p.status !== 'frozen').length;
-            const outOfStockCount = adminProductsList.filter(p => p.inStock === false || (p.stockQty !== undefined && p.stockQty <= 0)).length;
+            const getSnapHome = (p) => (window.BayanAdminVisibility && typeof window.BayanAdminVisibility.getProductInventorySnapshot === 'function')
+                ? window.BayanAdminVisibility.getProductInventorySnapshot(p)
+                : { isAvailable: p.inStock !== false && p.isFrozen !== true && p.status !== 'frozen', isFrozen: p.isFrozen === true || p.status === 'frozen' };
+            const activeProdsCount = adminProductsList.filter(p => getSnapHome(p).isAvailable).length;
+            const outOfStockCount = adminProductsList.filter(p => { const s = getSnapHome(p); return !s.isFrozen && !s.isAvailable; }).length;
 
             const elActiveProds = document.getElementById('homeStatActiveProducts');
             if (elActiveProds) elActiveProds.textContent = `${activeProdsCount} موديل`;
@@ -4419,8 +4423,12 @@
 
         // تحديث إحصائيات المنتجات
         function updateProductsStats() {
+            const getSnap = (p) => (window.BayanAdminVisibility && typeof window.BayanAdminVisibility.getProductInventorySnapshot === 'function')
+                ? window.BayanAdminVisibility.getProductInventorySnapshot(p)
+                : { isAvailable: p.inStock !== false && (Number(p.stockQty ?? p.stock ?? 0) > 0), isFrozen: p.isFrozen === true || p.status === 'frozen' };
+
             const total = adminProductsList.length;
-            const inStock = adminProductsList.filter(p => p.inStock !== false).length;
+            const inStock = adminProductsList.filter(p => getSnap(p).isAvailable).length;
             const outOfStock = total - inStock;
             const offers = adminProductsList.filter(p => p.oldPrice && p.oldPrice > p.price).length;
 
@@ -4438,21 +4446,39 @@
             activeProductQuickChip = chip;
             document.querySelectorAll('[data-prod-chip]').forEach(b => b.classList.remove('active'));
             if (btn) btn.classList.add('active');
+            if (window.BayanAdminVisibility && typeof window.BayanAdminVisibility.renderVisibilitySidebarState === 'function') {
+                window.BayanAdminVisibility.renderVisibilitySidebarState();
+            }
             filterAdminProducts();
         }
 
         function resetProductFilters() {
             if (document.getElementById('adminSearchInput')) document.getElementById('adminSearchInput').value = '';
+            if (document.getElementById('adminQuickIndexedSearchInput')) document.getElementById('adminQuickIndexedSearchInput').value = '';
             if (document.getElementById('adminCategoryFilter')) document.getElementById('adminCategoryFilter').value = 'all';
             if (document.getElementById('adminOfferFilter')) document.getElementById('adminOfferFilter').value = 'all';
             if (document.getElementById('adminSizeFilter')) document.getElementById('adminSizeFilter').value = 'all';
+            if (document.getElementById('adminColorFilter')) document.getElementById('adminColorFilter').value = 'all';
+            if (document.getElementById('adminSideVariantsHealth')) document.getElementById('adminSideVariantsHealth').value = 'all';
             if (document.getElementById('adminProductSort')) document.getElementById('adminProductSort').value = 'newest';
+            if (window.adminVisibilityFilters) {
+                window.adminVisibilityFilters.variantsViewMode = 'all';
+                window.adminVisibilityFilters.variantsHealthFilter = 'all';
+                window.adminVisibilityFilters.selectedColor = 'all';
+            }
             activeProductQuickChip = 'all';
             document.querySelectorAll('[data-prod-chip]').forEach(b => b.classList.toggle('active', b.dataset.prodChip === 'all'));
+            if (window.BayanAdminVisibility && typeof window.BayanAdminVisibility.renderVisibilitySidebarState === 'function') {
+                window.BayanAdminVisibility.renderVisibilitySidebarState();
+            }
             filterAdminProducts();
         }
 
         function updateProductChipCounters() {
+            const getSnap = (p) => (window.BayanAdminVisibility && typeof window.BayanAdminVisibility.getProductInventorySnapshot === 'function')
+                ? window.BayanAdminVisibility.getProductInventorySnapshot(p)
+                : { isAvailable: p.inStock !== false, isFrozen: p.isFrozen === true || p.status === 'frozen', totalStock: Number(p.stockQty ?? p.stock ?? 0) };
+
             const elAll = document.getElementById('chipCountProdAll');
             const elInStock = document.getElementById('chipCountProdInStock');
             const elLowStock = document.getElementById('chipCountProdLowStock');
@@ -4462,15 +4488,24 @@
             const elFrozen = document.getElementById('chipCountProdFrozen');
 
             if (elAll) elAll.textContent = adminProductsList.length;
-            if (elInStock) elInStock.textContent = adminProductsList.filter(p => p.isFrozen !== true && p.status !== 'frozen' && p.inStock !== false && (p.stockQty === undefined || p.stockQty > 0)).length;
-            if (elLowStock) elLowStock.textContent = adminProductsList.filter(p => p.isFrozen !== true && p.status !== 'frozen' && p.inStock !== false && p.stockQty !== undefined && p.stockQty > 0 && p.stockQty <= 5).length;
-            if (elOutOfStock) elOutOfStock.textContent = adminProductsList.filter(p => p.isFrozen !== true && p.status !== 'frozen' && (p.inStock === false || (p.stockQty !== undefined && p.stockQty <= 0))).length;
-            if (elOffers) elOffers.textContent = adminProductsList.filter(p => p.isFrozen !== true && p.status !== 'frozen' && p.oldPrice && p.oldPrice > p.price).length;
-            if (elFlash) elFlash.textContent = adminProductsList.filter(p => p.isFrozen !== true && p.status !== 'frozen' && p.flashSale === true).length;
-            if (elFrozen) elFrozen.textContent = adminProductsList.filter(p => p.isFrozen === true || p.status === 'frozen').length;
+            if (elInStock) elInStock.textContent = adminProductsList.filter(p => getSnap(p).isAvailable).length;
+            if (elLowStock) elLowStock.textContent = adminProductsList.filter(p => { const s = getSnap(p); return s.isAvailable && s.totalStock > 0 && s.totalStock <= 5; }).length;
+            if (elOutOfStock) elOutOfStock.textContent = adminProductsList.filter(p => { const s = getSnap(p); return !s.isFrozen && !s.isAvailable; }).length;
+            if (elOffers) elOffers.textContent = adminProductsList.filter(p => !getSnap(p).isFrozen && p.oldPrice && p.oldPrice > p.price).length;
+            if (elFlash) elFlash.textContent = adminProductsList.filter(p => !getSnap(p).isFrozen && p.flashSale === true).length;
+            if (elFrozen) elFrozen.textContent = adminProductsList.filter(p => getSnap(p).isFrozen).length;
+
+            if (window.BayanAdminVisibility) {
+                if (typeof window.BayanAdminVisibility.refreshDynamicFilterDropdowns === 'function') {
+                    window.BayanAdminVisibility.refreshDynamicFilterDropdowns(adminProductsList);
+                }
+                if (typeof window.BayanAdminVisibility.renderVisibilitySidebarState === 'function') {
+                    window.BayanAdminVisibility.renderVisibilitySidebarState();
+                }
+            }
 
             // فحص وتحديث شريط تنبيه المخزون الحرج (3 قطع أو أقل)
-            const criticalItems = adminProductsList.filter(p => p.inStock !== false && p.stockQty !== undefined && p.stockQty > 0 && p.stockQty <= 3);
+            const criticalItems = adminProductsList.filter(p => { const s = getSnap(p); return s.isAvailable && s.totalStock > 0 && s.totalStock <= 3; });
             const alertBar = document.getElementById('adminLowStockAlertBar');
             const alertText = document.getElementById('adminLowStockAlertText');
             if (alertBar) {
@@ -4543,12 +4578,20 @@
         }
 
         function filterAdminProducts() {
+            const getSnap = (p) => (window.BayanAdminVisibility && typeof window.BayanAdminVisibility.getProductInventorySnapshot === 'function')
+                ? window.BayanAdminVisibility.getProductInventorySnapshot(p)
+                : { totalStock: Number(p.stockQty ?? p.stock ?? 0), isFrozen: p.isFrozen === true || p.status === 'frozen', isAvailable: p.inStock !== false, sizes: [], colors: [], availableSizesCount: 0, unavailableSizesCount: 0, availableColorsCount: 0, unavailableColorsCount: 0 };
+
             const rawQuery = (document.getElementById('adminQuickIndexedSearchInput')?.value || document.getElementById('adminSearchInput')?.value || '').trim();
             const queryTokens = normalizeArabicSearchText(rawQuery).split(/\s+/).filter(Boolean);
             const cat = document.getElementById('adminCategoryFilter')?.value || 'all';
             const offer = document.getElementById('adminOfferFilter')?.value || 'all';
             const size = document.getElementById('adminSizeFilter')?.value || 'all';
             const sortBy = document.getElementById('adminProductSort')?.value || 'newest';
+            const visFilters = window.adminVisibilityFilters || {};
+            const vViewMode = visFilters.variantsViewMode || 'all';
+            const vHealth = visFilters.variantsHealthFilter || 'all';
+            const selColor = visFilters.selectedColor || 'all';
 
             updateProductChipCounters();
 
@@ -4556,22 +4599,29 @@
 
             // 1. فلترة الأقسام
             if (cat !== 'all') {
-                filtered = filtered.filter(p => p.category === cat);
+                filtered = filtered.filter(p => p.category === cat || p.categoryName === cat);
             }
 
-            // 2. فلترة الكبسولات السريعة
+            // 2. فلترة الكبسولات السريعة وحالة التوفر
             if (activeProductQuickChip === 'instock') {
-                filtered = filtered.filter(p => p.inStock !== false && (p.stockQty === undefined || p.stockQty > 0));
+                filtered = filtered.filter(p => getSnap(p).isAvailable);
             } else if (activeProductQuickChip === 'outofstock') {
-                filtered = filtered.filter(p => p.inStock === false || (p.stockQty !== undefined && p.stockQty <= 0));
+                filtered = filtered.filter(p => { const s = getSnap(p); return !s.isFrozen && !s.isAvailable; });
             } else if (activeProductQuickChip === 'lowstock') {
-                filtered = filtered.filter(p => p.inStock !== false && (p.stockQty !== undefined && p.stockQty > 0 && p.stockQty <= 5));
+                filtered = filtered.filter(p => { const s = getSnap(p); return s.isAvailable && s.totalStock > 0 && s.totalStock <= 5; });
             } else if (activeProductQuickChip === 'offers') {
                 filtered = filtered.filter(p => p.oldPrice && p.oldPrice > p.price);
             } else if (activeProductQuickChip === 'flash') {
-                filtered = filtered.filter(p => p.isFrozen !== true && p.status !== 'frozen' && p.flashSale === true);
+                filtered = filtered.filter(p => !getSnap(p).isFrozen && p.flashSale === true);
             } else if (activeProductQuickChip === 'frozen') {
-                filtered = filtered.filter(p => p.isFrozen === true || p.status === 'frozen');
+                filtered = filtered.filter(p => getSnap(p).isFrozen);
+            }
+
+            // 2.5 فلترة صحة أرصدة المقاسات والألوان (نواقص جزئية / متوفر بالكامل)
+            if (vHealth === 'partial_out') {
+                filtered = filtered.filter(p => { const s = getSnap(p); return !s.isFrozen && (s.unavailableSizesCount > 0 || s.unavailableColorsCount > 0); });
+            } else if (vHealth === 'full_in') {
+                filtered = filtered.filter(p => { const s = getSnap(p); return s.isAvailable && s.unavailableSizesCount === 0 && s.unavailableColorsCount === 0; });
             }
 
             // 3. فلترة حالة الأسعار والعروض
@@ -4583,9 +4633,28 @@
                 filtered = filtered.filter(p => (!p.oldPrice || p.oldPrice <= p.price) && !p.flashSale);
             }
 
-            // 4. فلترة المقاس
+            // 4. فلترة المقاس (مع احترام وضع العرض: الكل / المتوفر / غير المتوفر)
             if (size !== 'all') {
-                filtered = filtered.filter(p => Array.isArray(p.sizes) && p.sizes.includes(size));
+                filtered = filtered.filter(p => {
+                    const s = getSnap(p);
+                    const match = s.sizes.find(x => x.name === size);
+                    if (!match) return false;
+                    if (vViewMode === 'available') return match.available;
+                    if (vViewMode === 'unavailable') return !match.available;
+                    return true;
+                });
+            }
+
+            // 4.5 فلترة اللون (مع احترام وضع العرض: الكل / المتوفر / غير المتوفر)
+            if (selColor !== 'all') {
+                filtered = filtered.filter(p => {
+                    const s = getSnap(p);
+                    const match = s.colors.find(x => x.name === selColor);
+                    if (!match) return false;
+                    if (vViewMode === 'available') return match.available;
+                    if (vViewMode === 'unavailable') return !match.available;
+                    return true;
+                });
             }
 
             // 5. فلترة البحث النصي الشامل المفهرس (يدعم تعدد الكلمات والكود والباركود والمقاس واللون)
@@ -4604,9 +4673,9 @@
             } else if (sortBy === 'price_desc') {
                 filtered.sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0));
             } else if (sortBy === 'stock_desc') {
-                filtered.sort((a, b) => (Number(b.stockQty !== undefined ? b.stockQty : 20)) - (Number(a.stockQty !== undefined ? a.stockQty : 20)));
+                filtered.sort((a, b) => getSnap(b).totalStock - getSnap(a).totalStock);
             } else if (sortBy === 'stock_asc') {
-                filtered.sort((a, b) => (Number(a.stockQty !== undefined ? a.stockQty : 20)) - (Number(b.stockQty !== undefined ? b.stockQty : 20)));
+                filtered.sort((a, b) => getSnap(a).totalStock - getSnap(b).totalStock);
             } else {
                 // newest
                 filtered.sort((a, b) => (new Date(b.createdAt || 0)) - (new Date(a.createdAt || 0)));
@@ -4630,36 +4699,47 @@
                     <div style="grid-column: 1/-1; text-align: center; padding: 60px 20px; background: white; border-radius: 16px; border: 1.5px dashed #cbd5e1;">
                         <div style="font-size: 3rem; margin-bottom: 10px;">👗✨</div>
                         <h3 style="font-size: 1.2rem; font-weight: 900; color: #0f172a;">لا توجد موديلات مطابقة</h3>
-                        <p style="color: #64748b; font-size: 0.9rem; margin-top: 6px;">اضغط على زر "إضافة موديل جديد" لرفع أول قطعة في متجرك.</p>
+                        <p style="color: #64748b; font-size: 0.9rem; margin-top: 6px;">جرب تغيير الفلاتر أو اضغط على زر "إضافة موديل جديد".</p>
                     </div>
                 `;
                 return;
             }
 
             const fallbackImg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300' viewBox='0 0 300 300'%3E%3Crect fill='%23f1f5f9' width='300' height='300'/%3E%3Ctext fill='%2394a3b8' font-family='sans-serif' font-size='30' dy='10.5' font-weight='bold' x='50%25' y='50%25' text-anchor='middle'%3E👗 بيان فاشون%3C/text%3E%3C/svg%3E";
+            const hasVis = window.BayanAdminVisibility && typeof window.BayanAdminVisibility.getProductInventorySnapshot === 'function';
 
             container.innerHTML = list.map(p => {
-                const img = p.image || fallbackImg;
-                const isInStock = p.inStock !== false;
-                const isFrozen = p.isFrozen === true || p.status === 'frozen';
-                const sizesStr = (Array.isArray(p.sizes) ? p.sizes : []).join(', ') || 'كل المقاسات';
-                const colorsStr = (Array.isArray(p.colors) ? p.colors : []).join(', ') || 'كل الألوان';
+                const img = p.image || (Array.isArray(p.images) && p.images[0]) || fallbackImg;
+                const snap = hasVis
+                    ? window.BayanAdminVisibility.getProductInventorySnapshot(p)
+                    : { totalStock: Number(p.stockQty ?? p.stock ?? 0), isFrozen: p.isFrozen === true || p.status === 'frozen', isAvailable: p.inStock !== false };
+                const isInStock = snap.isAvailable;
+                const isFrozen = snap.isFrozen;
+                const effectiveQty = snap.totalStock;
                 const hasQuantityOffers = Array.isArray(p.quantityOffers) && p.quantityOffers.length > 0;
                 const hasColorPrices = p.colorPrices && typeof p.colorPrices === 'object' && Object.keys(p.colorPrices).length > 0;
                 const hasSizePrices = p.sizePrices && typeof p.sizePrices === 'object' && Object.keys(p.sizePrices).length > 0;
                 const isFlashActive = p.flashSale === true;
-                const isCriticalStock = isInStock && p.stockQty !== undefined && p.stockQty > 0 && p.stockQty <= 3;
+                const isCriticalStock = isInStock && effectiveQty > 0 && effectiveQty <= 3;
+
+                const variantsHtml = (window.BayanAdminVisibility && typeof window.BayanAdminVisibility.buildAdminCardInventoryHtml === 'function')
+                    ? window.BayanAdminVisibility.buildAdminCardInventoryHtml(p)
+                    : '';
 
                 return `
-                    <div class="admin-prod-card" style="${isFrozen ? 'border: 2px dashed #93c5fd; background: #f8fafc; opacity: 0.88;' : (isFlashActive ? 'border: 2px solid #fdba74;' : '')}">
+                    <div class="admin-prod-card" style="${isFrozen ? 'border: 2px dashed #93c5fd; background: #f8fafc; opacity: 0.88;' : (!isInStock ? 'border: 1.5px solid #fecaca;' : (isFlashActive ? 'border: 2px solid #fdba74;' : ''))}">
                         <div class="prod-image-header">
-                            <img src="${img}" alt="${p.name}" onerror="this.src='${fallbackImg}'">
-                            ${p.badge ? `<span class="prod-badge-tag">${p.badge}</span>` : ''}
+                            <img src="${img}" alt="${escapeAdminHtml(p.name)}" onerror="this.src='${fallbackImg}'">
+                            ${p.badge ? `<span class="prod-badge-tag">${escapeAdminHtml(p.badge)}</span>` : ''}
                             ${isFrozen ? `
                                 <span class="prod-badge-tag" style="top: 10px; left: 10px; right: auto; background: #0284c7; color: white;">
                                     ❄️ مجمد ومخفي
                                 </span>
-                            ` : ''}
+                            ` : (!isInStock ? `
+                                <span class="prod-badge-tag" style="top: 10px; left: 10px; right: auto; background: #dc2626; color: white;">
+                                    🔴 غير متوفر (0)
+                                </span>
+                            ` : '')}
                             ${isFlashActive ? `
                                 <span class="prod-badge-tag" style="top: auto; bottom: 8px; right: 8px; background: ${p.flashFrozen ? '#475569' : '#ea580c'}; color: white;">
                                     ${p.flashFrozen ? '❄️ فلاش مجمد' : `⚡ فلاش: ${p.flashPrice || p.price} ج.م`}
@@ -4668,8 +4748,8 @@
                         </div>
 
                         <div class="prod-body">
-                            <span class="prod-category">${p.categoryName || p.category}</span>
-                            <h3 class="prod-title">${p.name}</h3>
+                            <span class="prod-category">${escapeAdminHtml(p.categoryName || p.category)}</span>
+                            <h3 class="prod-title">${escapeAdminHtml(p.name)}</h3>
 
                             <div class="prod-price-box">
                                 <span class="prod-price">${p.price} ج.م</span>
@@ -4679,7 +4759,7 @@
                             ${isCriticalStock ? `
                                 <div style="margin: 4px 0; padding: 4px 8px; background: #fff7ed; border: 1px solid #fdba74; border-radius: 6px; font-size: 0.73rem; font-weight: 900; color: #c2410c; display: flex; align-items: center; gap: 4px;">
                                     <span>⚠️</span>
-                                    <span>مخزون حرج: متبقي ${p.stockQty} قطع فقط!</span>
+                                    <span>مخزون حرج: متبقي ${effectiveQty} قطع فقط!</span>
                                 </div>
                             ` : ''}
 
@@ -4689,7 +4769,7 @@
                                     <span style="font-size:0.75rem; font-weight:800; color:#64748b;">المخزون:</span>
                                     <div style="display:inline-flex; align-items:center; border:1px solid #cbd5e1; border-radius:6px; background:white; overflow:hidden;">
                                         <button type="button" onclick="quickAdjustProductStock('${p.firestoreId}', -1)" style="border:none; background:#f1f5f9; padding:2px 7px; cursor:pointer; font-weight:900; color:#475569;" title="إنقاص قطعة">-</button>
-                                        <span id="cardStockVal_${p.firestoreId}" style="min-width:26px; text-align:center; font-size:0.82rem; font-weight:950; color:${(p.stockQty === 0 || p.inStock === false) ? '#dc2626' : '#0f172a'};">${p.stockQty !== undefined ? p.stockQty : 20}</span>
+                                        <span id="cardStockVal_${p.firestoreId}" style="min-width:26px; text-align:center; font-size:0.82rem; font-weight:950; color:${!isInStock ? '#dc2626' : '#059669'};">${effectiveQty}</span>
                                         <button type="button" onclick="quickAdjustProductStock('${p.firestoreId}', 1)" style="border:none; background:#f1f5f9; padding:2px 7px; cursor:pointer; font-weight:900; color:#475569;" title="زيادة قطعة">+</button>
                                     </div>
                                 </div>
@@ -4701,18 +4781,19 @@
                                 </div>
                             </div>
 
+                            ${variantsHtml}
+
+                            ${(hasQuantityOffers || hasColorPrices || hasSizePrices) ? `
                             <div class="prod-meta-tags">
-                                <span class="meta-pill">📏 ${sizesStr}</span>
-                                <span class="meta-pill">🎨 ${colorsStr}</span>
                                 ${hasQuantityOffers ? `<span class="meta-pill" style="background:#dcfce7; color:#15803d; font-weight:900;">🎁 ${p.quantityOffers.length} عروض كميات</span>` : ''}
                                 ${hasColorPrices ? `<span class="meta-pill" style="background:#fae8ff; color:#a21caf; font-weight:900;">🎨 تسعير ألوان</span>` : ''}
                                 ${hasSizePrices ? `<span class="meta-pill" style="background:#e0f2fe; color:#0369a1; font-weight:900;">🏷️ تسعير مقاسات</span>` : ''}
-                            </div>
+                            </div>` : ''}
 
                             <div style="margin-top: 6px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
-                                <label style="display: flex; align-items: center; gap: 8px; font-size: 0.82rem; font-weight: 800; cursor: pointer; color: ${isInStock ? '#059669' : '#dc2626'};">
-                                    <input type="checkbox" ${isInStock ? 'checked' : ''} onchange="toggleProductStock('${p.firestoreId}', this.checked)">
-                                    <span>${isInStock ? '🟢 متوفر للبيع' : '🔴 نفذت الكمية'}</span>
+                                <label style="display: flex; align-items: center; gap: 8px; font-size: 0.82rem; font-weight: 800; cursor: pointer; color: ${p.inStock !== false && effectiveQty > 0 ? '#059669' : '#dc2626'};">
+                                    <input type="checkbox" ${p.inStock !== false ? 'checked' : ''} onchange="toggleProductStock('${p.firestoreId}', this.checked)">
+                                    <span>${p.inStock !== false && effectiveQty > 0 ? '🟢 متوفر للبيع' : (p.inStock === false ? '🔴 معطل (غير متوفر)' : '🔴 نفذت الكمية')}</span>
                                 </label>
 
                                 <button type="button" class="btn-card-action" onclick="toggleProductFreeze('${p.firestoreId}', ${!isFrozen})" style="font-size: 0.72rem; padding: 3px 8px; border-radius: 6px; ${isFrozen ? 'color: #0284c7; border-color: #38bdf8; background: #f0f9ff;' : 'color: #475569; border-color: #cbd5e1;'}" title="${isFrozen ? 'إلغاء التجميد وإعادة عرض المنتج في المتجر' : 'تجميد المنتج وإخفاؤه تماماً من المتجر'}">
@@ -4740,7 +4821,7 @@
                             <button type="button" class="btn-card-action" onclick="printProductBarcodeLabel('${p.firestoreId}')" style="color: #7c3aed; border-color: #ddd6fe; background: #f5f3ff;" title="طباعة استيكر باركود حراري للموديل">
                                 <span>🏷️ باركود</span>
                             </button>
-                            <button type="button" class="btn-card-action btn-card-delete" onclick="deleteProductItem('${p.firestoreId}', '${p.name}')">
+                            <button type="button" class="btn-card-action btn-card-delete" onclick="deleteProductItem('${p.firestoreId}', '${escapeAdminHtml(p.name)}')">
                                 <span>🗑️ حذف</span>
                             </button>
                         </div>
@@ -4754,11 +4835,19 @@
             const db = getBayanDb();
             if (!db) return;
 
+            const target = adminProductsList.find(p => p.firestoreId === docId);
+            if (target) {
+                target.inStock = isStock;
+                updateProductsStats();
+                filterAdminProducts();
+            }
+
             db.collection('products').doc(docId).update({
                 inStock: isStock,
                 updatedAt: new Date().toISOString()
             }).then(() => {
-                console.log("Stock status updated");
+                if (window.BayanAdminVisibility) window.BayanAdminVisibility.bumpCatalogVersionInCloud(true);
+                showFastSaveToast(isStock ? '🟢 تم تفعيل التوفر بالموقع!' : '🔴 تم إغلاق التوفر (نفذت الكمية) بالموقع!');
             }).catch(e => alert("حدث خطأ أثناء تحديث الحالة: " + e.message));
         }
 
@@ -4771,6 +4860,7 @@
                 flashFrozen: shouldFreeze,
                 updatedAt: new Date().toISOString()
             }).then(() => {
+                if (window.BayanAdminVisibility) window.BayanAdminVisibility.bumpCatalogVersionInCloud(true);
                 console.log("Flash sale freeze status updated");
             }).catch(e => alert("خطأ أثناء تحديث حالة عرض الفلاش: " + e.message));
         }
@@ -4783,15 +4873,20 @@
             const target = adminProductsList.find(p => p.firestoreId === docId);
             if (target) {
                 target.isFrozen = shouldFreeze;
+                target.active = !shouldFreeze;
+                target.status = shouldFreeze ? 'frozen' : 'active';
+                updateProductsStats();
                 filterAdminProducts();
                 updateProductChipCounters();
             }
 
             db.collection('products').doc(docId).update({
+                active: !shouldFreeze,
                 isFrozen: shouldFreeze,
                 status: shouldFreeze ? 'frozen' : 'active',
                 updatedAt: new Date().toISOString()
             }).then(() => {
+                if (window.BayanAdminVisibility) window.BayanAdminVisibility.bumpCatalogVersionInCloud(true);
                 showFastSaveToast(shouldFreeze ? "❄️ تم تجميد المنتج وإخفاؤه من المتجر!" : "🟢 تم إلغاء التجميد وإتاحة المنتج للزبائن!");
             }).catch(e => alert("خطأ أثناء تحديث حالة تجميد المنتج: " + e.message));
         }
@@ -4804,6 +4899,7 @@
             if (!db) return;
 
             db.collection('products').doc(docId).delete().then(() => {
+                if (window.BayanAdminVisibility) window.BayanAdminVisibility.bumpCatalogVersionInCloud(true);
                 console.log("Product deleted successfully");
             }).catch(e => alert("خطأ في الحذف: " + e.message));
         }
@@ -5062,10 +5158,15 @@
             document.querySelectorAll('#colorsPicker .chip-label-btn').forEach(btn => {
                 btn.classList.toggle('selected', ['أسود', 'أبيض'].includes(btn.textContent.trim()));
             });
+            if (document.getElementById('inpCustomSizes')) document.getElementById('inpCustomSizes').value = '';
+            if (document.getElementById('inpCustomColors')) document.getElementById('inpCustomColors').value = '';
 
             renderAdminGallery();
             renderSizePricesEditor();
             renderColorPricesEditor();
+            if (typeof window.hydrateModalVariantMatrixForProduct === 'function') {
+                window.hydrateModalVariantMatrixForProduct(null);
+            }
             document.getElementById('productModal').classList.add('open');
         }
 
@@ -5086,9 +5187,12 @@
                 document.getElementById('inpProdCostPrice').value = (target.costPrice !== undefined && target.costPrice !== null) ? target.costPrice : '';
             }
             calculateProfitMarginPreview();
+            const targetSnap = (window.BayanAdminVisibility && typeof window.BayanAdminVisibility.getProductInventorySnapshot === 'function')
+                ? window.BayanAdminVisibility.getProductInventorySnapshot(target)
+                : null;
             document.getElementById('inpProdInStock').value = (target.inStock !== false) ? 'true' : 'false';
             if (document.getElementById('inpProdStockQty')) {
-                document.getElementById('inpProdStockQty').value = (target.stockQty !== undefined ? target.stockQty : (target.stock !== undefined ? target.stock : 0));
+                document.getElementById('inpProdStockQty').value = targetSnap ? targetSnap.totalStock : (target.stockQty !== undefined ? target.stockQty : (target.stock !== undefined ? target.stock : 0));
             }
             if (document.getElementById('inpProdDailyLimit')) {
                 document.getElementById('inpProdDailyLimit').value = Number(target.dailySalesLimit || 0);
@@ -5155,21 +5259,40 @@
                 ? { ...target.colorPrices }
                 : {};
 
-            // تفعيل المقاسات
-            const targetSizes = Array.isArray(target.sizes) ? target.sizes : [];
-            document.querySelectorAll('#sizesPicker .chip-label-btn').forEach(btn => {
+            // تفعيل المقاسات (مع حفظ أي مقاسات مخصصة خارج الأزرار الثابتة)
+            const targetSizes = targetSnap
+                ? targetSnap.sizes.map(s => s.name)
+                : (Array.isArray(target.sizes) ? target.sizes.map(s => String(s || '').trim()).filter(Boolean) : []);
+            const presetSizeBtns = Array.from(document.querySelectorAll('#sizesPicker .chip-label-btn'));
+            const presetSizeNames = new Set(presetSizeBtns.map(b => b.textContent.trim()));
+            presetSizeBtns.forEach(btn => {
                 btn.classList.toggle('selected', targetSizes.includes(btn.textContent.trim()));
             });
+            const extraSizes = targetSizes.filter(sz => !presetSizeNames.has(sz));
+            if (document.getElementById('inpCustomSizes')) {
+                document.getElementById('inpCustomSizes').value = extraSizes.join(', ');
+            }
 
-            // تفعيل الألوان
-            const targetColors = Array.isArray(target.colors) ? target.colors : [];
-            document.querySelectorAll('#colorsPicker .chip-label-btn').forEach(btn => {
+            // تفعيل الألوان (مع حفظ أي ألوان مخصصة خارج الأزرار الثابتة)
+            const targetColors = targetSnap
+                ? targetSnap.colors.map(c => c.name)
+                : (Array.isArray(target.colors) ? target.colors.map(c => (typeof c === 'object' && c ? c.name : c)).map(s => String(s || '').trim()).filter(Boolean) : []);
+            const presetColorBtns = Array.from(document.querySelectorAll('#colorsPicker .chip-label-btn'));
+            const presetColorNames = new Set(presetColorBtns.map(b => b.textContent.trim()));
+            presetColorBtns.forEach(btn => {
                 btn.classList.toggle('selected', targetColors.includes(btn.textContent.trim()));
             });
+            const extraColors = targetColors.filter(col => !presetColorNames.has(col));
+            if (document.getElementById('inpCustomColors')) {
+                document.getElementById('inpCustomColors').value = extraColors.join(', ');
+            }
 
             renderAdminGallery();
             renderSizePricesEditor();
             renderColorPricesEditor();
+            if (typeof window.hydrateModalVariantMatrixForProduct === 'function') {
+                window.hydrateModalVariantMatrixForProduct(target);
+            }
             document.getElementById('productModal').classList.add('open');
         }
 
@@ -5185,6 +5308,9 @@
             if (el.closest('#colorsPicker')) {
                 renderColorPricesEditor();
                 renderAdminGallery();
+            }
+            if (typeof window.renderModalVariantStockMatrix === 'function') {
+                window.renderModalVariantStockMatrix();
             }
         }
 
@@ -5392,6 +5518,7 @@
                 }
 
                 const docId = document.getElementById('editProductId').value;
+                const existingProd = docId ? adminProductsList.find(p => p.firestoreId === docId) : null;
                 const name = document.getElementById('inpProdName').value.trim();
                 const category = document.getElementById('inpProdCategory').value;
                 const price = parseFloat(document.getElementById('inpProdPrice').value) || 0;
@@ -5401,7 +5528,7 @@
                 const badge = document.getElementById('inpProdBadge').value.trim();
                 const inStock = document.getElementById('inpProdInStock').value === 'true';
                 const stockQtyVal = parseInt(document.getElementById('inpProdStockQty')?.value);
-                const stockQty = isNaN(stockQtyVal) ? 20 : stockQtyVal;
+                let stockQty = isNaN(stockQtyVal) ? 20 : stockQtyVal;
                 const desc = document.getElementById('inpProdDesc').value.trim();
 
                 if (!name) {
@@ -5417,13 +5544,25 @@
 
                 // استخراج المقاسات
                 const selectedSizes = Array.from(document.querySelectorAll('#sizesPicker .chip-label-btn.selected')).map(b => b.textContent.trim());
-                const customSizes = (document.getElementById('inpCustomSizes').value || '').split(',').map(s => s.trim()).filter(Boolean);
+                const customSizes = (document.getElementById('inpCustomSizes').value || '').split(/[,،]/).map(s => s.trim()).filter(Boolean);
                 const sizes = Array.from(new Set([...selectedSizes, ...customSizes]));
 
                 // استخراج الألوان
                 const selectedColors = Array.from(document.querySelectorAll('#colorsPicker .chip-label-btn.selected')).map(b => b.textContent.trim());
-                const customColors = (document.getElementById('inpCustomColors').value || '').split(',').map(c => c.trim()).filter(Boolean);
+                const customColors = (document.getElementById('inpCustomColors').value || '').split(/[,،]/).map(c => c.trim()).filter(Boolean);
                 const colors = Array.from(new Set([...selectedColors, ...customColors]));
+
+                // استخراج مصفوفة أرصدة المقاسات والألوان إن كانت مفعلة
+                const matrixEnabled = document.getElementById('chkEnableModalVariantMatrix')?.checked === true;
+                let finalVariantsStock = null;
+                if (matrixEnabled && typeof window.getModalCollectedVariantsStock === 'function') {
+                    finalVariantsStock = window.getModalCollectedVariantsStock(existingProd);
+                    if (finalVariantsStock && typeof finalVariantsStock === 'object') {
+                        stockQty = Object.values(finalVariantsStock).reduce((sum, v) => sum + Math.max(0, Number(v) || 0), 0);
+                    }
+                } else {
+                    finalVariantsStock = {};
+                }
 
                 // استخراج تسعير المقاسات المخصص
                 const finalSizePrices = {};
@@ -5523,6 +5662,7 @@
                     flashFrozen: flashFrozen,
                     sizes: sizes,
                     colors: colors,
+                    variantsStock: finalVariantsStock && Object.keys(finalVariantsStock).length > 0 ? finalVariantsStock : {},
                     image: mainImg,
                     images: [...uploadedImagesList],
                     colorImages: finalColorImages,
@@ -5549,6 +5689,7 @@
                 }
 
                 // تحديث العدادات والشاشة فوراً
+                if (typeof updateProductsStats === 'function') updateProductsStats();
                 if (typeof updateDashboardStats === 'function') updateDashboardStats();
                 else if (typeof updateHomeDashboard === 'function') updateHomeDashboard();
                 else if (typeof renderAdminDashboard === 'function') renderAdminDashboard();
@@ -5557,7 +5698,10 @@
 
                 // المزامنة السحابية في الخلفية
                 if (docId) {
-                    db.collection('products').doc(docId).set(prodData, { merge: true }).catch(err => {
+                    db.collection('products').doc(docId).set(prodData, { merge: true }).then(() => {
+                        db.collection('products').doc(docId).update({ variantsStock: prodData.variantsStock }).catch(() => { });
+                        if (window.BayanAdminVisibility) window.BayanAdminVisibility.bumpCatalogVersionInCloud(true);
+                    }).catch(err => {
                         console.error("Cloud update error:", err);
                         alert("⚠️ تعذر المزامنة السحابية: " + err.message);
                     });
@@ -5565,6 +5709,7 @@
                     db.collection('products').add(prodData).then(docRef => {
                         const tempItem = adminProductsList.find(p => p.id === tempGeneratedId);
                         if (tempItem) tempItem.firestoreId = docRef.id;
+                        if (window.BayanAdminVisibility) window.BayanAdminVisibility.bumpCatalogVersionInCloud(true);
                     }).catch(err => {
                         console.error("Cloud add error:", err);
                         alert("⚠️ تعذر المزامنة السحابية: " + err.message);
@@ -5666,21 +5811,33 @@
                 }
             }
 
-            // تفعيل المقاسات
-            const targetSizes = Array.isArray(target.sizes) ? target.sizes : [];
-            document.querySelectorAll('#sizesPicker .chip-label-btn').forEach(btn => {
+            // تفعيل المقاسات والألوان (مع دعم القيم المخصصة)
+            const targetSizes = Array.isArray(target.sizes) ? target.sizes.map(s => String(s || '').trim()).filter(Boolean) : [];
+            const presetSizeBtnsDup = Array.from(document.querySelectorAll('#sizesPicker .chip-label-btn'));
+            const presetSizeNamesDup = new Set(presetSizeBtnsDup.map(b => b.textContent.trim()));
+            presetSizeBtnsDup.forEach(btn => {
                 btn.classList.toggle('selected', targetSizes.includes(btn.textContent.trim()));
             });
+            if (document.getElementById('inpCustomSizes')) {
+                document.getElementById('inpCustomSizes').value = targetSizes.filter(sz => !presetSizeNamesDup.has(sz)).join(', ');
+            }
 
-            // تفعيل الألوان
-            const targetColors = Array.isArray(target.colors) ? target.colors : [];
-            document.querySelectorAll('#colorsPicker .chip-label-btn').forEach(btn => {
+            const targetColors = Array.isArray(target.colors) ? target.colors.map(c => (typeof c === 'object' && c ? c.name : c)).map(s => String(s || '').trim()).filter(Boolean) : [];
+            const presetColorBtnsDup = Array.from(document.querySelectorAll('#colorsPicker .chip-label-btn'));
+            const presetColorNamesDup = new Set(presetColorBtnsDup.map(b => b.textContent.trim()));
+            presetColorBtnsDup.forEach(btn => {
                 btn.classList.toggle('selected', targetColors.includes(btn.textContent.trim()));
             });
+            if (document.getElementById('inpCustomColors')) {
+                document.getElementById('inpCustomColors').value = targetColors.filter(col => !presetColorNamesDup.has(col)).join(', ');
+            }
 
             renderAdminGallery();
             renderSizePricesEditor();
             renderColorPricesEditor();
+            if (typeof window.hydrateModalVariantMatrixForProduct === 'function') {
+                window.hydrateModalVariantMatrixForProduct(target.variantsStock ? { variantsStock: target.variantsStock, sizes: targetSizes, colors: targetColors } : null);
+            }
 
             setTimeout(() => {
                 const inp = document.getElementById('inpProdName');
@@ -5695,27 +5852,48 @@
         function quickAdjustProductStock(docId, delta) {
             const p = adminProductsList.find(item => item.firestoreId === docId);
             if (!p) return;
-            const current = (p.stockQty !== undefined) ? parseInt(p.stockQty) : 20;
+
+            // إذا كان للصنف مصفوفة أرصدة مقاسات وألوان متعددة، نفتح المحرر السريع لضبط المقاس/اللون المقصود بدقة
+            const vs = p.variantsStock && typeof p.variantsStock === 'object' ? p.variantsStock : null;
+            const vsKeys = vs ? Object.keys(vs) : [];
+            if (vsKeys.length > 1 && typeof window.openVariantStockQuickEditor === 'function') {
+                window.openVariantStockQuickEditor(docId);
+                return;
+            }
+
+            const current = (window.BayanAdminVisibility && typeof window.BayanAdminVisibility.getProductInventorySnapshot === 'function')
+                ? window.BayanAdminVisibility.getProductInventorySnapshot(p).totalStock
+                : ((p.stockQty !== undefined) ? parseInt(p.stockQty, 10) : (p.stock !== undefined ? parseInt(p.stock, 10) : 20));
             const newQty = Math.max(0, current + delta);
+            p.stock = newQty;
             p.stockQty = newQty;
             p.inStock = newQty > 0;
+            if (vsKeys.length === 1) {
+                vs[vsKeys[0]] = newQty;
+            }
 
             const el = document.getElementById(`cardStockVal_${docId}`);
             if (el) {
                 el.textContent = newQty;
-                el.style.color = newQty === 0 ? '#dc2626' : '#0f172a';
+                el.style.color = newQty === 0 ? '#dc2626' : '#059669';
             }
 
             updateProductChipCounters();
+            updateProductsStats();
             updateDashboardStats();
             showFastSaveToast(`رصيد المخزون: ${newQty} قطعة 📦`);
 
             const db = getBayanDb();
             if (db && !docId.startsWith('temp_')) {
-                db.collection('products').doc(docId).update({
+                const upd = {
+                    stock: newQty,
                     stockQty: newQty,
                     inStock: newQty > 0,
                     updatedAt: new Date().toISOString()
+                };
+                if (vsKeys.length === 1) upd.variantsStock = vs;
+                db.collection('products').doc(docId).update(upd).then(() => {
+                    if (window.BayanAdminVisibility) window.BayanAdminVisibility.bumpCatalogVersionInCloud(false);
                 }).catch(console.warn);
             }
         }
@@ -5734,6 +5912,8 @@
                 db.collection('products').doc(docId).update({
                     price: price,
                     updatedAt: new Date().toISOString()
+                }).then(() => {
+                    if (window.BayanAdminVisibility) window.BayanAdminVisibility.bumpCatalogVersionInCloud(false);
                 }).catch(console.warn);
             }
         }
@@ -5761,6 +5941,7 @@
                 if (inp) inp.value = '2, 4, 6, 8, 10, 12';
             }
             renderSizePricesEditor();
+            if (typeof window.renderModalVariantStockMatrix === 'function') window.renderModalVariantStockMatrix();
         }
 
         // أزرار الاختيار السريع للألوان
@@ -5777,6 +5958,7 @@
             }
             renderAdminGallery();
             renderColorPricesEditor();
+            if (typeof window.renderModalVariantStockMatrix === 'function') window.renderModalVariantStockMatrix();
         }
 
         // إشعار عائم سريع وسلس بنتيجة الحفظ الفوري
@@ -8042,6 +8224,10 @@
                 BayanIDB.setItem('bayan_shipping_settings', JSON.stringify(shippingData));
             }
             window.BAYAN_SHIPPING_SETTINGS = shippingData;
+
+            if (window.BayanAdminVisibility && typeof window.BayanAdminVisibility.syncFromShippingSetting === 'function') {
+                window.BayanAdminVisibility.syncFromShippingSetting(shippingData.showStockCountToCustomers);
+            }
 
             const db = (typeof getBayanDb === 'function') ? getBayanDb() : null;
             if (db) {
