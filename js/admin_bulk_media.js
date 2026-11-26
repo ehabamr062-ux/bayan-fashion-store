@@ -286,9 +286,53 @@
         return { matchedProduct: matched || null, matchedColor: exactColor || '', productQuery };
     }
 
-    async function loadBgRemovalLib() {
+    function dataUrlToBlob(dataUrl) {
+        const parts = String(dataUrl).split(',');
+        const mimeMatch = (parts[0] || '').match(/:(.*?);/);
+        const mime = mimeMatch ? mimeMatch[1] : 'image/png';
+        const bin = atob(parts[1] || '');
+        const len = bin.length;
+        const arr = new Uint8Array(len);
+        for (let i = 0; i < len; i++) arr[i] = bin.charCodeAt(i);
+        return new Blob([arr], { type: mime });
+    }
+
+    function withTimeout(promise, ms, timeoutMessage) {
+        let tid = null;
+        return Promise.race([
+            promise,
+            new Promise((_, reject) => {
+                tid = setTimeout(() => reject(new Error(timeoutMessage || 'انتهت المهلة')), ms);
+            })
+        ]).finally(() => { if (tid) clearTimeout(tid); });
+    }
+
+    async function updateChangedProductsInIdb(updatedProducts) {
+        if (!Array.isArray(updatedProducts) || !updatedProducts.length) return;
+        if (typeof BayanIDB === 'undefined' || typeof BayanIDB.open !== 'function') return;
+        try {
+            const idb = await BayanIDB.open();
+            if (!idb) return;
+            await new Promise((resolve) => {
+                const tx = idb.transaction('products', 'readwrite');
+                const store = tx.objectStore('products');
+                for (const p of updatedProducts) {
+                    if (p && p.id) store.put(p);
+                }
+                tx.oncomplete = () => resolve(true);
+                tx.onerror = () => resolve(false);
+            });
+        } catch (_) { }
+    }
+
+    async function loadBgRemovalLib(onStatus) {
         if (!bgRemovalLibPromise) {
-            bgRemovalLibPromise = import('https://esm.sh/@imgly/background-removal@1.4.5');
+            if (typeof onStatus === 'function') onStatus('⬇️ جاري تحميل أداة تفريغ الخلفية (أول مرة فقط)...');
+            bgRemovalLibPromise = withTimeout(
+                import('https://esm.sh/@imgly/background-removal@1.4.5'),
+                35000,
+                'استغرق تحميل مكتبة التفريغ وقتاً طويلاً — جرّب بدون AI أو أعد المحاولة'
+            );
         }
         return bgRemovalLibPromise;
     }
@@ -321,6 +365,7 @@
         const logoPos = opts.logoPosition || 'top-right';
         const logoSizePct = Math.max(8, Math.min(35, Number(opts.logoSizePct) || 18));
         const logoMarginPct = Math.max(1, Math.min(10, Number(opts.logoMarginPct) || 3.5));
+        const onStatus = typeof opts.onStatus === 'function' ? opts.onStatus : null;
 
         let workingSrc = typeof sourceInput === 'string'
             ? sourceInput
@@ -328,17 +373,33 @@
 
         if (removeBg) {
             try {
-                const lib = await loadBgRemovalLib();
+                const lib = await loadBgRemovalLib(onStatus);
                 const removeFn = lib.removeBackground || (lib.default && lib.default.removeBackground) || lib.default;
                 if (typeof removeFn === 'function') {
-                    const bgInput = (typeof sourceInput === 'string' && sourceInput.startsWith('data:'))
-                        ? await (await fetch(sourceInput)).blob()
+                    const bgInput = (typeof workingSrc === 'string' && workingSrc.startsWith('data:'))
+                        ? dataUrlToBlob(workingSrc)
                         : sourceInput;
-                    const transparentBlob = await removeFn(bgInput, { output: { format: 'image/png', quality: 0.9 } });
+                    if (onStatus) onStatus('✨ جاري تفريغ الخلفية بالـ AI (تحميل النموذج أول مرة قد يأخذ ~30 ثانية)...');
+                    const transparentBlob = await withTimeout(
+                        removeFn(bgInput, {
+                            model: 'small',
+                            output: { format: 'image/png', quality: 0.9 },
+                            progress: (key, current, total) => {
+                                if (onStatus && total > 0) {
+                                    const pct = Math.min(100, Math.round((current / total) * 100));
+                                    onStatus(`✨ تفريغ الخلفية بالـ AI: ${pct}%`);
+                                }
+                            }
+                        }),
+                        60000,
+                        'انتهت مهلة تفريغ الـ AI، تم استخدام الصورة الأصلية بسرعة'
+                    );
                     workingSrc = await readBlobAsDataUrl(transparentBlob);
                 }
             } catch (e) {
-                console.warn('[BulkMedia] Background removal skipped for item:', e);
+                bgRemovalLibPromise = null;
+                console.warn('[BulkMedia] Background removal fallback:', e);
+                if (onStatus) onStatus(`⚠️ تعذر التفريغ (${e && e.message ? e.message : 'بطء الشبكة'}) — جاري إكمال ختم اللوجو...`);
             }
         }
 
@@ -736,6 +797,12 @@
         const progressEl = document.getElementById('bmProgressBar');
         const statusEl = document.getElementById('bmProgressText');
         const runBtn = document.getElementById('bmStartUploadBtn');
+        const stopBtn = document.getElementById('bmStopUploadBtn');
+        const tStart = Date.now();
+
+        opts.onStatus = (msg) => {
+            if (statusEl) statusEl.textContent = msg;
+        };
 
         bulkState.isRunning = true;
         bulkState.cancelRequested = false;
@@ -743,6 +810,7 @@
             runBtn.disabled = true;
             runBtn.innerHTML = '<span>⏳</span><span>جاري المعالجة والرفع...</span>';
         }
+        if (stopBtn) stopBtn.style.display = 'inline-flex';
 
         const byProduct = new Map();
         for (const it of matchedItems) {
@@ -753,6 +821,7 @@
 
         let processedFiles = 0;
         let savedProducts = 0;
+        const modifiedProds = [];
         const totalFiles = matchedItems.length;
 
         try {
@@ -772,7 +841,7 @@
                     if (bulkState.cancelRequested) break;
                     try {
                         if (statusEl) {
-                            statusEl.textContent = `⚡ معالجة (${processedFiles + 1}/${totalFiles}): ${item.label}`;
+                            statusEl.textContent = `⚡ (${processedFiles + 1}/${totalFiles}) جاري تجهيز: ${item.label}`;
                         }
                         const dataUrl = await processStudioImage(item.source, opts);
                         processedEntries.push({ dataUrl, color: item.color || '', item });
@@ -786,16 +855,24 @@
                 }
 
                 if (processedEntries.length) {
+                    if (statusEl) {
+                        statusEl.textContent = `☁️ جاري رفع منتج «${prod.name || pid}» للسحابة...`;
+                    }
                     const merged = mergeProductMedia(prod, processedEntries, opts.mode);
-                    await db.collection('products').doc(prod.firestoreId).set(merged, { merge: true });
+                    await withTimeout(
+                        db.collection('products').doc(prod.firestoreId).set(merged, { merge: true }),
+                        25000,
+                        'تأخر رد السحابة — تأكد من اتصال الإنترنت وحجم الصور'
+                    );
                     Object.assign(prod, merged);
+                    modifiedProds.push(prod);
                     processedEntries.forEach(pe => { pe.item.done = true; pe.item.error = ''; });
                     savedProducts++;
                 }
             }
 
-            if (typeof BayanIDB !== 'undefined' && typeof BayanIDB.saveAllProducts === 'function') {
-                await BayanIDB.saveAllProducts(products).catch(() => { });
+            if (modifiedProds.length) {
+                await updateChangedProductsInIdb(modifiedProds);
             }
             if (typeof root.filterAdminProducts === 'function') root.filterAdminProducts();
             if (typeof root.updateProductsStats === 'function') root.updateProductsStats();
@@ -803,17 +880,22 @@
                 root.BayanAdminVisibility.bumpCatalogVersionInCloud(true);
             }
 
+            const secs = ((Date.now() - tStart) / 1000).toFixed(1);
             if (statusEl) {
-                statusEl.textContent = `✅ اكتمل بنجاح! تم تحديث ${savedProducts} منتج (${processedFiles} صورة) في السحابة.`;
+                statusEl.textContent = bulkState.cancelRequested
+                    ? `🛑 تم الإيقاف بعد حفظ ${savedProducts} منتج (${secs} ثانية).`
+                    : `✅ اكتمل في ${secs} ثانية! تم تحديث ${savedProducts} منتج (${processedFiles} صورة) في السحابة.`;
             }
-            if (typeof root.showFastSaveToast === 'function') {
-                root.showFastSaveToast(`✅ تم تحديث ${savedProducts} منتج بنجاح في السحابة!`);
+            if (typeof root.showFastSaveToast === 'function' && savedProducts > 0) {
+                root.showFastSaveToast(`✅ تم تحديث ${savedProducts} منتج في ${secs} ثانية!`);
             }
         } catch (err) {
             console.error('[BulkMedia] Upload failed:', err);
+            if (statusEl) statusEl.textContent = `❌ خطأ: ${err && err.message ? err.message : err}`;
             alert('❌ حدث خطأ أثناء الحفظ الجماعي: ' + (err && err.message ? err.message : err));
         } finally {
             bulkState.isRunning = false;
+            if (stopBtn) stopBtn.style.display = 'none';
             renderBulkTable();
         }
     }
@@ -836,7 +918,7 @@
                 <div style="background:#ffffff;border-radius:22px;width:96vw;max-width:1160px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 25px 60px rgba(0,0,0,0.45);">
                     <div style="padding:14px 20px;background:linear-gradient(135deg,#0f172a,#047857);color:#fff;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
                         <div>
-                            <div style="font-size:1.12rem;font-weight:900;">⚡ استوديو الصور الجماعي + فهرس بحث فوري (v5.4.5)</div>
+                            <div style="font-size:1.12rem;font-weight:900;">⚡ استوديو الصور الجماعي + فهرس بحث فوري (v5.4.6)</div>
                             <div style="font-size:0.8rem;opacity:0.9;">ابحث برقم/اسم المنتج (مثلاً <code>2</code> يجلب <code>2</code> فقط فوراً) أو اسحب دفعة صور من جهازك!</div>
                         </div>
                         <button type="button" onclick="document.getElementById('bayanBulkMediaStudioModal').style.display='none'" style="background:rgba(255,255,255,0.2);border:none;color:#fff;width:36px;height:36px;border-radius:10px;font-size:18px;font-weight:900;cursor:pointer;">✕</button>
@@ -920,6 +1002,7 @@
                             </div>
                         </div>
                         <div style="display:flex;align-items:center;gap:10px;">
+                            <button type="button" id="bmStopUploadBtn" onclick="window.BayanBulkMedia.stopUpload()" style="display:none;background:#fee2e2;color:#b91c1c;border:1px solid #fecaca;border-radius:10px;padding:9px 14px;font-weight:900;cursor:pointer;">🛑 إيقاف</button>
                             <button type="button" id="bmStartUploadBtn" onclick="window.BayanBulkMedia.startUpload()" class="btn-primary-action" disabled style="background:linear-gradient(135deg,#059669,#047857);border-color:#047857;font-weight:900;padding:9px 18px;">
                                 <span>🚀</span><span>تجهيز وحفظ (0) صورة في السحابة</span>
                             </button>
@@ -1039,6 +1122,7 @@
         },
         loadFromStore: (limit) => loadExistingProductsIntoStudio(limit),
         refreshPreview: () => refreshSamplePreview(),
-        startUpload: () => runBulkStudioUpload()
+        startUpload: () => runBulkStudioUpload(),
+        stopUpload: () => { bulkState.cancelRequested = true; }
     };
 })(typeof window !== 'undefined' ? window : globalThis);
