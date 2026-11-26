@@ -1,18 +1,23 @@
 /**
  * =========================================================================
- * ⚡ استوديو الصور الجماعي + ختم اللوجو + الربط التلقائي بالأصناف والألوان
- *    Bayan Store Merchant Admin - Bulk Studio & Logo Stamper
+ * ⚡ استوديو الصور الجماعي + ختم اللوجو + فهرس بحث فوري O(1) بالأصناف والألوان
+ *    Bayan Store Merchant Admin - Bulk Studio & Logo Stamper (v5.4.5)
  * =========================================================================
  */
 (function (root) {
     'use strict';
 
     let bgRemovalLibPromise = null;
+    let nextRowUid = 1;
+    let cachedIndexSig = '';
+    let cachedIndex = null;
+
     const bulkState = {
         items: [],
         logoDataUrl: '',
         isRunning: false,
-        cancelRequested: false
+        cancelRequested: false,
+        activePickerRowUid: null
     };
 
     const KNOWN_COLOR_ALIASES = {
@@ -32,7 +37,7 @@
         'ازرق': 'ازرق', 'أزرق': 'ازرق', 'blue': 'ازرق', 'سماوي': 'سماوي', 'لبني': 'لبني',
         'اصفر': 'اصفر', 'أصفر': 'اصفر', 'yellow': 'اصفر', 'مستردة': 'مستردة', 'مسترده': 'مستردة', 'mustard': 'مستردة',
         'وردي': 'وردي', 'وردى': 'وردي', 'بينك': 'بينك', 'pink': 'بينك', 'كشمير': 'كشمير', 'فوشيا': 'فوشيا',
-        'موف': 'موف', 'بنفسجي': 'بنفسجي', 'purple': 'موف',
+        'موف': 'موف', 'بنفسجي': 'موف', 'purple': 'موف',
         'هافان': 'هافان', 'عسلي': 'عسلي', 'عسلى': 'عسلي', 'tan': 'هافان',
         'برتقالي': 'برتقالي', 'اورنج': 'اورنج', 'orange': 'اورنج',
         'سيلفر': 'سيلفر', 'فضي': 'فضي', 'silver': 'فضي',
@@ -40,8 +45,12 @@
         'تايجر': 'تايجر', 'نمر': 'تايجر', 'leopard': 'تايجر'
     };
 
+    const CORE_COLORS_LIST = ['اسود', 'ابيض', 'جملي', 'بني', 'بيج', 'كافيه', 'نبيتي', 'كحلي', 'رمادي', 'رصاصي', 'زيتي', 'احمر', 'ازرق', 'اخضر', 'كشمير', 'هافان', 'اوف وايت'];
+
     function normalizeText(str) {
         return String(str || '')
+            .replace(/[\u0660-\u0669]/g, (d) => String(d.charCodeAt(0) - 0x0660))
+            .replace(/[\u06F0-\u06F9]/g, (d) => String(d.charCodeAt(0) - 0x06F0))
             .replace(/[\u064B-\u065F\u0670]/g, '')
             .replace(/[أإآ]/g, 'ا')
             .replace(/ى/g, 'ي')
@@ -103,24 +112,111 @@
         return Array.from(colors);
     }
 
-    function findBestProductMatch(queryRaw, productsList) {
-        const qClean = String(queryRaw || '').trim();
-        const qNorm = normalizeText(qClean);
-        if (!qNorm || !Array.isArray(productsList) || !productsList.length) return null;
+    /**
+     * ⚡ بناء فهرس بحث فوري O(1) للمنتجات بالاسم والكود والباركود والألوان
+     */
+    function getOrBuildProductIndex(productsList) {
+        const list = Array.isArray(productsList) ? productsList : [];
+        const first = list[0];
+        const last = list[list.length - 1];
+        const sig = `${list.length}:${first ? (first.firestoreId || first.id || first.name) : ''}:${last ? (last.firestoreId || last.id || last.name) : ''}`;
+        if (cachedIndex && cachedIndexSig === sig) {
+            return cachedIndex;
+        }
 
-        const matchers = [
-            (p) => [p.name, p.code, p.barcode, p.pos_id].some(v => v && String(v).trim() === qClean),
-            (p) => [p.name, p.code, p.barcode, p.pos_id].some(v => v && normalizeText(v) === qNorm),
-            (p) => {
-                const stripped = qNorm.replace(/^(?:كود|موديل|صنف|رقم|#)\s*/i, '').trim();
-                if (!stripped) return false;
-                return [p.name, p.code, p.barcode].some(v => normalizeText(v) === stripped);
+        const exactMap = new Map();
+        const byIdMap = new Map();
+        const entries = [];
+
+        const addExactKey = (rawKey, prod) => {
+            const norm = normalizeText(rawKey);
+            if (!norm) return;
+            if (!exactMap.has(norm)) exactMap.set(norm, []);
+            const arr = exactMap.get(norm);
+            if (!arr.includes(prod)) arr.push(prod);
+        };
+
+        for (const p of list) {
+            const pid = String(p.firestoreId || p.id || '');
+            if (pid) byIdMap.set(pid, p);
+
+            addExactKey(p.name, p);
+            addExactKey(p.code, p);
+            addExactKey(p.barcode, p);
+            addExactKey(p.pos_id, p);
+
+            const normName = normalizeText(p.name);
+            const normCode = normalizeText(p.code);
+            const normBarcode = normalizeText(p.barcode);
+            const normCat = normalizeText(`${p.category || ''} ${p.categoryName || ''}`);
+            const normColors = normalizeText(extractProductColors(p).join(' '));
+            const searchBlob = `${normName} ${normCode} ${normBarcode} ${normCat} ${normColors}`.trim();
+
+            entries.push({
+                prod: p,
+                normName,
+                normCode,
+                normBarcode,
+                searchBlob
+            });
+        }
+
+        cachedIndex = { exactMap, byIdMap, entries };
+        cachedIndexSig = sig;
+        return cachedIndex;
+    }
+
+    /**
+     * 🔍 بحث مفهرس سريع جداً:
+     * - عند تفعيل exactIfMatched (الافتراضي في سحب الكود): لو كتب 2 ووجدنا صنف اسمه "2" يرجع "2" فقط فوراً!
+     * - عند البحث الحر: يرتب النتائج: تطابق تام ← يبدأ بـ الكود ← يحتوي على الكود (الأقصر أولاً)
+     */
+    function searchIndexedProducts(queryRaw, productsList, options = {}) {
+        const list = Array.isArray(productsList) ? productsList : [];
+        const qNorm = normalizeText(queryRaw);
+        const index = getOrBuildProductIndex(list);
+        if (!qNorm) return list;
+
+        const exactHits = index.exactMap.get(qNorm) || [];
+        if (options.exactOnly) {
+            return [...exactHits];
+        }
+        if (options.exactPreferred !== false && exactHits.length > 0) {
+            return [...exactHits];
+        }
+
+        const tierExact = new Set(exactHits);
+        const tierStarts = [];
+        const tierContains = [];
+
+        for (const e of index.entries) {
+            if (tierExact.has(e.prod)) continue;
+            if (e.normName.startsWith(qNorm) || e.normCode.startsWith(qNorm) || e.normBarcode.startsWith(qNorm)) {
+                tierStarts.push(e);
+            } else if (e.searchBlob.includes(qNorm)) {
+                tierContains.push(e);
             }
-        ];
+        }
 
-        for (const fn of matchers) {
-            const found = productsList.find(fn);
-            if (found) return found;
+        tierStarts.sort((a, b) => a.normName.length - b.normName.length);
+        tierContains.sort((a, b) => a.normName.length - b.normName.length);
+
+        const merged = [...exactHits, ...tierStarts.map(e => e.prod), ...tierContains.map(e => e.prod)];
+        return options.limit > 0 ? merged.slice(0, options.limit) : merged;
+    }
+
+    function findBestProductMatch(queryRaw, productsList) {
+        const qNorm = normalizeText(queryRaw);
+        if (!qNorm || !Array.isArray(productsList) || !productsList.length) return null;
+        const index = getOrBuildProductIndex(productsList);
+
+        const direct = index.exactMap.get(qNorm);
+        if (direct && direct.length) return direct[0];
+
+        const stripped = qNorm.replace(/^(?:كود|موديل|صنف|رقم|#)\s*/i, '').trim();
+        if (stripped) {
+            const strippedHit = index.exactMap.get(stripped);
+            if (strippedHit && strippedHit.length) return strippedHit[0];
         }
         return null;
     }
@@ -129,21 +225,16 @@
         const rawBase = String(filename || '')
             .replace(/\.[^.]+$/, '')
             .replace(/\s*\(\d+\)\s*$/, '')
-            .replace(/[_\-\s]+(clean|copy|edited|white|\d+)$/i, (m, g1) => {
-                // احتفظ بالأرقام إذا كان الاسم كله مثل "52-1" بعد مطابقة محتملة، فقط أزل اللواحق النصية الصريحة
-                return /^\d+$/.test(g1) ? m : '';
-            })
+            .replace(/[_\-\s]+(clean|copy|edited|white|\d+)$/i, (m, g1) => (/^\d+$/.test(g1) ? m : ''))
             .trim();
 
         const normalizedFull = normalizeText(rawBase).replace(/[_|\-/]+/g, ' ').replace(/\s+/g, ' ').trim();
 
-        // 1. حاول مطابقة الاسم كاملاً أولاً (لو اسم الصنف نفسه فيه كلمة)
-        let directMatch = findBestProductMatch(rawBase, productsList) || findBestProductMatch(normalizedFull, productsList);
+        const directMatch = findBestProductMatch(rawBase, productsList) || findBestProductMatch(normalizedFull, productsList);
         if (directMatch) {
             return { matchedProduct: directMatch, matchedColor: '', productQuery: rawBase };
         }
 
-        // 2. افصل رمز لون أو رقم نسخة مثل "52 اسود" أو "52_جملي_2" أو "52-2"
         let working = normalizedFull.replace(/\s+\d{1,2}$/, '').trim();
         let detectedAlias = '';
 
@@ -159,7 +250,6 @@
             }
         }
 
-        // أيضاً جرب إزالة لاحقة رقم صورة مثل "52-1" أو "52 1" بعد أو بدون لون
         let productQuery = working.replace(/\s+\d{1,2}$/, '').trim() || rawBase;
         let matched = findBestProductMatch(productQuery, productsList);
         if (!matched && working !== productQuery) {
@@ -167,7 +257,6 @@
             if (matched) productQuery = working;
         }
 
-        // 3. اذا طابقنا المنتج، نربط اللون بأقرب اسم لون فعلي مسجل داخل المنتج (للحفاظ على الهمزات/الصياغة داخل variantsStock)
         let exactColor = detectedAlias;
         if (matched && detectedAlias) {
             const prodColors = extractProductColors(matched);
@@ -176,7 +265,6 @@
             if (foundProdCol) exactColor = foundProdCol;
         }
 
-        // 4. بحث احتياطي ضد ألوان المنتج مباشرة حتى لو اللون غير موجود في الجدول العام
         if (!matched) {
             const tokens = normalizedFull.split(' ').filter(Boolean);
             if (tokens.length >= 2) {
@@ -243,7 +331,10 @@
                 const lib = await loadBgRemovalLib();
                 const removeFn = lib.removeBackground || (lib.default && lib.default.removeBackground) || lib.default;
                 if (typeof removeFn === 'function') {
-                    const transparentBlob = await removeFn(sourceInput, { output: { format: 'image/png', quality: 0.9 } });
+                    const bgInput = (typeof sourceInput === 'string' && sourceInput.startsWith('data:'))
+                        ? await (await fetch(sourceInput)).blob()
+                        : sourceInput;
+                    const transparentBlob = await removeFn(bgInput, { output: { format: 'image/png', quality: 0.9 } });
                     workingSrc = await readBlobAsDataUrl(transparentBlob);
                 }
             } catch (e) {
@@ -326,7 +417,6 @@
         let nextImages = mode === 'append' ? [...existingImages] : [];
         const nextColorImages = mode === 'append' ? existingColorImages : { ...existingColorImages };
 
-        // رتب الصور بحيث تكون الصور الرئيسية (بدون لون) أولاً
         const ordered = [...processedEntries].sort((a, b) => (a.color ? 1 : 0) - (b.color ? 1 : 0));
 
         for (const entry of ordered) {
@@ -360,24 +450,14 @@
         };
     }
 
-    function buildProductOptionsHtml(products, selectedDocId) {
-        let html = '<option value="">-- اختر الصنف --</option>';
-        for (const p of products) {
-            const pid = p.firestoreId || p.id;
-            const label = `${p.name || p.code || pid} (${p.price || 0} ج.م)`;
-            html += `<option value="${escapeHtml(pid)}"${String(pid) === String(selectedDocId) ? ' selected' : ''}>${escapeHtml(label)}</option>`;
-        }
-        return html;
-    }
-
-    function buildColorOptionsHtml(prod, selectedColor) {
+    function buildCompactColorOptionsHtml(prod, selectedColor) {
         const prodColors = extractProductColors(prod);
-        const allKnown = Array.from(new Set([...prodColors, ...Object.values(KNOWN_COLOR_ALIASES)]));
-        let html = '<option value="">👑 صورة عامة / رئيسية</option>';
-        if (selectedColor && !allKnown.some(c => c === selectedColor)) {
+        const list = prodColors.length ? Array.from(new Set([...prodColors, ...CORE_COLORS_LIST])) : CORE_COLORS_LIST;
+        let html = '<option value="">👑 رئيسية / عامة</option>';
+        if (selectedColor && !list.includes(selectedColor)) {
             html += `<option value="${escapeHtml(selectedColor)}" selected>🎨 ${escapeHtml(selectedColor)}</option>`;
         }
-        for (const col of allKnown) {
+        for (const col of list) {
             html += `<option value="${escapeHtml(col)}"${col === selectedColor ? ' selected' : ''}>🎨 ${escapeHtml(col)}</option>`;
         }
         return html;
@@ -397,53 +477,123 @@
         }
     }
 
+    function renderSingleRowHtml(it, indexObj) {
+        const prod = it.productId ? indexObj.byIdMap.get(String(it.productId)) : null;
+        const statusBadge = it.done
+            ? '<span style="background:#dcfce7;color:#166534;padding:3px 8px;border-radius:8px;font-size:0.74rem;font-weight:900;">✅ تم الحفظ</span>'
+            : (it.error
+                ? `<span style="background:#fee2e2;color:#991b1b;padding:3px 8px;border-radius:8px;font-size:0.74rem;font-weight:900;" title="${escapeHtml(it.error)}">❌ خطأ</span>`
+                : (prod
+                    ? '<span style="background:#ecfdf5;color:#047857;padding:3px 8px;border-radius:8px;font-size:0.74rem;font-weight:900;">جاهز ⚡</span>'
+                    : '<span style="background:#fef3c7;color:#92400e;padding:3px 8px;border-radius:8px;font-size:0.74rem;font-weight:900;">غير مربوط</span>'));
+
+        const prodTitle = prod ? `${escapeHtml(prod.name || prod.code || prod.firestoreId)} <small style="color:#64748b;">(${prod.price || 0} ج.م)</small>` : '<span style="color:#b45309;">لم يتم اختيار صنف</span>';
+
+        return `
+            <tr data-bm-uid="${it.uid}" style="border-bottom:1px solid #e2e8f0; background:${prod ? '#ffffff' : '#fffbeb'};">
+                <td style="padding:7px; text-align:center;">
+                    <img src="${escapeHtml(it.previewUrl)}" loading="lazy" style="width:48px; height:48px; object-fit:cover; border-radius:10px; border:1px solid #cbd5e1; background:#fff;">
+                </td>
+                <td style="padding:7px; font-weight:800; font-size:0.79rem; color:#0f172a; max-width:170px; word-break:break-word;">
+                    ${escapeHtml(it.label)}
+                </td>
+                <td style="padding:7px;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; gap:6px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:9px; padding:5px 8px;">
+                        <span style="font-weight:900; font-size:0.8rem; color:#0f172a;">${prodTitle}</span>
+                        <button type="button" onclick="window.BayanBulkMedia.openRowPicker(${it.uid})" style="background:#e2e8f0; color:#0f172a; border:none; border-radius:7px; padding:3px 8px; font-weight:800; font-size:0.74rem; cursor:pointer; white-space:nowrap;">تغيير</button>
+                    </div>
+                </td>
+                <td style="padding:7px;">
+                    <select class="filter-select" style="width:100%; min-width:130px; font-weight:800; font-size:0.79rem;" onchange="window.BayanBulkMedia.setItemColor(${it.uid}, this.value)">
+                        ${buildCompactColorOptionsHtml(prod, it.color)}
+                    </select>
+                </td>
+                <td style="padding:7px; text-align:center;">${statusBadge}</td>
+                <td style="padding:7px; text-align:center;">
+                    <button type="button" onclick="window.BayanBulkMedia.removeItem(${it.uid})" style="background:#fee2e2;color:#b91c1c;border:none;border-radius:8px;padding:4px 10px;font-weight:900;cursor:pointer;">✕</button>
+                </td>
+            </tr>`;
+    }
+
     function renderBulkTable() {
         const tbody = document.getElementById('bmItemsTableBody');
         if (!tbody) return;
         const products = getProductsList();
+        const indexObj = getOrBuildProductIndex(products);
 
         if (!bulkState.items.length) {
-            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:34px; color:#64748b; font-weight:800;">📂 اختر صور المنتجات من جهازك أو اسحب دفعة من المتجر لتظهر هنا للمراجعة الفورية</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:30px; color:#64748b; font-weight:800;">📂 اختر صور المنتجات من جهازك أو اكتب كود المنتج (مثلاً <code>2</code>) واضغط سحب!</td></tr>`;
             updateBulkCounts();
             return;
         }
 
-        tbody.innerHTML = bulkState.items.map((it, idx) => {
-            const prod = products.find(p => String(p.firestoreId || p.id) === String(it.productId));
-            const statusBadge = it.done
-                ? '<span style="background:#dcfce7;color:#166534;padding:3px 8px;border-radius:8px;font-size:0.74rem;font-weight:900;">✅ تم الحفظ</span>'
-                : (it.error
-                    ? `<span style="background:#fee2e2;color:#991b1b;padding:3px 8px;border-radius:8px;font-size:0.74rem;font-weight:900;" title="${escapeHtml(it.error)}">❌ خطأ</span>`
-                    : (prod
-                        ? '<span style="background:#ecfdf5;color:#047857;padding:3px 8px;border-radius:8px;font-size:0.74rem;font-weight:900;">جاهز ⚡</span>'
-                        : '<span style="background:#fef3c7;color:#92400e;padding:3px 8px;border-radius:8px;font-size:0.74rem;font-weight:900;">اختر الصنف</span>'));
-
-            return `
-                <tr data-bm-idx="${idx}" style="border-bottom:1px solid #e2e8f0; background:${prod ? '#ffffff' : '#fffbeb'};">
-                    <td style="padding:8px; text-align:center;">
-                        <img src="${escapeHtml(it.previewUrl)}" style="width:50px; height:50px; object-fit:cover; border-radius:10px; border:1px solid #cbd5e1; background:#fff;">
-                    </td>
-                    <td style="padding:8px; font-weight:800; font-size:0.8rem; color:#0f172a; max-width:170px; word-break:break-word;">
-                        ${escapeHtml(it.label)}
-                    </td>
-                    <td style="padding:8px;">
-                        <select class="filter-select" style="width:100%; min-width:170px; font-weight:800; font-size:0.8rem;" onchange="window.BayanBulkMedia.setItemProduct(${idx}, this.value)">
-                            ${buildProductOptionsHtml(products, it.productId)}
-                        </select>
-                    </td>
-                    <td style="padding:8px;">
-                        <select class="filter-select" style="width:100%; min-width:140px; font-weight:800; font-size:0.8rem;" onchange="window.BayanBulkMedia.setItemColor(${idx}, this.value)">
-                            ${buildColorOptionsHtml(prod, it.color)}
-                        </select>
-                    </td>
-                    <td style="padding:8px; text-align:center;">${statusBadge}</td>
-                    <td style="padding:8px; text-align:center;">
-                        <button type="button" onclick="window.BayanBulkMedia.removeItem(${idx})" style="background:#fee2e2;color:#b91c1c;border:none;border-radius:8px;padding:4px 9px;font-weight:900;cursor:pointer;">✕</button>
-                    </td>
-                </tr>`;
-        }).join('');
-
+        tbody.innerHTML = bulkState.items.map((it) => renderSingleRowHtml(it, indexObj)).join('');
         updateBulkCounts();
+    }
+
+    function removeRowFast(uid) {
+        const idx = bulkState.items.findIndex(it => it.uid === uid);
+        if (idx === -1) return;
+        bulkState.items.splice(idx, 1);
+
+        const rowEl = document.querySelector(`tr[data-bm-uid="${uid}"]`);
+        if (rowEl) rowEl.remove();
+
+        if (!bulkState.items.length) {
+            renderBulkTable();
+        } else {
+            updateBulkCounts();
+        }
+    }
+
+    function openRowProductPicker(uid) {
+        bulkState.activePickerRowUid = uid;
+        let overlay = document.getElementById('bmProductPickerModal');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'bmProductPickerModal';
+            overlay.style.cssText = 'position:fixed;inset:0;z-index:100001;background:rgba(15,23,42,0.75);display:flex;align-items:center;justify-content:center;padding:12px;direction:rtl;font-family:Cairo,sans-serif;';
+            overlay.innerHTML = `
+                <div style="background:#fff;border-radius:16px;width:440px;max-width:95vw;max-height:78vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,0.4);">
+                    <div style="padding:12px 14px;background:#0f172a;color:#fff;display:flex;align-items:center;justify-content:space-between;">
+                        <span style="font-weight:900;font-size:0.95rem;">🔍 اختيار الصنف (بحث فوري مفهرس)</span>
+                        <button type="button" onclick="document.getElementById('bmProductPickerModal').style.display='none'" style="background:rgba(255,255,255,0.2);color:#fff;border:none;width:28px;height:28px;border-radius:8px;font-weight:900;cursor:pointer;">✕</button>
+                    </div>
+                    <div style="padding:10px;border-bottom:1px solid #e2e8f0;background:#f8fafc;">
+                        <input type="text" id="bmPickerSearchInp" class="form-control" placeholder="اكتب اسم الصنف أو الرقم أو الكود..." style="width:100%;font-weight:800;" oninput="window.BayanBulkMedia.renderPickerResults()">
+                    </div>
+                    <div id="bmPickerResultsBox" style="overflow-y:auto;padding:8px;flex:1;display:flex;flex-direction:column;gap:5px;"></div>
+                </div>`;
+            overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.style.display = 'none'; });
+            document.body.appendChild(overlay);
+        }
+        overlay.style.display = 'flex';
+        const inp = document.getElementById('bmPickerSearchInp');
+        if (inp) {
+            inp.value = '';
+            setTimeout(() => inp.focus(), 40);
+        }
+        renderPickerResults();
+    }
+
+    function renderPickerResults() {
+        const box = document.getElementById('bmPickerResultsBox');
+        if (!box) return;
+        const q = document.getElementById('bmPickerSearchInp')?.value || '';
+        const matches = searchIndexedProducts(q, getProductsList(), { exactPreferred: false, limit: 40 });
+        if (!matches.length) {
+            box.innerHTML = '<div style="text-align:center;padding:20px;color:#64748b;font-weight:800;">لا توجد أصناف مطابقة</div>';
+            return;
+        }
+        box.innerHTML = matches.map(p => {
+            const pid = p.firestoreId || p.id;
+            return `
+                <button type="button" onclick="window.BayanBulkMedia.pickProductForRow('${escapeHtml(pid)}')"
+                    style="text-align:right;background:#f8fafc;border:1px solid #cbd5e1;border-radius:10px;padding:8px 10px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-family:inherit;">
+                    <span style="font-weight:900;color:#0f172a;font-size:0.86rem;">${escapeHtml(p.name || p.code || pid)}</span>
+                    <span style="font-size:0.76rem;color:#059669;font-weight:800;">${p.price || 0} ج.م</span>
+                </button>`;
+        }).join('');
     }
 
     function updateLogoPreviewBox() {
@@ -484,7 +634,7 @@
         box.style.display = 'flex';
         try {
             const opts = getCurrentStudioOptions();
-            opts.removeBg = false; // للمعاينة السريعة بدون انتظار تحميل مكتبة AI
+            opts.removeBg = false;
             const out = await processStudioImage(first.source, opts);
             imgEl.src = out;
         } catch (_) { }
@@ -499,6 +649,7 @@
             const parsed = parseFilenameInfo(f.name, products);
             const previewUrl = URL.createObjectURL(f);
             bulkState.items.push({
+                uid: nextRowUid++,
                 label: f.name,
                 source: f,
                 previewUrl,
@@ -512,19 +663,26 @@
         refreshSamplePreview();
     }
 
-    function loadExistingProductsIntoStudio(batchLimit = 50, onlyWithoutLogoMode = false) {
+    function loadExistingProductsIntoStudio(batchLimit = 50) {
         const products = getProductsList();
-        const searchQ = normalizeText(document.getElementById('bmCloudFilterInput')?.value || '');
-        let candidates = products.filter(p => {
-            const hasImgs = (Array.isArray(p.images) && p.images.some(Boolean)) || Boolean(p.image);
-            if (!hasImgs) return false;
-            if (!searchQ) return true;
-            return normalizeText(p.name).includes(searchQ) || normalizeText(p.code).includes(searchQ);
-        });
+        const searchQ = (document.getElementById('bmCloudFilterInput')?.value || '').trim();
+        const exactOnly = Boolean(document.getElementById('bmChkExactSearch')?.checked);
 
-        const offsetVal = Math.max(0, parseInt(document.getElementById('bmCloudOffsetInput')?.value || '0', 10) || 0);
+        // عند البحث بالرقم/الكود: الفهرس يعطي التطابق التام مباشرة (مثلاً "2" يجلب منتج 2 فقط!)
+        let candidates = searchQ
+            ? searchIndexedProducts(searchQ, products, { exactPreferred: true, exactOnly })
+            : [...products];
+
+        candidates = candidates.filter(p => (Array.isArray(p.images) && p.images.some(Boolean)) || Boolean(p.image));
+
+        const offsetVal = searchQ ? 0 : Math.max(0, parseInt(document.getElementById('bmCloudOffsetInput')?.value || '0', 10) || 0);
         if (offsetVal > 0) candidates = candidates.slice(offsetVal);
         if (batchLimit > 0) candidates = candidates.slice(0, batchLimit);
+
+        // عند البحث عن كود محدد نبدّل القائمة الحالية بنتيجة البحث النظيفة لتجنب التراكم والبطء
+        if (searchQ) {
+            bulkState.items = [];
+        }
 
         let added = 0;
         for (const p of candidates) {
@@ -536,8 +694,8 @@
             });
             const imgs = (Array.isArray(p.images) && p.images.length) ? p.images.filter(Boolean) : (p.image ? [p.image] : []);
             imgs.forEach((src, i) => {
-                if (onlyWithoutLogoMode && i > 0 && !imgToCol.has(src)) return;
                 bulkState.items.push({
+                    uid: nextRowUid++,
                     label: `${p.name || pid}${imgToCol.has(src) ? ' - ' + imgToCol.get(src) : ' (صورة ' + (i + 1) + ')'}`,
                     source: src,
                     previewUrl: src,
@@ -553,7 +711,9 @@
         renderBulkTable();
         refreshSamplePreview();
         if (typeof root.showFastSaveToast === 'function') {
-            root.showFastSaveToast(`📥 تم سحب ${added} صورة من منتجات المتجر الحالية بنجاح!`);
+            root.showFastSaveToast(added > 0
+                ? `⚡ تم سحب ${candidates.length} منتج (${added} صورة) في لحظة!`
+                : `⚠️ لم يُعثر على منتجات مطابقة لـ "${searchQ}"`);
         }
     }
 
@@ -572,6 +732,7 @@
 
         const opts = getCurrentStudioOptions();
         const products = getProductsList();
+        const indexObj = getOrBuildProductIndex(products);
         const progressEl = document.getElementById('bmProgressBar');
         const statusEl = document.getElementById('bmProgressText');
         const runBtn = document.getElementById('bmStartUploadBtn');
@@ -583,7 +744,6 @@
             runBtn.innerHTML = '<span>⏳</span><span>جاري المعالجة والرفع...</span>';
         }
 
-        // تجميع الصور حسب المنتج لتقليل عدد كتابات Firestore وحفظ كل منتج مرة واحدة نظيفة
         const byProduct = new Map();
         for (const it of matchedItems) {
             const key = String(it.productId);
@@ -599,7 +759,7 @@
             const prodKeys = Array.from(byProduct.keys());
             for (const pid of prodKeys) {
                 if (bulkState.cancelRequested) break;
-                const prod = products.find(p => String(p.firestoreId || p.id) === pid);
+                const prod = indexObj.byIdMap.get(pid);
                 const group = byProduct.get(pid) || [];
                 if (!prod || !prod.firestoreId) {
                     group.forEach(g => { g.error = 'المنتج غير محفوظ في السحابة'; });
@@ -664,6 +824,9 @@
             if (savedLogo) bulkState.logoDataUrl = savedLogo;
         } catch (_) { }
 
+        // تهيئة الفهرس فور فتح النافذة لضمان سرعة O(1) من أول ثانية
+        getOrBuildProductIndex(getProductsList());
+
         let modal = document.getElementById('bayanBulkMediaStudioModal');
         if (!modal) {
             modal = document.createElement('div');
@@ -673,8 +836,8 @@
                 <div style="background:#ffffff;border-radius:22px;width:96vw;max-width:1160px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 25px 60px rgba(0,0,0,0.45);">
                     <div style="padding:14px 20px;background:linear-gradient(135deg,#0f172a,#047857);color:#fff;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
                         <div>
-                            <div style="font-size:1.12rem;font-weight:900;">⚡ استوديو الصور الجماعي + ختم اللوجو التلقائي</div>
-                            <div style="font-size:0.8rem;opacity:0.9;">ارفع عشرات الصور دفعة واحدة بالاسم واللون (مثال: <code>52 اسود</code>)، أو اسحب صور المتجر الحالية لختم اللوجو أعلى اليمين!</div>
+                            <div style="font-size:1.12rem;font-weight:900;">⚡ استوديو الصور الجماعي + فهرس بحث فوري (v5.4.5)</div>
+                            <div style="font-size:0.8rem;opacity:0.9;">ابحث برقم/اسم المنتج (مثلاً <code>2</code> يجلب <code>2</code> فقط فوراً) أو اسحب دفعة صور من جهازك!</div>
                         </div>
                         <button type="button" onclick="document.getElementById('bayanBulkMediaStudioModal').style.display='none'" style="background:rgba(255,255,255,0.2);border:none;color:#fff;width:36px;height:36px;border-radius:10px;font-size:18px;font-weight:900;cursor:pointer;">✕</button>
                     </div>
@@ -715,7 +878,7 @@
                             </label>
                             <label style="display:flex;align-items:center;gap:8px;font-weight:800;font-size:0.8rem;color:#047857;cursor:pointer;margin-bottom:8px;">
                                 <input type="checkbox" id="bmChkRemoveBg" style="width:17px;height:17px;accent-color:#059669;">
-                                <span>✨ تفريغ الخلفية بالـ AI (أبطأ للدفعات الكبيرة)</span>
+                                <span>✨ تفريغ الخلفية بالـ AI (للصور غير البيضاء فقط)</span>
                             </label>
                             <select id="bmSaveMode" class="filter-select" style="width:100%;font-size:0.8rem;font-weight:800;">
                                 <option value="replace">🔄 تحديث/استبدال صور الصنف المختار (موصى به)</option>
@@ -723,9 +886,9 @@
                             </select>
                         </div>
 
-                        <!-- جلب الصور + معاينة حية -->
+                        <!-- جلب الصور + البحث المفهرس -->
                         <div style="background:#ffffff;border:1.5px solid #cbd5e1;border-radius:14px;padding:12px;">
-                            <div style="font-weight:900;font-size:0.88rem;color:#0f172a;margin-bottom:8px;">📂 ٣. إضافة دفعة الصور</div>
+                            <div style="font-weight:900;font-size:0.88rem;color:#0f172a;margin-bottom:8px;">📂 ٣. إضافة أو سحب دفعة الصور</div>
                             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
                                 <label class="btn-primary-action" style="flex:1;justify-content:center;background:#059669;border-color:#047857;padding:8px 12px;font-size:0.82rem;cursor:pointer;margin:0;">
                                     <span>📸 اختيار صور من الجهاز</span>
@@ -734,10 +897,14 @@
                                 <button type="button" onclick="window.BayanBulkMedia.clearList()" style="background:#f1f5f9;color:#334155;border:1px solid #cbd5e1;border-radius:10px;padding:8px 10px;font-weight:800;font-size:0.78rem;cursor:pointer;">تفريغ القائمة</button>
                             </div>
                             <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
-                                <input type="text" id="bmCloudFilterInput" class="form-control" placeholder="كود/اسم..." style="flex:1;min-width:85px;font-size:0.76rem;padding:5px 8px;">
-                                <input type="number" id="bmCloudOffsetInput" class="form-control" value="0" min="0" step="50" title="بداية من منتج رقم..." style="width:68px;font-size:0.76rem;padding:5px 6px;">
-                                <button type="button" onclick="window.BayanBulkMedia.loadFromStore(50)" style="background:#0284c7;color:#fff;border:none;border-radius:9px;padding:6px 10px;font-weight:800;font-size:0.76rem;cursor:pointer;">📥 سحب 50 من المتجر</button>
+                                <input type="text" id="bmCloudFilterInput" class="form-control" placeholder="اكتب كود أو اسم (مثلاً 2)..." style="flex:1.4;min-width:110px;font-size:0.78rem;padding:6px 9px;font-weight:800;" onkeydown="if(event.key==='Enter'){event.preventDefault();window.BayanBulkMedia.loadFromStore(50);}">
+                                <input type="number" id="bmCloudOffsetInput" class="form-control" value="0" min="0" step="50" title="بداية الدفعة (0، 50، 100...)" style="width:62px;font-size:0.76rem;padding:6px;">
+                                <button type="button" onclick="window.BayanBulkMedia.loadFromStore(50)" style="background:#0284c7;color:#fff;border:none;border-radius:9px;padding:7px 11px;font-weight:900;font-size:0.78rem;cursor:pointer;">📥 سحب</button>
                             </div>
+                            <label style="display:flex;align-items:center;gap:6px;margin-top:6px;font-size:0.74rem;font-weight:800;color:#475569;cursor:pointer;">
+                                <input type="checkbox" id="bmChkExactSearch" checked style="accent-color:#0284c7;">
+                                <span>🎯 تطابق تام بالاسم/الكود أولاً (<code>2</code> يجلب <code>2</code> فقط)</span>
+                            </label>
                         </div>
                     </div>
 
@@ -745,7 +912,7 @@
                     <div style="padding:10px 18px;background:#f1f5f9;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
                         <div style="display:flex;align-items:center;gap:12px;">
                             <div id="bmSamplePreviewBox" style="display:none;align-items:center;gap:8px;background:#fff;padding:4px 10px;border-radius:10px;border:1px solid #cbd5e1;">
-                                <img id="bmSamplePreviewImg" style="width:42px;height:42px;object-fit:contain;border-radius:6px;background:#fff;">
+                                <img id="bmSamplePreviewImg" style="width:46px;height:46px;object-fit:contain;border-radius:6px;background:#fff;">
                                 <span style="font-size:0.76rem;font-weight:800;color:#047857;">معاينة الختم 👁️</span>
                             </div>
                             <div style="font-size:0.84rem;font-weight:800;color:#0f172a;">
@@ -784,7 +951,6 @@
                 </div>`;
             document.body.appendChild(modal);
 
-            // دعم السحب والإفلات داخل المودال
             modal.addEventListener('dragover', (e) => { e.preventDefault(); });
             modal.addEventListener('drop', (e) => {
                 e.preventDefault();
@@ -802,11 +968,34 @@
     root.openBulkMediaStudioModal = openBulkMediaStudioModal;
     root.BayanBulkMedia = {
         normalizeText,
+        searchIndexedProducts,
+        getOrBuildProductIndex,
         parseFilenameInfo,
         extractProductColors,
         mergeProductMedia,
         processStudioImage,
         openModal: openBulkMediaStudioModal,
+        openRowPicker: (uid) => openRowProductPicker(uid),
+        renderPickerResults: () => renderPickerResults(),
+        pickProductForRow: (pid) => {
+            const uid = bulkState.activePickerRowUid;
+            const it = bulkState.items.find(x => x.uid === uid);
+            if (it) {
+                it.productId = pid || '';
+                it.done = false;
+                const overlay = document.getElementById('bmProductPickerModal');
+                if (overlay) overlay.style.display = 'none';
+                const rowEl = document.querySelector(`tr[data-bm-uid="${uid}"]`);
+                if (rowEl) {
+                    const tmp = document.createElement('tbody');
+                    tmp.innerHTML = renderSingleRowHtml(it, getOrBuildProductIndex(getProductsList()));
+                    if (tmp.firstElementChild) rowEl.replaceWith(tmp.firstElementChild);
+                    updateBulkCounts();
+                } else {
+                    renderBulkTable();
+                }
+            }
+        },
         onFilesPicked: (e) => {
             handleLocalFilesSelected(e?.target?.files);
             if (e?.target) e.target.value = '';
@@ -831,22 +1020,14 @@
             updateLogoPreviewBox();
             refreshSamplePreview();
         },
-        setItemProduct: (idx, pid) => {
-            if (!bulkState.items[idx]) return;
-            bulkState.items[idx].productId = pid || '';
-            bulkState.items[idx].done = false;
-            renderBulkTable();
-        },
-        setItemColor: (idx, color) => {
-            if (!bulkState.items[idx]) return;
-            bulkState.items[idx].color = color || '';
-            bulkState.items[idx].done = false;
+        setItemColor: (uid, color) => {
+            const it = bulkState.items.find(x => x.uid === uid);
+            if (!it) return;
+            it.color = color || '';
+            it.done = false;
             updateBulkCounts();
         },
-        removeItem: (idx) => {
-            bulkState.items.splice(idx, 1);
-            renderBulkTable();
-        },
+        removeItem: (uid) => removeRowFast(uid),
         clearList: () => {
             if (bulkState.isRunning) return;
             bulkState.items = [];
@@ -856,7 +1037,7 @@
             if (txt) txt.textContent = '';
             renderBulkTable();
         },
-        loadFromStore: (limit) => loadExistingProductsIntoStudio(limit, false),
+        loadFromStore: (limit) => loadExistingProductsIntoStudio(limit),
         refreshPreview: () => refreshSamplePreview(),
         startUpload: () => runBulkStudioUpload()
     };
