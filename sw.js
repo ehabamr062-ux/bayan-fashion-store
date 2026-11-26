@@ -3,7 +3,7 @@
  * ⚡ Service Worker لمتجر ولوحة تحكم بَيَان ستور (PWA Offline + Instant Speed)
  * =========================================================================
  */
-const CACHE_NAME = 'bayan-store-pwa-v5.4.3';
+const CACHE_NAME = 'bayan-store-pwa-v5.4.4';
 const CORE_SHELL_URLS = [
   './',
   './index.html',
