@@ -10,12 +10,12 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="لوحة التاجر">
-    <link id="bayanPwaManifest" rel="manifest" href="admin-manifest.json?v=5.5.1">
+    <link id="bayanPwaManifest" rel="manifest" href="admin-manifest.json?v=5.5.2">
     <link rel="apple-touch-icon" sizes="192x192" href="icons/admin-192.png">
     <link rel="icon" type="image/png" sizes="192x192" href="icons/admin-192.png">
-    <meta name="app-version" content="5.5.1">
+    <meta name="app-version" content="5.5.2">
     <meta name="robots" content="noindex, nofollow">
-    <title>لوحة إدارة متجر بيان للأزياء | Merchant Admin v5.5.1</title>
+    <title>لوحة إدارة متجر بيان للأزياء | Merchant Admin v5.5.2</title>
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1574,7 +1574,7 @@
             <div class="header-tools" style="display:flex; flex-wrap:wrap; align-items:center; gap:8px;">
                 <span id="adminVersionBadge"
                     style="display:inline-flex; align-items:center; padding:6px 11px; border-radius:10px; border:1px solid #cbd5e1; background:#f8fafc; color:#0f172a; font-family:monospace; font-weight:900; font-size:0.8rem;"
-                    title="إصدار لوحة التحكم الحالي">v5.5.1</span>
+                    title="إصدار لوحة التحكم الحالي">v5.5.2</span>
                 <button type="button" id="adminAudioToggleBtn" class="btn-header-link" onclick="toggleOrderAlertSound()"
                     title="تفعيل أو كتم جرس تنبيه الطلبات الجديدة"
                     style="display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:40px; padding:8px 15px; border-radius:12px; border:1px solid #b45309; background:linear-gradient(135deg, #f59e0b, #d97706); color:#ffffff; font-weight:800; font-size:0.85rem; white-space:nowrap; box-shadow:0 3px 10px rgba(217,119,6,0.35); cursor:pointer; transition:all 0.2s;">
@@ -2873,6 +2873,33 @@
                     </div>
                 </div>
 
+                <!-- 🗑️ سلة محذوفات الطلبات -->
+                <div class="settings-card" id="settingsOrdersTrashCard" style="grid-column: 1 / -1;">
+                    <div class="settings-card-header" style="justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div class="settings-icon-box" style="background: #fee2e2; color: #b91c1c;">🗑️</div>
+                            <div>
+                                <h2 style="font-size: 1.25rem; font-weight: 950; color: #991b1b;">سلة محذوفات الطلبات
+                                    <span id="trashOrdersCountBadge"
+                                        style="background: #fee2e2; color: #b91c1c; padding: 2px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 900; margin-right: 6px;">0</span>
+                                </h2>
+                                <small style="color: var(--text-muted); font-weight: 700;">الطلبات المحذوفة من لوحة التحكم — يمكنك استعادتها أو حذفها نهائياً</small>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <button type="button" class="btn-card-action" onclick="restoreAllTrashedOrders()"
+                                style="background: #ecfdf5; color: #059669; border-color: #a7f3d0; font-weight: 900; padding: 8px 14px;">
+                                ♻️ استعادة الكل
+                            </button>
+                            <button type="button" class="btn-card-action" onclick="emptyOrdersTrashPermanently()"
+                                style="background: #fee2e2; color: #b91c1c; border-color: #fca5a5; font-weight: 900; padding: 8px 14px;">
+                                ❌ تفريغ السلة نهائياً
+                            </button>
+                        </div>
+                    </div>
+                    <div id="adminOrdersTrashContainer" style="margin-top: 10px;"></div>
+                </div>
+
             </div>
         </section>
 
@@ -3480,13 +3507,13 @@
     <!-- سكريبتات Firebase السحابية -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-    <script src="js/firebase_config.js?v=5.5.1"></script>
-    <script src="js/pwa_install.js?v=5.5.1"></script>
-    <script src="js/admin_categories.js?v=5.5.1"></script>
-    <script src="js/admin_media_tools.js?v=5.5.1"></script>
-    <script src="js/admin_bulk_media.js?v=5.5.1"></script>
-    <script src="js/admin_visibility.js?v=5.5.1"></script>
-    <script src="js/admin_crm_abandoned.js?v=5.5.1"></script>
+    <script src="js/firebase_config.js?v=5.5.2"></script>
+    <script src="js/pwa_install.js?v=5.5.2"></script>
+    <script src="js/admin_categories.js?v=5.5.2"></script>
+    <script src="js/admin_media_tools.js?v=5.5.2"></script>
+    <script src="js/admin_bulk_media.js?v=5.5.2"></script>
+    <script src="js/admin_visibility.js?v=5.5.2"></script>
+    <script src="js/admin_crm_abandoned.js?v=5.5.2"></script>
 
     <!-- منطق وبرمجة لوحة التاجر -->
     <script>
@@ -4002,11 +4029,221 @@
             }).join('');
         }
 
-        // عرض أحدث الطلبات الواردة في الداشبورد مع الإجراءات الفورية
+        // عرض أحدث الطلبات الواردة في الداشبورد مع فهرس بحث سريع O(1) وتحديد جماعي وسلة محذوفات
         let adminOrderInvoiceSearch = '';
+        let adminTrashedOrdersList = [];
+        let selectedHomeOrderIds = new Set();
+        let adminOrderExactIdIndex = new Map();
+        let adminOrdersIndexedRows = [];
+
+        function normalizeOrderSearchText(val) {
+            return String(val || '')
+                .replace(/[\u0660-\u0669]/g, d => String(d.charCodeAt(0) - 0x0660))
+                .replace(/[\u06F0-\u06F9]/g, d => String(d.charCodeAt(0) - 0x06F0))
+                .replace(/[أإآ]/g, 'ا')
+                .replace(/ى/g, 'ي')
+                .replace(/ة/g, 'ه')
+                .toLowerCase()
+                .trim();
+        }
+
+        function rebuildAdminOrdersSearchIndex() {
+            adminOrderExactIdIndex = new Map();
+            adminOrdersIndexedRows = (adminOrdersList || []).map(o => {
+                const keys = [
+                    o.id,
+                    o.orderNumber,
+                    o.posInvoiceNo,
+                    o.firestoreId,
+                    o.phone1
+                ].map(k => normalizeOrderSearchText(k).replace(/^#/, '')).filter(Boolean);
+
+                keys.forEach(k => {
+                    if (!adminOrderExactIdIndex.has(k)) adminOrderExactIdIndex.set(k, []);
+                    adminOrderExactIdIndex.get(k).push(o);
+                });
+
+                const hay = normalizeOrderSearchText(
+                    `${o.id || ''} ${o.orderNumber || ''} ${o.posInvoiceNo || ''} ${o.firestoreId || ''} ${o.customerName || ''} ${o.phone1 || ''} ${o.city || ''} ${o.address || ''}`
+                );
+                return { order: o, hay, ts: parseOrderDate(o)?.getTime() || 0 };
+            });
+            adminOrdersIndexedRows.sort((a, b) => b.ts - a.ts);
+        }
+
+        function searchIndexedAdminOrders(query) {
+            if (!adminOrdersIndexedRows.length && (adminOrdersList || []).length) {
+                rebuildAdminOrdersSearchIndex();
+            }
+            const q = normalizeOrderSearchText(query).replace(/^#/, '');
+            if (!q) return adminOrdersIndexedRows.slice(0, 6).map(r => r.order);
+
+            const exactHits = adminOrderExactIdIndex.get(q);
+            const tokens = q.split(/\s+/).filter(Boolean);
+            const matched = adminOrdersIndexedRows
+                .filter(r => tokens.every(t => r.hay.includes(t)))
+                .map(r => r.order);
+
+            if (exactHits && exactHits.length) {
+                const seen = new Set(exactHits.map(x => x.firestoreId || x.id));
+                return [...exactHits, ...matched.filter(x => !seen.has(x.firestoreId || x.id))];
+            }
+            return matched;
+        }
+
         function onAdminOrderInvoiceSearch(val) {
-            adminOrderInvoiceSearch = String(val || '').trim();
+            adminOrderInvoiceSearch = String(val || '');
+            const inputEl = document.getElementById('homeOrderInvoiceSearchInput');
+            const selStart = inputEl ? inputEl.selectionStart : null;
+            const selEnd = inputEl ? inputEl.selectionEnd : null;
             renderHomeRecentOrders();
+            const newInput = document.getElementById('homeOrderInvoiceSearchInput');
+            if (newInput && document.activeElement !== newInput) {
+                newInput.focus();
+                if (selStart !== null && selEnd !== null) {
+                    try { newInput.setSelectionRange(selStart, selEnd); } catch (_) {}
+                }
+            }
+        }
+
+        function toggleHomeOrderSelection(orderKey, checked) {
+            if (!orderKey) return;
+            if (checked) selectedHomeOrderIds.add(orderKey);
+            else selectedHomeOrderIds.delete(orderKey);
+            renderHomeRecentOrders();
+        }
+
+        function toggleSelectAllHomeOrders(checked) {
+            const visibleList = searchIndexedAdminOrders(adminOrderInvoiceSearch);
+            visibleList.forEach(o => {
+                const key = String(o.firestoreId || o.id || '');
+                if (!key) return;
+                if (checked) selectedHomeOrderIds.add(key);
+                else selectedHomeOrderIds.delete(key);
+            });
+            renderHomeRecentOrders();
+        }
+
+        function selectCancelledHomeOrders() {
+            const cancelled = (adminOrdersList || []).filter(o => o.status === 'cancelled');
+            if (!cancelled.length) {
+                if (typeof showToast === 'function') showToast('لا توجد طلبات ملغية لتحديدها', 'info');
+                return;
+            }
+            cancelled.forEach(o => {
+                const key = String(o.firestoreId || o.id || '');
+                if (key) selectedHomeOrderIds.add(key);
+            });
+            renderHomeRecentOrders();
+            if (typeof showToast === 'function') showToast(`تم تحديد ${cancelled.length} طلب ملغي`, 'success');
+        }
+
+        async function moveSelectedHomeOrdersToTrash() {
+            const keys = Array.from(selectedHomeOrderIds);
+            if (!keys.length) return;
+            if (!confirm(`هل تريد نقل ${keys.length} طلب محدد إلى سلة المحذوفات في الإعدادات؟`)) return;
+            const nowIso = new Date().toISOString();
+            try {
+                if (typeof db !== 'undefined' && db) {
+                    await Promise.all(keys.map(docId =>
+                        db.collection('orders').doc(docId).update({ isDeleted: true, deletedAt: nowIso })
+                    ));
+                }
+                selectedHomeOrderIds.clear();
+                if (typeof showToast === 'function') showToast(`تم نقل ${keys.length} طلب إلى سلة المحذوفات`, 'success');
+            } catch (e) {
+                console.error('Trash move error:', e);
+                if (typeof showToast === 'function') showToast('تعذر نقل بعض الطلبات لسلة المحذوفات', 'error');
+            }
+        }
+
+        async function restoreTrashedOrder(docId) {
+            if (!docId || typeof db === 'undefined' || !db) return;
+            try {
+                await db.collection('orders').doc(docId).update({ isDeleted: false, deletedAt: null });
+                if (typeof showToast === 'function') showToast('تمت استعادة الطلب بنجاح', 'success');
+            } catch (e) {
+                console.error('Restore order error:', e);
+                if (typeof showToast === 'function') showToast('فشل استعادة الطلب', 'error');
+            }
+        }
+
+        async function permanentlyDeleteTrashedOrder(docId) {
+            if (!docId || typeof db === 'undefined' || !db) return;
+            if (!confirm('تحذير: سيتم حذف هذا الطلب نهائياً ولن يمكن استرجاعه. متابعة؟')) return;
+            try {
+                await db.collection('orders').doc(docId).delete();
+                if (typeof showToast === 'function') showToast('تم حذف الطلب نهائياً', 'success');
+            } catch (e) {
+                console.error('Permanent delete order error:', e);
+                if (typeof showToast === 'function') showToast('فشل الحذف النهائي للطلب', 'error');
+            }
+        }
+
+        async function restoreAllTrashedOrders() {
+            if (!adminTrashedOrdersList.length) return;
+            if (!confirm(`استعادة جميع الطلبات (${adminTrashedOrdersList.length}) من سلة المحذوفات؟`)) return;
+            try {
+                await Promise.all(adminTrashedOrdersList.map(o =>
+                    db.collection('orders').doc(o.firestoreId || o.id).update({ isDeleted: false, deletedAt: null })
+                ));
+                if (typeof showToast === 'function') showToast('تمت استعادة جميع الطلبات', 'success');
+            } catch (e) {
+                console.error('Restore all error:', e);
+                if (typeof showToast === 'function') showToast('حدث خطأ أثناء الاستعادة', 'error');
+            }
+        }
+
+        async function emptyOrdersTrashPermanently() {
+            if (!adminTrashedOrdersList.length) return;
+            if (!confirm(`تحذير نهائي: سيتم حذف ${adminTrashedOrdersList.length} طلب من قاعدة البيانات نهائياً بدون رجعة!`)) return;
+            try {
+                await Promise.all(adminTrashedOrdersList.map(o =>
+                    db.collection('orders').doc(o.firestoreId || o.id).delete()
+                ));
+                if (typeof showToast === 'function') showToast('تم تفريغ سلة المحذوفات نهائياً', 'success');
+            } catch (e) {
+                console.error('Empty trash error:', e);
+                if (typeof showToast === 'function') showToast('حدث خطأ أثناء تفريغ السلة', 'error');
+            }
+        }
+
+        function renderAdminOrdersTrashBin() {
+            const container = document.getElementById('adminOrdersTrashContainer');
+            const badge = document.getElementById('trashOrdersCountBadge');
+            if (badge) badge.textContent = String(adminTrashedOrdersList.length);
+            if (!container) return;
+
+            if (!adminTrashedOrdersList.length) {
+                container.innerHTML = `<div style="text-align:center; padding:22px; color:#64748b; background:#f8fafc; border-radius:10px; border:1px dashed #cbd5e1; font-weight:700;">سلة محذوفات الطلبات فارغة حالياً ✨</div>`;
+                return;
+            }
+
+            let html = `<div style="overflow-x:auto;"><table style="width:100%; border-collapse:collapse; font-size:0.84rem; text-align:right;">
+                <thead><tr style="background:#fef2f2; color:#991b1b; border-bottom:1px solid #fecaca;">
+                    <th style="padding:8px 10px;">رقم الطلب</th>
+                    <th style="padding:8px 10px;">العميل</th>
+                    <th style="padding:8px 10px;">الإجمالي</th>
+                    <th style="padding:8px 10px;">تاريخ الحذف</th>
+                    <th style="padding:8px 10px; text-align:center;">إجراءات</th>
+                </tr></thead><tbody>`;
+
+            adminTrashedOrdersList.forEach(o => {
+                const docId = o.firestoreId || o.id;
+                const delDate = o.deletedAt ? new Date(o.deletedAt).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+                html += `<tr style="border-bottom:1px solid #f1f5f9;">
+                    <td style="padding:8px 10px; font-weight:900; color:#0284c7;">#${o.id || docId}</td>
+                    <td style="padding:8px 10px; font-weight:800;">${o.customerName || 'عميل'} <small style="color:#64748b;">(${o.phone1 || ''})</small></td>
+                    <td style="padding:8px 10px; font-weight:900; color:#059669;">${Number(o.grandTotal || 0).toLocaleString('ar-EG')} ج.م</td>
+                    <td style="padding:8px 10px; color:#64748b;">${delDate}</td>
+                    <td style="padding:8px 10px; text-align:center; white-space:nowrap;">
+                        <button type="button" class="btn-card-action" onclick="restoreTrashedOrder('${docId}')" style="padding:4px 10px; font-size:0.75rem; font-weight:800; background:#ecfdf5; color:#059669; border-color:#a7f3d0;">♻️ استعادة</button>
+                        <button type="button" class="btn-card-action" onclick="permanentlyDeleteTrashedOrder('${docId}')" style="padding:4px 10px; font-size:0.75rem; font-weight:800; background:#fee2e2; color:#b91c1c; border-color:#fca5a5;">❌ حذف نهائي</button>
+                    </td>
+                </tr>`;
+            });
+            html += `</tbody></table></div>`;
+            container.innerHTML = html;
         }
 
         function renderHomeRecentOrders() {
@@ -4024,18 +4261,8 @@
                 return;
             }
 
-            const qRaw = adminOrderInvoiceSearch.replace(/^#/, '').toLowerCase();
-            const sortedAll = [...adminOrdersList].sort((a, b) => {
-                const dateA = parseOrderDate(a)?.getTime() || 0;
-                const dateB = parseOrderDate(b)?.getTime() || 0;
-                return dateB - dateA;
-            });
-            const recentList = qRaw
-                ? sortedAll.filter(o => {
-                    const hay = `${o.orderNumber || ''} ${o.id || ''} ${o.posInvoiceNo || ''} ${o.customerName || ''} ${o.phone1 || ''} ${o.city || ''}`.toLowerCase();
-                    return hay.includes(qRaw);
-                })
-                : sortedAll.slice(0, 6);
+            const recentList = searchIndexedAdminOrders(adminOrderInvoiceSearch);
+            const allVisibleSelected = recentList.length > 0 && recentList.every(o => selectedHomeOrderIds.has(String(o.firestoreId || o.id || '')));
 
             const statusBadge = {
                 'new': { label: '🟡 جديد', bg: '#fef3c7', text: '#92400e', border: '#fcd34d' },
@@ -4046,13 +4273,18 @@
 
             let tableHtml = `
                 <div style="display:flex; gap:8px; align-items:center; margin-bottom:12px; flex-wrap:wrap;">
-                    <input type="text" value="${adminOrderInvoiceSearch.replace(/"/g, '&quot;')}" oninput="onAdminOrderInvoiceSearch(this.value)" placeholder="🔍 ابحث برقم الفاتورة / الطلب (مثال: 1 أو #2) أو اسم العميل أو الهاتف..." style="flex:1; min-width:220px; padding:9px 14px; border-radius:10px; border:1.5px solid #cbd5e1; font-family:Cairo,sans-serif; font-weight:700; font-size:0.86rem;">
+                    <input id="homeOrderInvoiceSearchInput" type="text" value="${adminOrderInvoiceSearch.replace(/"/g, '&quot;')}" oninput="onAdminOrderInvoiceSearch(this.value)" placeholder="🔍 ابحث برقم الفاتورة / الطلب (مثال: 1 أو #2) أو اسم العميل أو الهاتف..." style="flex:1; min-width:220px; padding:9px 14px; border-radius:10px; border:1.5px solid #cbd5e1; font-family:Cairo,sans-serif; font-weight:700; font-size:0.86rem;">
                     ${adminOrderInvoiceSearch ? `<button type="button" onclick="onAdminOrderInvoiceSearch('')" style="background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5; padding:8px 12px; border-radius:10px; font-weight:800; cursor:pointer; font-family:Cairo,sans-serif;">✕ مسح</button>` : ''}
+                    <button type="button" onclick="selectCancelledHomeOrders()" style="background:#fff1f2; color:#be123c; border:1px solid #fecdd3; padding:8px 12px; border-radius:10px; font-weight:800; cursor:pointer; font-family:Cairo,sans-serif;">🔴 تحديد الملغي</button>
+                    ${selectedHomeOrderIds.size > 0 ? `<button type="button" onclick="moveSelectedHomeOrdersToTrash()" style="background:#dc2626; color:#fff; border:1px solid #b91c1c; padding:8px 14px; border-radius:10px; font-weight:900; cursor:pointer; font-family:Cairo,sans-serif;">🗑️ حذف المحدد (${selectedHomeOrderIds.size})</button>` : ''}
                 </div>
                 <div style="overflow-x: auto;">
                     <table style="width: 100%; border-collapse: collapse; font-size: 0.86rem; text-align: right;">
                         <thead>
                             <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0; color: #475569;">
+                                <th style="padding: 10px 8px; text-align: center; width: 38px;">
+                                    <input type="checkbox" ${allVisibleSelected ? 'checked' : ''} onchange="toggleSelectAllHomeOrders(this.checked)" title="تحديد الكل" style="width:16px; height:16px; cursor:pointer;">
+                                </th>
                                 <th style="padding: 10px 12px; font-weight: 950;">رقم الطلب</th>
                                 <th style="padding: 10px 12px; font-weight: 950;">العميل</th>
                                 <th style="padding: 10px 12px; font-weight: 950;">المحافظة / العنوان</th>
@@ -4070,9 +4302,14 @@
                 const itemsCount = (o.items || []).reduce((acc, it) => acc + (Number(it.qty) || 1), 0);
                 const orderDate = parseOrderDate(o);
                 const dateStr = orderDate ? orderDate.toLocaleDateString('ar-EG', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+                const orderKey = String(o.firestoreId || o.id || '');
+                const isChecked = selectedHomeOrderIds.has(orderKey);
 
                 tableHtml += `
-                    <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s ease;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
+                    <tr style="border-bottom: 1px solid #f1f5f9; background: ${isChecked ? '#fef2f2' : 'white'}; transition: background 0.15s ease;" onmouseover="this.style.background='${isChecked ? '#fee2e2' : '#f8fafc'}'" onmouseout="this.style.background='${isChecked ? '#fef2f2' : 'white'}'">
+                        <td style="padding: 12px 8px; text-align: center;">
+                            <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleHomeOrderSelection('${orderKey}', this.checked)" style="width:16px; height:16px; cursor:pointer;">
+                        </td>
                         <td style="padding: 12px; font-weight: 950; color: #0284c7; white-space: nowrap;">
                             #${o.id || ''}
                             <div style="font-size: 0.72rem; color: #94a3b8; font-weight: 700;">${dateStr}</div>
@@ -6292,22 +6529,32 @@
                 });
 
                 adminOrdersList = [];
+                adminTrashedOrdersList = [];
                 snapshot.forEach(doc => {
-                    adminOrdersList.push({
+                    const row = {
                         firestoreId: doc.id,
                         ...doc.data()
-                    });
+                    };
+                    if (row.isDeleted) {
+                        adminTrashedOrdersList.push(row);
+                    } else {
+                        adminOrdersList.push(row);
+                    }
                 });
-                adminOrdersList.sort((a, b) => {
+                const sortByDateAsc = (a, b) => {
                     const ta = new Date(a.date || a.createdAt || 0).getTime() || 0;
                     const tb = new Date(b.date || b.createdAt || 0).getTime() || 0;
                     return ta - tb;
-                });
+                };
+                adminOrdersList.sort(sortByDateAsc);
+                adminTrashedOrdersList.sort((a, b) => new Date(b.deletedAt || b.date || 0) - new Date(a.deletedAt || a.date || 0));
                 adminOrdersList.forEach((o, idx) => {
                     if (!/^\d+$/.test(String(o.id || ''))) {
                         o.id = String(o.orderNumber || (idx + 1));
                     }
                 });
+                rebuildAdminOrdersSearchIndex();
+                renderAdminOrdersTrashBin();
 
                 isInitialOrdersLoad = false;
 
