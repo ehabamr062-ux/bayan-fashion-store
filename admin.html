@@ -10,12 +10,12 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="لوحة التاجر">
-    <link id="bayanPwaManifest" rel="manifest" href="admin-manifest.json?v=5.5.3">
+    <link id="bayanPwaManifest" rel="manifest" href="admin-manifest.json?v=5.5.4">
     <link rel="apple-touch-icon" sizes="192x192" href="icons/admin-192.png">
     <link rel="icon" type="image/png" sizes="192x192" href="icons/admin-192.png">
-    <meta name="app-version" content="5.5.3">
+    <meta name="app-version" content="5.5.4">
     <meta name="robots" content="noindex, nofollow">
-    <title>لوحة إدارة متجر بيان للأزياء | Merchant Admin v5.5.3</title>
+    <title>لوحة إدارة متجر بيان للأزياء | Merchant Admin v5.5.4</title>
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1097,59 +1097,92 @@
         }
 
         @media (max-width: 768px) {
+            html, body {
+                max-width: 100%;
+                overflow-x: hidden;
+            }
+
             body {
                 padding-bottom: 30px;
             }
 
             .header-container {
-                padding: 10px 14px;
-                gap: 10px;
+                padding: 8px 10px;
+                gap: 8px;
             }
 
             .admin-brand h1 {
-                font-size: 1.1rem;
+                font-size: 1rem;
             }
 
             .admin-brand span {
-                font-size: 0.7rem;
+                font-size: 0.68rem;
             }
 
             .header-tools {
                 width: 100%;
-                justify-content: space-between;
+                justify-content: flex-start;
                 flex-wrap: wrap;
-                gap: 8px;
+                gap: 6px;
             }
 
             .cloud-badge {
-                font-size: 0.74rem;
-                padding: 4px 10px;
+                font-size: 0.7rem;
+                padding: 4px 8px;
             }
 
             .btn-header-link {
-                padding: 6px 10px;
-                font-size: 0.78rem;
+                padding: 5px 8px;
+                font-size: 0.72rem;
             }
 
             .admin-nav {
-                padding: 0 10px;
-                margin-top: 10px;
+                padding: 0 8px;
+                margin-top: 8px;
             }
 
             .nav-tabs {
                 gap: 4px;
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                scrollbar-width: none;
                 -webkit-overflow-scrolling: touch;
             }
 
+            .nav-tabs::-webkit-scrollbar {
+                display: none;
+            }
+
             .nav-tab-btn {
-                padding: 9px 12px;
-                font-size: 0.84rem;
-                gap: 5px;
+                padding: 8px 10px;
+                font-size: 0.8rem;
+                gap: 4px;
+                white-space: nowrap;
+                flex-shrink: 0;
             }
 
             .admin-content {
-                padding: 0 10px;
-                margin-top: 14px;
+                padding: 0 8px;
+                margin-top: 10px;
+            }
+
+            .settings-card,
+            .section-card,
+            .admin-filters-panel {
+                padding: 12px 10px !important;
+                border-radius: 14px !important;
+            }
+
+            .settings-card-header {
+                gap: 8px;
+            }
+
+            .settings-card-header h2 {
+                font-size: 1.05rem !important;
+            }
+
+            #tabPanelSettings > div {
+                gap: 12px !important;
             }
 
             .stats-grid {
@@ -1574,7 +1607,7 @@
             <div class="header-tools" style="display:flex; flex-wrap:wrap; align-items:center; gap:8px;">
                 <span id="adminVersionBadge"
                     style="display:inline-flex; align-items:center; padding:6px 11px; border-radius:10px; border:1px solid #cbd5e1; background:#f8fafc; color:#0f172a; font-family:monospace; font-weight:900; font-size:0.8rem;"
-                    title="إصدار لوحة التحكم الحالي">v5.5.3</span>
+                    title="إصدار لوحة التحكم الحالي">v5.5.4</span>
                 <button type="button" id="adminAudioToggleBtn" class="btn-header-link" onclick="toggleOrderAlertSound()"
                     title="تفعيل أو كتم جرس تنبيه الطلبات الجديدة"
                     style="display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:40px; padding:8px 15px; border-radius:12px; border:1px solid #b45309; background:linear-gradient(135deg, #f59e0b, #d97706); color:#ffffff; font-weight:800; font-size:0.85rem; white-space:nowrap; box-shadow:0 3px 10px rgba(217,119,6,0.35); cursor:pointer; transition:all 0.2s;">
@@ -2701,8 +2734,10 @@
                                     placeholder="الحي / المركز (مثال: بنها)" style="flex: 1.5; min-width: 150px;">
                                 <input type="number" id="inpNewShippingZoneFee" class="form-control"
                                     placeholder="سعر الشحن (ج.م)" min="0" style="flex: 1; min-width: 110px;">
-                                <button type="button" onclick="addCustomShippingZone()" class="btn-primary-action"
+                                <button type="button" id="btnAddOrSaveShippingZone" onclick="addCustomShippingZone()" class="btn-primary-action"
                                     style="background: #0284c7; border-color: #0284c7;">➕ إضافة منطقة</button>
+                                <button type="button" id="btnCancelEditShippingZone" onclick="cancelEditCustomShippingZone()" class="btn-card-action"
+                                    style="display:none; background:#f1f5f9; color:#475569; border-color:#cbd5e1; padding:8px 12px; font-weight:800;">إلغاء</button>
                             </div>
                             <div id="customShippingZonesList" style="display: flex; flex-direction: column; gap: 6px;">
                             </div>
@@ -3507,13 +3542,13 @@
     <!-- سكريبتات Firebase السحابية -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-    <script src="js/firebase_config.js?v=5.5.3"></script>
-    <script src="js/pwa_install.js?v=5.5.3"></script>
-    <script src="js/admin_categories.js?v=5.5.3"></script>
-    <script src="js/admin_media_tools.js?v=5.5.3"></script>
-    <script src="js/admin_bulk_media.js?v=5.5.3"></script>
-    <script src="js/admin_visibility.js?v=5.5.3"></script>
-    <script src="js/admin_crm_abandoned.js?v=5.5.3"></script>
+    <script src="js/firebase_config.js?v=5.5.4"></script>
+    <script src="js/pwa_install.js?v=5.5.4"></script>
+    <script src="js/admin_categories.js?v=5.5.4"></script>
+    <script src="js/admin_media_tools.js?v=5.5.4"></script>
+    <script src="js/admin_bulk_media.js?v=5.5.4"></script>
+    <script src="js/admin_visibility.js?v=5.5.4"></script>
+    <script src="js/admin_crm_abandoned.js?v=5.5.4"></script>
 
     <!-- منطق وبرمجة لوحة التاجر -->
     <script>
@@ -8531,6 +8566,7 @@
         }
 
         let customShippingZones = [];
+        let editingShippingZoneIdx = -1;
 
         function renderCustomShippingZones() {
             const wrap = document.getElementById('customShippingZonesList');
@@ -8540,13 +8576,59 @@
                 return;
             }
             wrap.innerHTML = customShippingZones.map((z, idx) => `
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:white;border:1px solid #e2e8f0;border-radius:10px;padding:8px 12px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;background:${editingShippingZoneIdx === idx ? '#f0f9ff' : 'white'};border:1px solid ${editingShippingZoneIdx === idx ? '#38bdf8' : '#e2e8f0'};border-radius:10px;padding:8px 10px;">
                     <span style="font-weight:800;color:#0f172a;font-size:0.86rem;">📍 ${z.name}</span>
-                    <div style="display:flex;align-items:center;gap:8px;">
+                    <div style="display:flex;align-items:center;gap:6px;margin-right:auto;">
                         <span style="font-weight:900;color:#059669;font-size:0.84rem;">${z.fee} ج.م</span>
-                        <button type="button" onclick="removeCustomShippingZone(${idx})" style="background:#fee2e2;color:#dc2626;border:none;border-radius:6px;padding:3px 8px;font-weight:800;cursor:pointer;font-size:0.75rem;">حذف</button>
+                        <button type="button" onclick="editCustomShippingZone(${idx})" style="background:#e0f2fe;color:#0284c7;border:none;border-radius:6px;padding:4px 9px;font-weight:800;cursor:pointer;font-size:0.75rem;">تعديل</button>
+                        <button type="button" onclick="removeCustomShippingZone(${idx})" style="background:#fee2e2;color:#dc2626;border:none;border-radius:6px;padding:4px 9px;font-weight:800;cursor:pointer;font-size:0.75rem;">حذف</button>
                     </div>
                 </div>`).join('');
+        }
+
+        function editCustomShippingZone(idx) {
+            const z = customShippingZones[idx];
+            if (!z) return;
+            editingShippingZoneIdx = idx;
+            const govEl = document.getElementById('inpNewShippingGovName');
+            const distEl = document.getElementById('inpNewShippingDistrictName');
+            const feeEl = document.getElementById('inpNewShippingZoneFee');
+            const parts = String(z.name || '').split(' - ');
+            if (govEl) govEl.value = z.gov || parts[0] || '';
+            if (distEl) distEl.value = z.district !== undefined ? z.district : (parts.slice(1).join(' - ') || '');
+            if (feeEl) feeEl.value = Number(z.fee || 0);
+            const btn = document.getElementById('btnAddOrSaveShippingZone');
+            const cancelBtn = document.getElementById('btnCancelEditShippingZone');
+            if (btn) {
+                btn.innerHTML = '💾 حفظ التعديل';
+                btn.style.background = '#059669';
+                btn.style.borderColor = '#059669';
+            }
+            if (cancelBtn) cancelBtn.style.display = 'inline-flex';
+            renderCustomShippingZones();
+            if (govEl) {
+                govEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                govEl.focus();
+            }
+        }
+
+        function cancelEditCustomShippingZone() {
+            editingShippingZoneIdx = -1;
+            const govEl = document.getElementById('inpNewShippingGovName');
+            const distEl = document.getElementById('inpNewShippingDistrictName');
+            const feeEl = document.getElementById('inpNewShippingZoneFee');
+            if (govEl) govEl.value = '';
+            if (distEl) distEl.value = '';
+            if (feeEl) feeEl.value = '';
+            const btn = document.getElementById('btnAddOrSaveShippingZone');
+            const cancelBtn = document.getElementById('btnCancelEditShippingZone');
+            if (btn) {
+                btn.innerHTML = '➕ إضافة منطقة';
+                btn.style.background = '#0284c7';
+                btn.style.borderColor = '#0284c7';
+            }
+            if (cancelBtn) cancelBtn.style.display = 'none';
+            renderCustomShippingZones();
         }
 
         function addCustomShippingZone() {
@@ -8558,16 +8640,31 @@
             const fee = Number(feeEl?.value || 0);
             if (!gov) return alert('اكتب اسم المحافظة أو المنطقة أولاً');
             const fullName = dist ? `${gov} - ${dist}` : gov;
-            customShippingZones.push({ id: 'zone_' + Date.now(), gov, district: dist, name: fullName, fee: isNaN(fee) ? 0 : fee });
-            if (govEl) govEl.value = '';
-            if (distEl) distEl.value = '';
-            if (feeEl) feeEl.value = '';
-            renderCustomShippingZones();
+            const safeFee = isNaN(fee) ? 0 : fee;
+            const wasEditing = editingShippingZoneIdx >= 0 && customShippingZones[editingShippingZoneIdx];
+            if (wasEditing) {
+                customShippingZones[editingShippingZoneIdx] = {
+                    ...customShippingZones[editingShippingZoneIdx],
+                    gov,
+                    district: dist,
+                    name: fullName,
+                    fee: safeFee
+                };
+                cancelEditCustomShippingZone();
+            } else {
+                customShippingZones.push({ id: 'zone_' + Date.now(), gov, district: dist, name: fullName, fee: safeFee });
+                if (govEl) govEl.value = '';
+                if (distEl) distEl.value = '';
+                if (feeEl) feeEl.value = '';
+                renderCustomShippingZones();
+            }
             const db = (typeof getBayanDb === 'function') ? getBayanDb() : null;
             if (db) {
                 db.collection('settings').doc('shipping').set({ rates: customShippingZones, updatedAt: new Date().toISOString() }, { merge: true }).catch(console.warn);
             }
-            if (typeof showFastSaveToast === 'function') showFastSaveToast(`📍 تمت إضافة (${fullName}) وحفظها في الشحن!`);
+            if (typeof showFastSaveToast === 'function') {
+                showFastSaveToast(wasEditing ? `💾 تم تعديل (${fullName}) وحفظها سحابياً!` : `📍 تمت إضافة (${fullName}) وحفظها في الشحن!`);
+            }
         }
 
         function removeCustomShippingZone(idx) {
