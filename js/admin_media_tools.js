@@ -116,12 +116,12 @@
             btnRow.appendChild(camInput);
             btnRow.appendChild(camBtn);
 
-            // 2. خيار تفريغ الخلفية تلقائياً (مفعّل افتراضياً) + شريط الحالة
+            // 2. خيار تفريغ الخلفية تلقائياً (غير مفعّل افتراضياً) + شريط الحالة
             const bgBox = document.createElement('div');
             bgBox.style.cssText = 'width:100%; margin-top:8px; padding:10px 12px; background:#f0fdf4; border:1.5px solid #a7f3d0; border-radius:12px;';
             bgBox.innerHTML = `
                 <label style="display:flex; align-items:center; gap:9px; cursor:pointer; font-weight:800; font-size:0.84rem; color:#065f46; margin:0;">
-                    <input type="checkbox" id="chkAutoRemoveBg" checked style="width:18px; height:18px; accent-color:#059669; cursor:pointer;">
+                    <input type="checkbox" id="chkAutoRemoveBg" style="width:18px; height:18px; accent-color:#059669; cursor:pointer;">
                     <span>✨ تفريغ الخلفية وتحويلها لخلفية بيضاء احترافية تلقائياً (1000×1000 مجاناً داخل المتصفح)</span>
                 </label>
                 <div id="bgRemovalStatusBar" style="display:none; margin-top:8px; padding:8px 10px; background:#ffffff; border:1px solid #6ee7b7; border-radius:8px; color:#047857; font-size:0.8rem; font-weight:800; align-items:center; gap:8px;"></div>
