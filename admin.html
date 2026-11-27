@@ -10,12 +10,12 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="لوحة التاجر">
-    <link id="bayanPwaManifest" rel="manifest" href="admin-manifest.json?v=5.5.7">
+    <link id="bayanPwaManifest" rel="manifest" href="admin-manifest.json?v=5.5.8">
     <link rel="apple-touch-icon" sizes="192x192" href="icons/admin-192.png">
     <link rel="icon" type="image/png" sizes="192x192" href="icons/admin-192.png">
-    <meta name="app-version" content="5.5.7">
+    <meta name="app-version" content="5.5.8">
     <meta name="robots" content="noindex, nofollow">
-    <title>لوحة إدارة متجر بيان للأزياء | Merchant Admin v5.5.7</title>
+    <title>لوحة إدارة متجر بيان للأزياء | Merchant Admin v5.5.8</title>
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -173,14 +173,96 @@
         }
 
         .header-container {
-            max-width: 1200px;
+            max-width: 100%;
             margin: 0 auto;
-            padding: 14px 20px;
+            padding: 12px 18px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             gap: 15px;
             flex-wrap: wrap;
+        }
+
+        .admin-drawer-btn {
+            width: 42px;
+            height: 42px;
+            border-radius: 10px;
+            border: 1.5px solid #cbd5e1;
+            background: #f8fafc;
+            color: var(--primary);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.35rem;
+            font-weight: 900;
+            cursor: pointer;
+            transition: 0.2s;
+            flex-shrink: 0;
+        }
+
+        .admin-drawer-btn:hover {
+            background: #e2e8f0;
+        }
+
+        .admin-drawer-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.45);
+            backdrop-filter: blur(2px);
+            z-index: 9998;
+            display: none;
+        }
+
+        .admin-drawer-backdrop.open {
+            display: block;
+        }
+
+        .admin-nav-drawer {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 280px;
+            max-width: 84vw;
+            height: 100vh;
+            background: #ffffff;
+            z-index: 9999;
+            box-shadow: -8px 0 28px rgba(15, 23, 42, 0.18);
+            transform: translateX(105%);
+            transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+            display: flex;
+            flex-direction: column;
+            padding: 16px 14px;
+            gap: 8px;
+            overflow-y: auto;
+        }
+
+        .admin-nav-drawer.open {
+            transform: translateX(0);
+        }
+
+        .drawer-nav-item {
+            width: 100%;
+            text-align: right;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 12px 14px;
+            font-family: inherit;
+            font-size: 0.94rem;
+            font-weight: 800;
+            color: #334155;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            transition: 0.15s;
+        }
+
+        .drawer-nav-item.active {
+            background: linear-gradient(135deg, #059669, #047857);
+            color: #ffffff;
+            border-color: #047857;
         }
 
         .admin-brand {
@@ -262,9 +344,9 @@
 
         /* شريط التبويبات الرئيسي */
         .admin-nav {
-            max-width: 1200px;
-            margin: 20px auto 0;
-            padding: 0 20px;
+            max-width: 100%;
+            margin: 14px auto 0;
+            padding: 0 18px;
         }
 
         .nav-tabs {
@@ -317,9 +399,9 @@
 
         /* المحتوى العام */
         .admin-content {
-            max-width: 1200px;
-            margin: 20px auto 0;
-            padding: 0 20px;
+            max-width: 100%;
+            margin: 14px auto 0;
+            padding: 0 18px;
         }
 
         .tab-panel {
@@ -1137,8 +1219,7 @@
             }
 
             .admin-nav {
-                padding: 0 8px;
-                margin-top: 8px;
+                display: none !important;
             }
 
             .nav-tabs {
@@ -1297,8 +1378,8 @@
         #tabPanelSettings>div {
             display: flex !important;
             flex-direction: column !important;
-            gap: 22px !important;
-            max-width: 960px !important;
+            gap: 18px !important;
+            max-width: 100% !important;
             width: 100% !important;
             margin: 0 auto !important;
         }
@@ -1592,6 +1673,7 @@
     <header class="admin-header">
         <div class="header-container">
             <div class="admin-brand">
+                <button type="button" id="adminDrawerToggleBtn" class="admin-drawer-btn" onclick="toggleAdminNavDrawer()" title="قائمة الأقسام">☰</button>
                 <div id="adminHeaderLogoBox" class="brand-logo"
                     style="overflow: hidden; display: flex; align-items: center; justify-content: center;">
                     <img id="adminHeaderLogoImg" src="" alt="لوجو اللوحة"
@@ -1607,7 +1689,7 @@
             <div class="header-tools" style="display:flex; flex-wrap:wrap; align-items:center; gap:8px;">
                 <span id="adminVersionBadge"
                     style="display:inline-flex; align-items:center; padding:6px 11px; border-radius:10px; border:1px solid #cbd5e1; background:#f8fafc; color:#0f172a; font-family:monospace; font-weight:900; font-size:0.8rem;"
-                    title="إصدار لوحة التحكم الحالي">v5.5.7</span>
+                    title="إصدار لوحة التحكم الحالي">v5.5.8</span>
                 <button type="button" id="adminAudioToggleBtn" class="btn-header-link" onclick="toggleOrderAlertSound()"
                     title="تفعيل أو كتم جرس تنبيه الطلبات الجديدة"
                     style="display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:40px; padding:8px 15px; border-radius:12px; border:1px solid #b45309; background:linear-gradient(135deg, #f59e0b, #d97706); color:#ffffff; font-weight:800; font-size:0.85rem; white-space:nowrap; box-shadow:0 3px 10px rgba(217,119,6,0.35); cursor:pointer; transition:all 0.2s;">
@@ -1632,6 +1714,37 @@
             </div>
         </div>
     </header>
+
+    <!-- القائمة الجانبية السريعة (Drawer) -->
+    <div id="adminNavDrawerBackdrop" class="admin-drawer-backdrop" onclick="closeAdminNavDrawer()"></div>
+    <aside id="adminNavDrawer" class="admin-nav-drawer" aria-label="قائمة لوحة التحكم">
+        <div style="display:flex; align-items:center; justify-content:space-between; padding-bottom:10px; border-bottom:1px solid #e2e8f0; margin-bottom:4px;">
+            <span style="font-weight:950; font-size:1rem; color:#0f172a;">📋 أقسام لوحة التحكم</span>
+            <button type="button" onclick="closeAdminNavDrawer()" style="background:#fee2e2; color:#b91c1c; border:none; border-radius:8px; width:32px; height:32px; font-weight:900; cursor:pointer;">✕</button>
+        </div>
+        <button type="button" class="drawer-nav-item active" data-drawer-tab="home" onclick="selectDrawerTab('home')">
+            <span>🏠 الشاشة الرئيسية (الداشبورد)</span>
+        </button>
+        <button type="button" class="drawer-nav-item" data-drawer-tab="products" onclick="selectDrawerTab('products')">
+            <span>🛍️ الأصناف</span>
+            <span id="drawerBadgeProducts" class="tab-badge">0</span>
+        </button>
+        <button type="button" class="drawer-nav-item" data-drawer-tab="orders" onclick="selectDrawerTab('orders')">
+            <span>🛵 طلبات الأونلاين الحية</span>
+            <span id="drawerBadgeOrders" class="tab-badge" style="background:#0284c7; color:white;">0</span>
+        </button>
+        <button type="button" class="drawer-nav-item" data-drawer-tab="customers" onclick="selectDrawerTab('customers')">
+            <span>👥 عملاء المتجر</span>
+            <span id="drawerBadgeCustomers" class="tab-badge" style="background:#059669; color:white;">0</span>
+        </button>
+        <button type="button" class="drawer-nav-item" data-drawer-tab="coupons" onclick="selectDrawerTab('coupons')">
+            <span>🎟️ كوبونات الخصم</span>
+            <span id="drawerBadgeCoupons" class="tab-badge" style="background:#8b5cf6; color:white;">0</span>
+        </button>
+        <button type="button" class="drawer-nav-item" data-drawer-tab="settings" onclick="selectDrawerTab('settings')">
+            <span>⚙️ إعدادات المتجر والتوصيل</span>
+        </button>
+    </aside>
 
     <!-- 3. شريط التبويبات -->
     <nav class="admin-nav">
@@ -3542,13 +3655,13 @@
     <!-- سكريبتات Firebase السحابية -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-    <script src="js/firebase_config.js?v=5.5.7"></script>
-    <script src="js/pwa_install.js?v=5.5.7"></script>
-    <script src="js/admin_categories.js?v=5.5.7"></script>
-    <script src="js/admin_media_tools.js?v=5.5.7"></script>
-    <script src="js/admin_bulk_media.js?v=5.5.7"></script>
-    <script src="js/admin_visibility.js?v=5.5.7"></script>
-    <script src="js/admin_crm_abandoned.js?v=5.5.7"></script>
+    <script src="js/firebase_config.js?v=5.5.8"></script>
+    <script src="js/pwa_install.js?v=5.5.8"></script>
+    <script src="js/admin_categories.js?v=5.5.8"></script>
+    <script src="js/admin_media_tools.js?v=5.5.8"></script>
+    <script src="js/admin_bulk_media.js?v=5.5.8"></script>
+    <script src="js/admin_visibility.js?v=5.5.8"></script>
+    <script src="js/admin_crm_abandoned.js?v=5.5.8"></script>
 
     <!-- منطق وبرمجة لوحة التاجر -->
     <script>
@@ -3877,8 +3990,36 @@
         }
 
         // 2. تبديل التبويبات
+        function toggleAdminNavDrawer() {
+            const drawer = document.getElementById('adminNavDrawer');
+            const backdrop = document.getElementById('adminNavDrawerBackdrop');
+            if (!drawer || !backdrop) return;
+            const willOpen = !drawer.classList.contains('open');
+            if (willOpen) {
+                [['tabBadgeProducts', 'drawerBadgeProducts'], ['tabBadgeOrders', 'drawerBadgeOrders'], ['tabBadgeCustomers', 'drawerBadgeCustomers'], ['tabBadgeCoupons', 'drawerBadgeCoupons']].forEach(([src, dst]) => {
+                    const sEl = document.getElementById(src);
+                    const dEl = document.getElementById(dst);
+                    if (sEl && dEl) dEl.textContent = sEl.textContent;
+                });
+            }
+            drawer.classList.toggle('open', willOpen);
+            backdrop.classList.toggle('open', willOpen);
+        }
+
+        function closeAdminNavDrawer() {
+            document.getElementById('adminNavDrawer')?.classList.remove('open');
+            document.getElementById('adminNavDrawerBackdrop')?.classList.remove('open');
+        }
+
+        function selectDrawerTab(tabName) {
+            const matchingBtn = document.querySelector(`.nav-tab-btn[onclick*="'${tabName}'"]`);
+            switchAdminTab(tabName, matchingBtn);
+            closeAdminNavDrawer();
+        }
+
         function switchAdminTab(tabName, btn) {
             document.querySelectorAll('.nav-tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.drawer-nav-item').forEach(b => b.classList.toggle('active', b.dataset.drawerTab === tabName));
             document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
 
             if (btn) btn.classList.add('active');
