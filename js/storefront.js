@@ -767,11 +767,24 @@
       }
     } catch (_) { }
 
-    const CACHE_KEY = `bayan_store_prods_v2_${state.shopId}`;
-    const CACHE_TTL_MS = 5 * 60 * 1000;
+    const CACHE_META_KEY = `bayan_store_prods_meta_${state.shopId}`;
+    const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 ساعة أو عند تغيّر catalogVersion
     let lastLoadedCacheTs = 0;
+    let lastLoadedCatalogVer = 0;
+    let isFetchingLiveProducts = false;
+
+    try {
+      const metaRaw = localStorage.getItem(CACHE_META_KEY);
+      if (metaRaw) {
+        const meta = JSON.parse(metaRaw);
+        lastLoadedCacheTs = Number(meta?.ts || 0);
+        lastLoadedCatalogVer = Number(meta?.catalogVersion || 0);
+      }
+    } catch (_) { }
 
     async function fetchLiveProductsFromFirestore() {
+      if (isFetchingLiveProducts) return;
+      isFetchingLiveProducts = true;
       try {
         const snap = await db.collection('products').get();
         const list = [];
@@ -784,9 +797,13 @@
         state.products = list;
         state.productsLoaded = true;
         lastLoadedCacheTs = Date.now();
+        lastLoadedCatalogVer = Number(state.visibility?.catalogVersion || lastLoadedCacheTs);
         try {
-          localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: lastLoadedCacheTs, items: list }));
+          localStorage.setItem(CACHE_META_KEY, JSON.stringify({ ts: lastLoadedCacheTs, catalogVersion: lastLoadedCatalogVer }));
         } catch (_) { }
+        if (typeof BayanIDB !== 'undefined' && typeof BayanIDB.saveAllProducts === 'function') {
+          BayanIDB.saveAllProducts(list).catch(() => { });
+        }
         renderStorefront();
         if (state.currentProduct && !document.getElementById('product-detail-modal').classList.contains('hidden')) {
           const freshProd = state.products.find(p => p.id === state.currentProduct.id);
@@ -803,6 +820,8 @@
         console.warn('Products fetch warning:', err);
         state.productsLoaded = true;
         renderStorefront();
+      } finally {
+        isFetchingLiveProducts = false;
       }
     }
 
@@ -822,7 +841,9 @@
         state.settings.showStockCountToCustomers = nextVis.showStockCounts !== false;
         try { localStorage.setItem(VIS_CACHE_KEY, JSON.stringify(nextVis)); } catch (_) { }
 
-        if (nextVis.catalogVersion > 0 && lastLoadedCacheTs > 0 && nextVis.catalogVersion > lastLoadedCacheTs) {
+        const verChanged = nextVis.catalogVersion > 0 && lastLoadedCatalogVer > 0 && nextVis.catalogVersion > lastLoadedCatalogVer;
+        const verStaleAgainstTs = nextVis.catalogVersion > 0 && lastLoadedCacheTs > 0 && nextVis.catalogVersion > lastLoadedCacheTs;
+        if (verChanged || verStaleAgainstTs) {
           fetchLiveProductsFromFirestore();
           return;
         }
@@ -849,29 +870,29 @@
       () => { }
     );
 
-    // 3) Products — كاش محلي ذكي لمدة 5 دقائق لتوفير 90% من قراءات Firebase Firestore
-    let servedFromFreshCache = false;
-    try {
-      const rawCache = localStorage.getItem(CACHE_KEY);
-      if (rawCache) {
-        const parsed = JSON.parse(rawCache);
-        if (parsed && Array.isArray(parsed.items)) {
-          lastLoadedCacheTs = Number(parsed.ts || 0);
-          const visVer = Number(state.visibility.catalogVersion || 0);
-          const cacheStaleByAdmin = visVer > 0 && visVer > lastLoadedCacheTs;
-          if (!cacheStaleByAdmin && (Date.now() - lastLoadedCacheTs) < CACHE_TTL_MS) {
-            state.products = parsed.items;
-            state.productsLoaded = true;
-            servedFromFreshCache = true;
-            renderStorefront();
+    // 3) Products — كاش محلي في IndexedDB يعتمد على catalogVersion لتوفير 90%+ من قراءات Firebase
+    (async () => {
+      let servedFromFreshCache = false;
+      try {
+        if (typeof BayanIDB !== 'undefined' && typeof BayanIDB.getAllProducts === 'function') {
+          const cachedItems = await BayanIDB.getAllProducts();
+          if (Array.isArray(cachedItems) && cachedItems.length > 0 && lastLoadedCacheTs > 0) {
+            const visVer = Number(state.visibility.catalogVersion || 0);
+            const cacheStaleByAdmin = visVer > 0 && (visVer > lastLoadedCatalogVer && visVer > lastLoadedCacheTs);
+            if (!cacheStaleByAdmin && (Date.now() - lastLoadedCacheTs) < CACHE_TTL_MS) {
+              state.products = cachedItems;
+              state.productsLoaded = true;
+              servedFromFreshCache = true;
+              renderStorefront();
+            }
           }
         }
-      }
-    } catch (_) { }
+      } catch (_) { }
 
-    if (!servedFromFreshCache) {
-      fetchLiveProductsFromFirestore();
-    }
+      if (!servedFromFreshCache) {
+        fetchLiveProductsFromFirestore();
+      }
+    })();
 
     // 4) Coupons
     db.collection('coupons').onSnapshot(
