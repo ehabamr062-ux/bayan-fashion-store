@@ -1,7 +1,7 @@
 /**
  * =========================================================================
  * ⚡ استوديو الصور الجماعي + اللصق الذكي بالألوان (Gemini Paste) + فهرس فوري
- *    Bayan Store Merchant Admin - Bulk Studio & Smart Color Paste (v5.5.5)
+ *    Bayan Store Merchant Admin - Bulk Studio & Smart Color Paste (v5.5.6)
  * =========================================================================
  */
 (function (root) {
@@ -1581,7 +1581,7 @@
                 <div style="background:#ffffff;border-radius:22px;width:96vw;max-width:1160px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 25px 60px rgba(0,0,0,0.45);">
                     <div style="padding:14px 20px;background:linear-gradient(135deg,#0f172a,#047857);color:#fff;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
                         <div>
-                            <div style="font-size:1.12rem;font-weight:900;">⚡ استوديو الصور واللصق السريع بالألوان (v5.5.5)</div>
+                            <div style="font-size:1.12rem;font-weight:900;">⚡ استوديو الصور واللصق السريع بالألوان (v5.5.6)</div>
                             <div style="font-size:0.8rem;opacity:0.9;">اسحب أي صورة من Gemini للمربع الأزرق أو اضغط <code>Ctrl+V</code> — الفرز باللون والحفظ في ثوانٍ!</div>
                         </div>
                         <div style="display:flex;align-items:center;gap:8px;">

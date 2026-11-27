@@ -10,12 +10,12 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="لوحة التاجر">
-    <link id="bayanPwaManifest" rel="manifest" href="admin-manifest.json?v=5.5.5">
+    <link id="bayanPwaManifest" rel="manifest" href="admin-manifest.json?v=5.5.6">
     <link rel="apple-touch-icon" sizes="192x192" href="icons/admin-192.png">
     <link rel="icon" type="image/png" sizes="192x192" href="icons/admin-192.png">
-    <meta name="app-version" content="5.5.5">
+    <meta name="app-version" content="5.5.6">
     <meta name="robots" content="noindex, nofollow">
-    <title>لوحة إدارة متجر بيان للأزياء | Merchant Admin v5.5.5</title>
+    <title>لوحة إدارة متجر بيان للأزياء | Merchant Admin v5.5.6</title>
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1607,7 +1607,7 @@
             <div class="header-tools" style="display:flex; flex-wrap:wrap; align-items:center; gap:8px;">
                 <span id="adminVersionBadge"
                     style="display:inline-flex; align-items:center; padding:6px 11px; border-radius:10px; border:1px solid #cbd5e1; background:#f8fafc; color:#0f172a; font-family:monospace; font-weight:900; font-size:0.8rem;"
-                    title="إصدار لوحة التحكم الحالي">v5.5.5</span>
+                    title="إصدار لوحة التحكم الحالي">v5.5.6</span>
                 <button type="button" id="adminAudioToggleBtn" class="btn-header-link" onclick="toggleOrderAlertSound()"
                     title="تفعيل أو كتم جرس تنبيه الطلبات الجديدة"
                     style="display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:40px; padding:8px 15px; border-radius:12px; border:1px solid #b45309; background:linear-gradient(135deg, #f59e0b, #d97706); color:#ffffff; font-weight:800; font-size:0.85rem; white-space:nowrap; box-shadow:0 3px 10px rgba(217,119,6,0.35); cursor:pointer; transition:all 0.2s;">
@@ -2219,7 +2219,7 @@
                         <span>🔍</span>
                         <input type="text" id="adminOrderSearchInput"
                             placeholder="ابحث برقم الطلب، اسم العميل، الهاتف، أو العنوان..."
-                            oninput="renderAdminOrders()">
+                            oninput="debouncedRenderAdminOrders()">
                     </div>
 
                     <select id="adminOrderRegionFilter" class="filter-select" onchange="renderAdminOrders()">
@@ -2946,7 +2946,7 @@
                     <div class="search-box" style="flex: 1.5; min-width: 240px;">
                         <span>🔍</span>
                         <input type="text" id="adminCouponSearchInput" placeholder="ابحث برمز الكوبون..."
-                            oninput="renderAdminCoupons()">
+                            oninput="debouncedRenderAdminCoupons()">
                     </div>
 
                     <select id="adminCouponStatusFilter" class="filter-select" onchange="renderAdminCoupons()">
@@ -3542,13 +3542,13 @@
     <!-- سكريبتات Firebase السحابية -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-    <script src="js/firebase_config.js?v=5.5.5"></script>
-    <script src="js/pwa_install.js?v=5.5.5"></script>
-    <script src="js/admin_categories.js?v=5.5.5"></script>
-    <script src="js/admin_media_tools.js?v=5.5.5"></script>
-    <script src="js/admin_bulk_media.js?v=5.5.5"></script>
-    <script src="js/admin_visibility.js?v=5.5.5"></script>
-    <script src="js/admin_crm_abandoned.js?v=5.5.5"></script>
+    <script src="js/firebase_config.js?v=5.5.6"></script>
+    <script src="js/pwa_install.js?v=5.5.6"></script>
+    <script src="js/admin_categories.js?v=5.5.6"></script>
+    <script src="js/admin_media_tools.js?v=5.5.6"></script>
+    <script src="js/admin_bulk_media.js?v=5.5.6"></script>
+    <script src="js/admin_visibility.js?v=5.5.6"></script>
+    <script src="js/admin_crm_abandoned.js?v=5.5.6"></script>
 
     <!-- منطق وبرمجة لوحة التاجر -->
     <script>
@@ -4732,16 +4732,29 @@
                 return;
             }
 
+            let productsMap = new Map();
             db.collection('products').onSnapshot(snapshot => {
-                adminProductsList = [];
-                snapshot.forEach(doc => {
-                    const item = {
-                        firestoreId: doc.id,
-                        ...doc.data()
-                    };
-                    buildProductSearchIndex(item);
-                    adminProductsList.push(item);
-                });
+                if (productsMap.size === 0 || snapshot.docChanges().length === snapshot.size) {
+                    productsMap.clear();
+                    adminProductsList = [];
+                    snapshot.forEach(doc => {
+                        const item = { firestoreId: doc.id, ...doc.data() };
+                        buildProductSearchIndex(item);
+                        productsMap.set(doc.id, item);
+                        adminProductsList.push(item);
+                    });
+                } else {
+                    snapshot.docChanges().forEach(change => {
+                        if (change.type === 'removed') {
+                            productsMap.delete(change.doc.id);
+                        } else {
+                            const item = { firestoreId: change.doc.id, ...change.doc.data() };
+                            buildProductSearchIndex(item);
+                            productsMap.set(change.doc.id, item);
+                        }
+                    });
+                    adminProductsList = Array.from(productsMap.values());
+                }
 
                 updateProductsStats();
                 const prodPanel = document.getElementById('tabPanelProducts');
@@ -4930,12 +4943,14 @@
 
             clearTimeout(_adminSearchDebounceTimer);
             _adminSearchDebounceTimer = setTimeout(() => {
+                window._adminProductsRenderLimit = 24;
                 filterAdminProducts();
-            }, 60);
+            }, 130);
         }
 
         function clearAdminIndexedSearch() {
             handleAdminIndexedSearch('');
+            window._adminProductsRenderLimit = 24;
             filterAdminProducts();
         }
 
@@ -5061,11 +5076,20 @@
             renderProductsGrid(filtered);
         }
 
-        function renderProductsGrid(list) {
+        let _lastFilteredProducts = [];
+        function loadMoreAdminProducts() {
+            window._adminProductsRenderLimit = (window._adminProductsRenderLimit || 24) + 24;
+            renderProductsGrid(_lastFilteredProducts, true);
+        }
+
+        function renderProductsGrid(list, keepLimit = false) {
             const container = document.getElementById('adminProductsContainer');
             if (!container) return;
+            _lastFilteredProducts = list || [];
+            if (!keepLimit) window._adminProductsRenderLimit = 24;
+            const limit = window._adminProductsRenderLimit || 24;
 
-            if (list.length === 0) {
+            if (_lastFilteredProducts.length === 0) {
                 container.innerHTML = `
                     <div style="grid-column: 1/-1; text-align: center; padding: 60px 20px; background: white; border-radius: 16px; border: 1.5px dashed #cbd5e1;">
                         <div style="font-size: 3rem; margin-bottom: 10px;">👗✨</div>
@@ -5079,7 +5103,10 @@
             const fallbackImg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300' viewBox='0 0 300 300'%3E%3Crect fill='%23f1f5f9' width='300' height='300'/%3E%3Ctext fill='%2394a3b8' font-family='sans-serif' font-size='30' dy='10.5' font-weight='bold' x='50%25' y='50%25' text-anchor='middle'%3E👗 بيان فاشون%3C/text%3E%3C/svg%3E";
             const hasVis = window.BayanAdminVisibility && typeof window.BayanAdminVisibility.getProductInventorySnapshot === 'function';
 
-            container.innerHTML = list.map(p => {
+            const visibleList = _lastFilteredProducts.slice(0, limit);
+            const remainingCount = Math.max(0, _lastFilteredProducts.length - visibleList.length);
+
+            container.innerHTML = visibleList.map(p => {
                 const img = p.image || (Array.isArray(p.images) && p.images[0]) || fallbackImg;
                 const snap = hasVis
                     ? window.BayanAdminVisibility.getProductInventorySnapshot(p)
@@ -5198,7 +5225,12 @@
                         </div>
                     </div>
                 `;
-            }).join('');
+            }).join('') + (remainingCount > 0 ? `
+                <div style="grid-column: 1/-1; text-align: center; padding: 14px 0;">
+                    <button type="button" onclick="loadMoreAdminProducts()" class="btn-primary-action" style="background: #0284c7; border-color: #0284c7; padding: 10px 26px; font-weight: 900;">
+                        📦 عرض المزيد (+${Math.min(24, remainingCount)} من أصل ${remainingCount} متبقي)
+                    </button>
+                </div>` : '');
         }
 
         // تبديل حالة التوفر بضغطة زر
@@ -6706,34 +6738,34 @@
             return keywords.some(kw => txt.includes(kw));
         }
 
+        let _adminOrdersSearchTimer = null;
+        function debouncedRenderAdminOrders() {
+            clearTimeout(_adminOrdersSearchTimer);
+            _adminOrdersSearchTimer = setTimeout(renderAdminOrders, 120);
+        }
+
+        let _adminCouponsSearchTimer = null;
+        function debouncedRenderAdminCoupons() {
+            clearTimeout(_adminCouponsSearchTimer);
+            _adminCouponsSearchTimer = setTimeout(renderAdminCoupons, 120);
+        }
+
         function renderAdminOrders() {
             const container = document.getElementById('adminOrdersContainer');
             if (!container) return;
 
             updateOrderChipCounters();
 
-            const searchQ = (document.getElementById('adminOrderSearchInput')?.value || '').toLowerCase().trim();
+            const searchQ = (document.getElementById('adminOrderSearchInput')?.value || '').trim();
             const regionFilter = document.getElementById('adminOrderRegionFilter')?.value || 'all';
             const dateFilter = document.getElementById('adminOrderDateFilter')?.value || 'all';
             const sortVal = document.getElementById('adminOrderSort')?.value || 'newest';
 
-            let list = [...adminOrdersList];
+            let list = searchQ ? searchIndexedAdminOrders(searchQ, true) : [...adminOrdersList];
 
             // 1. تصفية بالحالة السريعة (Chips)
             if (activeOrderQuickChip !== 'all') {
                 list = list.filter(o => o.status === activeOrderQuickChip);
-            }
-
-            // 2. تصفية بالبحث النصي
-            if (searchQ) {
-                list = list.filter(o =>
-                    String(o.id || '').toLowerCase().includes(searchQ) ||
-                    String(o.customerName || '').toLowerCase().includes(searchQ) ||
-                    String(o.phone1 || '').includes(searchQ) ||
-                    String(o.phone2 || '').includes(searchQ) ||
-                    String(o.city || '').toLowerCase().includes(searchQ) ||
-                    String(o.address || '').toLowerCase().includes(searchQ)
-                );
             }
 
             // 3. تصفية بالمنطقة والمحافظة
