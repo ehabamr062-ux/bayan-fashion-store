@@ -10,12 +10,12 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="لوحة التاجر">
-    <link id="bayanPwaManifest" rel="manifest" href="admin-manifest.json?v=5.5.2">
+    <link id="bayanPwaManifest" rel="manifest" href="admin-manifest.json?v=5.5.3">
     <link rel="apple-touch-icon" sizes="192x192" href="icons/admin-192.png">
     <link rel="icon" type="image/png" sizes="192x192" href="icons/admin-192.png">
-    <meta name="app-version" content="5.5.2">
+    <meta name="app-version" content="5.5.3">
     <meta name="robots" content="noindex, nofollow">
-    <title>لوحة إدارة متجر بيان للأزياء | Merchant Admin v5.5.2</title>
+    <title>لوحة إدارة متجر بيان للأزياء | Merchant Admin v5.5.3</title>
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1574,7 +1574,7 @@
             <div class="header-tools" style="display:flex; flex-wrap:wrap; align-items:center; gap:8px;">
                 <span id="adminVersionBadge"
                     style="display:inline-flex; align-items:center; padding:6px 11px; border-radius:10px; border:1px solid #cbd5e1; background:#f8fafc; color:#0f172a; font-family:monospace; font-weight:900; font-size:0.8rem;"
-                    title="إصدار لوحة التحكم الحالي">v5.5.2</span>
+                    title="إصدار لوحة التحكم الحالي">v5.5.3</span>
                 <button type="button" id="adminAudioToggleBtn" class="btn-header-link" onclick="toggleOrderAlertSound()"
                     title="تفعيل أو كتم جرس تنبيه الطلبات الجديدة"
                     style="display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:40px; padding:8px 15px; border-radius:12px; border:1px solid #b45309; background:linear-gradient(135deg, #f59e0b, #d97706); color:#ffffff; font-weight:800; font-size:0.85rem; white-space:nowrap; box-shadow:0 3px 10px rgba(217,119,6,0.35); cursor:pointer; transition:all 0.2s;">
@@ -3507,13 +3507,13 @@
     <!-- سكريبتات Firebase السحابية -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-    <script src="js/firebase_config.js?v=5.5.2"></script>
-    <script src="js/pwa_install.js?v=5.5.2"></script>
-    <script src="js/admin_categories.js?v=5.5.2"></script>
-    <script src="js/admin_media_tools.js?v=5.5.2"></script>
-    <script src="js/admin_bulk_media.js?v=5.5.2"></script>
-    <script src="js/admin_visibility.js?v=5.5.2"></script>
-    <script src="js/admin_crm_abandoned.js?v=5.5.2"></script>
+    <script src="js/firebase_config.js?v=5.5.3"></script>
+    <script src="js/pwa_install.js?v=5.5.3"></script>
+    <script src="js/admin_categories.js?v=5.5.3"></script>
+    <script src="js/admin_media_tools.js?v=5.5.3"></script>
+    <script src="js/admin_bulk_media.js?v=5.5.3"></script>
+    <script src="js/admin_visibility.js?v=5.5.3"></script>
+    <script src="js/admin_crm_abandoned.js?v=5.5.3"></script>
 
     <!-- منطق وبرمجة لوحة التاجر -->
     <script>
@@ -3852,10 +3852,19 @@
 
             if (tabName === 'home') {
                 updateHomeDashboardStats();
+            } else if (tabName === 'products' && window._productsRenderDirty) {
+                window._productsRenderDirty = false;
+                if (typeof filterAdminProducts === 'function') filterAdminProducts();
+            } else if (tabName === 'orders') {
+                if (window._ordersRenderDirty) {
+                    window._ordersRenderDirty = false;
+                    if (typeof renderAdminOrders === 'function') renderAdminOrders();
+                }
+                if (window.BayanCRM) window.BayanCRM.onOrdersTabShown();
+            } else if (tabName === 'settings') {
+                if (typeof renderAdminOrdersTrashBin === 'function') renderAdminOrdersTrashBin();
             } else if (tabName === 'customers' && window.BayanCRM) {
                 window.BayanCRM.renderCustomers();
-            } else if (tabName === 'orders' && window.BayanCRM) {
-                window.BayanCRM.onOrdersTabShown();
             }
         }
 
@@ -4138,22 +4147,35 @@
             if (typeof showToast === 'function') showToast(`تم تحديد ${cancelled.length} طلب ملغي`, 'success');
         }
 
+        async function runOrdersBatchOps(docIds, opFn) {
+            if (typeof db === 'undefined' || !db || !docIds.length) return;
+            for (let i = 0; i < docIds.length; i += 450) {
+                const batch = db.batch();
+                docIds.slice(i, i + 450).forEach(id => opFn(batch, db.collection('orders').doc(id)));
+                await batch.commit();
+            }
+        }
+
         async function moveSelectedHomeOrdersToTrash() {
             const keys = Array.from(selectedHomeOrderIds);
             if (!keys.length) return;
             if (!confirm(`هل تريد نقل ${keys.length} طلب محدد إلى سلة المحذوفات في الإعدادات؟`)) return;
             const nowIso = new Date().toISOString();
+            const keySet = new Set(keys);
+            const movedRows = adminOrdersList.filter(o => keySet.has(String(o.firestoreId || o.id || '')));
+            adminOrdersList = adminOrdersList.filter(o => !keySet.has(String(o.firestoreId || o.id || '')));
+            movedRows.forEach(r => adminTrashedOrdersList.unshift({ ...r, isDeleted: true, deletedAt: nowIso }));
+            selectedHomeOrderIds.clear();
+            rebuildAdminOrdersSearchIndex();
+            renderHomeRecentOrders();
+            renderAdminOrdersTrashBin();
+            updateHomeDashboardStats();
+            if (typeof showToast === 'function') showToast(`تم نقل ${keys.length} طلب إلى سلة المحذوفات`, 'success');
             try {
-                if (typeof db !== 'undefined' && db) {
-                    await Promise.all(keys.map(docId =>
-                        db.collection('orders').doc(docId).update({ isDeleted: true, deletedAt: nowIso })
-                    ));
-                }
-                selectedHomeOrderIds.clear();
-                if (typeof showToast === 'function') showToast(`تم نقل ${keys.length} طلب إلى سلة المحذوفات`, 'success');
+                await runOrdersBatchOps(keys, (batch, ref) => batch.update(ref, { isDeleted: true, deletedAt: nowIso }));
             } catch (e) {
                 console.error('Trash move error:', e);
-                if (typeof showToast === 'function') showToast('تعذر نقل بعض الطلبات لسلة المحذوفات', 'error');
+                if (typeof showToast === 'function') showToast('تعذر مزامنة حذف بعض الطلبات مع السحابة', 'error');
             }
         }
 
@@ -4183,25 +4205,31 @@
         async function restoreAllTrashedOrders() {
             if (!adminTrashedOrdersList.length) return;
             if (!confirm(`استعادة جميع الطلبات (${adminTrashedOrdersList.length}) من سلة المحذوفات؟`)) return;
+            const ids = adminTrashedOrdersList.map(o => o.firestoreId || o.id);
+            adminTrashedOrdersList.forEach(o => adminOrdersList.push({ ...o, isDeleted: false, deletedAt: null }));
+            adminTrashedOrdersList = [];
+            rebuildAdminOrdersSearchIndex();
+            renderAdminOrdersTrashBin();
+            renderHomeRecentOrders();
+            updateHomeDashboardStats();
+            if (typeof showToast === 'function') showToast('تمت استعادة جميع الطلبات', 'success');
             try {
-                await Promise.all(adminTrashedOrdersList.map(o =>
-                    db.collection('orders').doc(o.firestoreId || o.id).update({ isDeleted: false, deletedAt: null })
-                ));
-                if (typeof showToast === 'function') showToast('تمت استعادة جميع الطلبات', 'success');
+                await runOrdersBatchOps(ids, (batch, ref) => batch.update(ref, { isDeleted: false, deletedAt: null }));
             } catch (e) {
                 console.error('Restore all error:', e);
-                if (typeof showToast === 'function') showToast('حدث خطأ أثناء الاستعادة', 'error');
+                if (typeof showToast === 'function') showToast('حدث خطأ أثناء مزامنة الاستعادة', 'error');
             }
         }
 
         async function emptyOrdersTrashPermanently() {
             if (!adminTrashedOrdersList.length) return;
             if (!confirm(`تحذير نهائي: سيتم حذف ${adminTrashedOrdersList.length} طلب من قاعدة البيانات نهائياً بدون رجعة!`)) return;
+            const ids = adminTrashedOrdersList.map(o => o.firestoreId || o.id);
+            adminTrashedOrdersList = [];
+            renderAdminOrdersTrashBin();
+            if (typeof showToast === 'function') showToast('تم تفريغ سلة المحذوفات نهائياً', 'success');
             try {
-                await Promise.all(adminTrashedOrdersList.map(o =>
-                    db.collection('orders').doc(o.firestoreId || o.id).delete()
-                ));
-                if (typeof showToast === 'function') showToast('تم تفريغ سلة المحذوفات نهائياً', 'success');
+                await runOrdersBatchOps(ids, (batch, ref) => batch.delete(ref));
             } catch (e) {
                 console.error('Empty trash error:', e);
                 if (typeof showToast === 'function') showToast('حدث خطأ أثناء تفريغ السلة', 'error');
@@ -4681,12 +4709,19 @@
                 });
 
                 updateProductsStats();
-                filterAdminProducts();
+                const prodPanel = document.getElementById('tabPanelProducts');
+                if (prodPanel && prodPanel.classList.contains('active')) {
+                    window._productsRenderDirty = false;
+                    filterAdminProducts();
+                } else {
+                    window._productsRenderDirty = true;
+                }
                 updateHomeDashboardStats();
 
-                // ⚡ حفظ في قاعدة بيانات IndexedDB المحلية للاسترجاع فائق السرعة
+                // ⚡ حفظ في قاعدة بيانات IndexedDB المحلية بالخلفية دون تجميد الواجهة
                 if (typeof BayanIDB !== 'undefined') {
-                    BayanIDB.saveAllProducts(adminProductsList);
+                    clearTimeout(window._idbSaveTimer);
+                    window._idbSaveTimer = setTimeout(() => BayanIDB.saveAllProducts(adminProductsList), 350);
                 }
             }, err => {
                 console.warn("Products sync note:", err);
@@ -6567,7 +6602,13 @@
                 const liveCountBadge = document.getElementById('ordersLiveCountBadge');
                 if (liveCountBadge) liveCountBadge.textContent = adminOrdersList.length;
                 updateFinancialStats();
-                renderAdminOrders();
+                const ordPanel = document.getElementById('tabPanelOrders');
+                if (ordPanel && ordPanel.classList.contains('active')) {
+                    window._ordersRenderDirty = false;
+                    renderAdminOrders();
+                } else {
+                    window._ordersRenderDirty = true;
+                }
                 updateHomeDashboardStats();
                 window.getBayanOrders = () => adminOrdersList;
                 window.dispatchEvent(new CustomEvent('bayan:orders-updated'));
