@@ -10,12 +10,12 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="لوحة التاجر">
-    <link id="bayanPwaManifest" rel="manifest" href="admin-manifest.json?v=5.5.8">
+    <link id="bayanPwaManifest" rel="manifest" href="admin-manifest.json?v=5.5.9">
     <link rel="apple-touch-icon" sizes="192x192" href="icons/admin-192.png">
     <link rel="icon" type="image/png" sizes="192x192" href="icons/admin-192.png">
-    <meta name="app-version" content="5.5.8">
+    <meta name="app-version" content="5.5.9">
     <meta name="robots" content="noindex, nofollow">
-    <title>لوحة إدارة متجر بيان للأزياء | Merchant Admin v5.5.8</title>
+    <title>لوحة إدارة متجر بيان للأزياء | Merchant Admin v5.5.9</title>
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1689,7 +1689,7 @@
             <div class="header-tools" style="display:flex; flex-wrap:wrap; align-items:center; gap:8px;">
                 <span id="adminVersionBadge"
                     style="display:inline-flex; align-items:center; padding:6px 11px; border-radius:10px; border:1px solid #cbd5e1; background:#f8fafc; color:#0f172a; font-family:monospace; font-weight:900; font-size:0.8rem;"
-                    title="إصدار لوحة التحكم الحالي">v5.5.8</span>
+                    title="إصدار لوحة التحكم الحالي">v5.5.9</span>
                 <button type="button" id="adminAudioToggleBtn" class="btn-header-link" onclick="toggleOrderAlertSound()"
                     title="تفعيل أو كتم جرس تنبيه الطلبات الجديدة"
                     style="display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:40px; padding:8px 15px; border-radius:12px; border:1px solid #b45309; background:linear-gradient(135deg, #f59e0b, #d97706); color:#ffffff; font-weight:800; font-size:0.85rem; white-space:nowrap; box-shadow:0 3px 10px rgba(217,119,6,0.35); cursor:pointer; transition:all 0.2s;">
@@ -3092,16 +3092,27 @@
 
     </main>
 
-    <!-- 5. مودال إضافة وتعديل صنف -->
+    <!-- 5. مودال إضافة وتعديل صنف (كارت الصنف المنظم بتبويبات) -->
     <div id="productModal" class="modal-overlay">
-        <div class="modal-card">
-            <div class="modal-head">
+        <div class="modal-card" style="max-width: 1100px; width: 96vw; max-height: 92vh; display: flex; flex-direction: column;">
+            <div class="modal-head" style="flex-shrink: 0;">
                 <h3 id="productModalTitle">➕ إضافة موديل أزياء جديد</h3>
                 <button type="button" class="btn-modal-close" onclick="closeProductModal()">✕</button>
             </div>
 
-            <form id="productForm" class="modal-form" onsubmit="saveProductItem(event)" novalidate>
+            <!-- شريط تبويبات كارت الصنف -->
+            <div id="prodModalTabs" style="display:flex; gap:6px; padding:10px 18px; background:#f8fafc; border-bottom:1.5px solid #e2e8f0; overflow-x:auto; flex-shrink:0; scrollbar-width:none;">
+                <button type="button" class="prod-modal-tab-btn active" data-prod-tab="basic" onclick="switchProductModalTab('basic', this)" style="padding:8px 14px; border-radius:10px; border:1px solid #059669; background:#059669; color:#fff; font-family:inherit; font-weight:900; font-size:0.86rem; cursor:pointer; white-space:nowrap;">🏷️ البيانات الأساسية والأسعار</button>
+                <button type="button" class="prod-modal-tab-btn" data-prod-tab="variants" onclick="switchProductModalTab('variants', this)" style="padding:8px 14px; border-radius:10px; border:1px solid #cbd5e1; background:#fff; color:#334155; font-family:inherit; font-weight:800; font-size:0.86rem; cursor:pointer; white-space:nowrap;">🎨 المقاسات والألوان</button>
+                <button type="button" class="prod-modal-tab-btn" data-prod-tab="offers" onclick="switchProductModalTab('offers', this)" style="padding:8px 14px; border-radius:10px; border:1px solid #cbd5e1; background:#fff; color:#334155; font-family:inherit; font-weight:800; font-size:0.86rem; cursor:pointer; white-space:nowrap;">🔥 العروض والخصومات</button>
+                <button type="button" class="prod-modal-tab-btn" data-prod-tab="media" onclick="switchProductModalTab('media', this)" style="padding:8px 14px; border-radius:10px; border:1px solid #cbd5e1; background:#fff; color:#334155; font-family:inherit; font-weight:800; font-size:0.86rem; cursor:pointer; white-space:nowrap;">📸 الصور والوصف</button>
+            </div>
+
+            <form id="productForm" class="modal-form" onsubmit="saveProductItem(event)" novalidate style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 14px;">
                 <input type="hidden" id="editProductId">
+
+                <!-- تبويب 1: البيانات الأساسية والأسعار -->
+                <div id="prodTabBasic" class="prod-modal-tab-pane" style="display: flex; flex-direction: column; gap: 12px;">
 
                 <div class="form-row">
                     <div class="form-group">
@@ -3191,7 +3202,10 @@
                         </select>
                     </div>
                 </div>
+                </div><!-- /#prodTabBasic -->
 
+                <!-- تبويب 3: العروض والتخفيضات -->
+                <div id="prodTabOffers" class="prod-modal-tab-pane" style="display: none; flex-direction: column; gap: 12px;">
                 <!-- قسم عروض الفلاش السريعة Flash Deals -->
                 <div class="form-group"
                     style="background: #fff7ed; border: 1.5px solid #fed7aa; border-radius: 14px; padding: 14px; margin-top: 4px;">
@@ -3352,7 +3366,10 @@
                         </div>
                     </div>
                 </div>
+                </div><!-- /#prodTabOffers -->
 
+                <!-- تبويب 2: المقاسات والألوان -->
+                <div id="prodTabVariants" class="prod-modal-tab-pane" style="display: none; flex-direction: column; gap: 12px;">
                 <!-- اختيار المقاسات -->
                 <div class="form-group">
                     <div
@@ -3456,7 +3473,10 @@
                         <!-- يتم توليده تلقائياً بناءً على الألوان المحددة -->
                     </div>
                 </div>
+                </div><!-- /#prodTabVariants -->
 
+                <!-- تبويب 4: الصور والوصف -->
+                <div id="prodTabMedia" class="prod-modal-tab-pane" style="display: none; flex-direction: column; gap: 12px;">
                 <!-- صور الموديل (صورة رئيسية + صور فرعية إضافية للمعرض) -->
                 <div class="form-group"
                     style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 14px; padding: 14px;">
@@ -3503,8 +3523,9 @@
                     <textarea id="inpProdDesc" class="form-control" rows="2"
                         placeholder="مثال: خامة قطن 100% عالية الجودة معالج ضد الانكماش..."></textarea>
                 </div>
+                </div><!-- /#prodTabMedia -->
 
-                <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px; flex-wrap: wrap;">
+                <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: auto; padding-top: 12px; border-top: 1.5px solid #e2e8f0; flex-wrap: wrap; position: sticky; bottom: 0; background: #fff; z-index: 5;">
                     <button type="button" class="btn-card-action" onclick="closeProductModal()">إلغاء</button>
                     <button type="button" class="btn-primary-action" id="btnSaveAndAddAnother"
                         onclick="saveProductItem(event, true)" style="background: #0284c7; border-color: #0284c7;"
@@ -3655,13 +3676,13 @@
     <!-- سكريبتات Firebase السحابية -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-    <script src="js/firebase_config.js?v=5.5.8"></script>
-    <script src="js/pwa_install.js?v=5.5.8"></script>
-    <script src="js/admin_categories.js?v=5.5.8"></script>
-    <script src="js/admin_media_tools.js?v=5.5.8"></script>
-    <script src="js/admin_bulk_media.js?v=5.5.8"></script>
-    <script src="js/admin_visibility.js?v=5.5.8"></script>
-    <script src="js/admin_crm_abandoned.js?v=5.5.8"></script>
+    <script src="js/firebase_config.js?v=5.5.9"></script>
+    <script src="js/pwa_install.js?v=5.5.9"></script>
+    <script src="js/admin_categories.js?v=5.5.9"></script>
+    <script src="js/admin_media_tools.js?v=5.5.9"></script>
+    <script src="js/admin_bulk_media.js?v=5.5.9"></script>
+    <script src="js/admin_visibility.js?v=5.5.9"></script>
+    <script src="js/admin_crm_abandoned.js?v=5.5.9"></script>
 
     <!-- منطق وبرمجة لوحة التاجر -->
     <script>
@@ -3990,6 +4011,24 @@
         }
 
         // 2. تبديل التبويبات
+        function switchProductModalTab(tabKey, btn) {
+            const map = { basic: 'prodTabBasic', variants: 'prodTabVariants', offers: 'prodTabOffers', media: 'prodTabMedia' };
+            Object.values(map).forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = 'none';
+            });
+            const target = document.getElementById(map[tabKey] || 'prodTabBasic');
+            if (target) target.style.display = 'flex';
+            document.querySelectorAll('.prod-modal-tab-btn').forEach(b => {
+                const isAct = b.dataset.prodTab === tabKey;
+                b.classList.toggle('active', isAct);
+                b.style.background = isAct ? '#059669' : '#fff';
+                b.style.color = isAct ? '#fff' : '#334155';
+                b.style.borderColor = isAct ? '#059669' : '#cbd5e1';
+                b.style.fontWeight = isAct ? '900' : '800';
+            });
+        }
+
         function toggleAdminNavDrawer() {
             const drawer = document.getElementById('adminNavDrawer');
             const backdrop = document.getElementById('adminNavDrawerBackdrop');
